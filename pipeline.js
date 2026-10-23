@@ -378,7 +378,7 @@ function analyseOnce(raw, opts = {}) {
   if (opts.swapFix !== false) { frames = fixSwaps(frames, raw.width, raw.height); swaps = frames.swapped || 0 }
   if (opts.despike !== false) frames = despike(frames, K);
   const T = frames.length;
-  if (T < Math.round(20 * K)) throw new Error("This clip is too short. Include from just before the leg lift until after the follow-through.");
+  if (T < 6) throw new Error("This clip is too short to analyse: it needs at least a few frames of the pitcher throwing.");
   const hand = opts.hand && opts.hand !== "auto" ? opts.hand : detectThrowingHand(frames, W, H);
   if (hand === "L") frames = mirrorFrames(frames);
   const fk = n => Math.max(1, Math.round(n * K));
@@ -406,6 +406,7 @@ function analyseOnce(raw, opts = {}) {
   const reach = P.map(F => F[Al][0] - mid(F[23], F[24])[0]);
   let fs_ = legLift; for (let t = legLift + 1; t < T; t++) if (reach[t] > reach[fs_]) fs_ = t;
   if (fs_ >= T - fk(4)) fs_ = Math.min(T - fk(6), Math.max(legLift + fk(6), fmax));
+  fs_ = clamp(fs_, 1, Math.max(1, T - 3));             // short or slow-motion clips: keep every phase inside the clip
   // the foot stops reaching forward a few frames BEFORE it lands. Foot contact (as the research defines it) is the
   // first frame the lead foot is actually down: within 1.5 cm of the height it settles at once planted.
   // (the skeleton is still built round the reach frame; only the reported Foot strike moves to the contact frame)

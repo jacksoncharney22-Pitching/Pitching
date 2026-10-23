@@ -29,7 +29,7 @@ function chips(groupId, key, parse = v => v) {
 }
 // options are drop-down menus
 $("handSel").onchange = e => { opts.hand = e.target.value };
-$("slowSel").onchange = e => { opts.slow = Number(e.target.value) };
+$("slowSel").onchange = e => { opts.slow = Number(e.target.value); if ($("trimStart").max) updateTrim() };
 $("qualSel").onchange = e => { opts.quality = e.target.value; $("qualHint").textContent = QUAL_HINT[e.target.value] };
 $("levelSel").value = opts.level;
 if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)); $("heightIn").value = String(opts.heightIn % 12) } else $("heightFt").value = "";
@@ -75,7 +75,7 @@ function setMain(i, keepTrim) {
   v.onloadedmetadata = () => {
     const d = v.duration || 0;
     $("trimStart").max = $("trimEnd").max = d.toFixed(2);
-    $("trimStart").value = 0; $("trimEnd").value = Math.min(d, 8).toFixed(2);
+    $("trimStart").value = 0; $("trimEnd").value = d.toFixed(2);         // the whole clip by default: any length works
     updateTrim();
   };
   v.onerror = () => { $("prepErr").hidden = false; $("prepErr").textContent = "This browser can't play that video file. Try an MP4 (H.264) export, or open it in Safari for iPhone .mov files." };
@@ -107,7 +107,9 @@ function updateTrim(changed) {
   const S = +$("trimStart").value, E = +$("trimEnd").value, d = +$("trimStart").max || 1;
   $("trimFill").style.left = (S / d * 100) + "%"; $("trimFill").style.width = ((E - S) / d * 100) + "%";
   $("trimLabel").textContent = `${fmtTime(S)} → ${fmtTime(E)} · ${(E - S).toFixed(1)} s analysed`;
-  $("trimWarn").hidden = E - S <= 8;
+  // real time covered (a slowed clip covers less real time than it plays for)
+  const real = (E - S) / (opts.slow || 1);
+  $("trimWarn").hidden = real <= 8;
 }
 $("trimStart").oninput = () => { updateTrim("s"); $("prepVideo").currentTime = +$("trimStart").value };
 $("trimEnd").oninput = () => { updateTrim("e"); $("prepVideo").currentTime = +$("trimEnd").value };
@@ -255,7 +257,9 @@ async function trackSimple(q, src) {
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
   v.currentTime = start; await once(v, "seeked");
   const native = await estimateFps(v);
-  const sampleFps = Math.min(native, src.fpsCap || (high ? 120 : 60)), N = Math.min(src.maxFrames || (high ? 900 : 600), Math.floor((end - start) * sampleFps));
+  // cover the WHOLE chosen window: if it's long, sample a little less densely rather than cutting the end off
+  const capF = src.maxFrames || (high ? 900 : 600), want = Math.min(native, src.fpsCap || (high ? 120 : 60));
+  const sampleFps = Math.max(1, Math.min(want, capF / Math.max(0.05, end - start))), N = Math.max(1, Math.min(capF, Math.floor((end - start) * sampleFps)));
   const frames = [], passes = high ? 2 : 1;
   const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked") };
   for (let i = 0; i < N; i++) {
@@ -334,7 +338,7 @@ async function trackMax(src) {
   const start = src.start, end = Math.max(start + 0.4, src.end);
   v.currentTime = start; await once(v, "seeked");
   const native = await estimateFps(v);
-  const sampleFps = Math.min(native, 240), N = Math.min(1500, Math.floor((end - start) * sampleFps));
+  const sampleFps = Math.max(1, Math.min(native, 240, 1500 / Math.max(0.05, end - start))), N = Math.max(1, Math.min(1500, Math.floor((end - start) * sampleFps)));
   const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked") };
   const ts = k => Math.round(k * 1000 / sampleFps) + 1;
   // progress with a time estimate: pass 1 = 1 unit per frame, zoomed passes 3, backward passes 2

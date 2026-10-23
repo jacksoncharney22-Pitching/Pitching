@@ -398,7 +398,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
           <input type="range" id="trimEnd" min="0" max="1" step="0.01" value="1" aria-label="End time"></div>
         <div class="trimrow"><span id="trimLabel">—</span>
           <span style="display:flex;gap:6px"><button id="setStart">Start here</button><button id="setEnd">End here</button></span></div>
-        <p class="warn" id="trimWarn" hidden>Clips longer than 8 seconds take a while to analyse. Trim to one pitch for the best result.</p>
+        <p class="warn" id="trimWarn" hidden>This covers more than 8 seconds of real time. That works, but it takes longer and very long clips are read less densely. Trimming to one pitch gives the most exact skeleton.</p>
         <ul class="angles" id="angleList"></ul>
         <div class="anglerow"><span id="angleNote" class="hint"></span><button id="addAngle" class="ghost">+ Add a second angle (optional)</button>
           <input type="file" id="fileIn2" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden></div>
