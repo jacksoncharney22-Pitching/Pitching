@@ -337,6 +337,13 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .rcard .rnote2 { font-size: 13px; color: #cfe3ff; background: #0f1a2a; border-radius: 8px; padding: 6px 9px }
 .rctl input { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 14px; width: 76px; margin: 0 4px 0 6px }
 @media (max-width: 900px) { .sel2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) } .sel2 > .sel:last-child { grid-column: 1 / -1 } }
+
+/* v15: pitch finder */
+.pfind { margin: 10px 0 2px; font-size: 13.5px; color: var(--muted) }
+.pfind b { color: var(--fg) }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
+.pchips button { font-size: 13px; padding: 7px 11px }
+.pchips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
 </style>
 
 <header class="topbar"><div class="in">
@@ -398,6 +405,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
           <input type="range" id="trimEnd" min="0" max="1" step="0.01" value="1" aria-label="End time"></div>
         <div class="trimrow"><span id="trimLabel">—</span>
           <span style="display:flex;gap:6px"><button id="setStart">Start here</button><button id="setEnd">End here</button></span></div>
+        <div class="pfind" id="pitchFind" hidden><span id="pitchFindMsg"></span><div class="pchips" id="pitchChips"></div></div>
         <p class="warn" id="trimWarn" hidden>This covers more than 8 seconds of real time. That works, but it takes longer and very long clips are read less densely. Trimming to one pitch gives the most exact skeleton.</p>
         <ul class="angles" id="angleList"></ul>
         <div class="anglerow"><span id="angleNote" class="hint"></span><button id="addAngle" class="ghost">+ Add a second angle (optional)</button>

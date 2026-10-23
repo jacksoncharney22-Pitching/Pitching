@@ -87,6 +87,7 @@ function setMain(i, keepTrim) {
     $("trimStart").max = $("trimEnd").max = d.toFixed(2);
     $("trimStart").value = 0; $("trimEnd").value = d.toFixed(2);         // the whole clip by default: any length works
     updateTrim();
+    scanPitches(current);                                                  // then narrow it to one pitch, automatically
   };
   v.onerror = () => { $("prepErr").hidden = false; $("prepErr").textContent = "This browser can't play that video file. Try an MP4 (H.264) export, or open it in Safari for iPhone .mov files." };
   renderAngles();
@@ -181,17 +182,18 @@ async function run() {
   ["stModel", "stTrack", "stBuild"].forEach(s => step(s, "todo", ""));
   try {
     if (!angles.length) throw new Error("Choose a pitching video first.");
+    if (scan && scan.state === "busy" && scan.promise) { step("stModel", "doing", "Finding the pitch in this clip"); await scan.promise.catch(() => {}) }
     const q = opts.quality, K = angles.length, S = +$("trimStart").value, E = Math.max(S + 0.4, +$("trimEnd").value);
     await holdWake();
     const span = 0.93 / K, views = [], hints = [null];
     // main angle: the trimmed window
-    const m = await trackOne(q, { url: angles[0].url, start: S, end: E, prog: { prefix: `Angle 1 of ${K} (${angles[0].label})`, from: 0, to: span } });
-    views.push({ fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames, label: angles[0].label });
+    const m = keepOneShot(await trackOne(q, { url: angles[0].url, start: S, end: E, prog: { prefix: `Angle 1 of ${K} (${angles[0].label})`, from: 0, to: span } }));
+    views.push({ fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames, label: angles[0].label });
     if (K === 1) {                                    // one video: the standard single-camera skeleton
       step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps${m.repeats ? ` · ${m.repeats} repeated frames skipped` : ""}`);
       step("stBuild", "doing", "Rebuilding the 3D skeleton");
       await new Promise(r => setTimeout(r, 30));
-      const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames };
+      const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames };
       const sl = resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
       lastRaw = raw; window.__lastRaw = raw;
       const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
@@ -317,9 +319,117 @@ async function trackSimple(q, src) {
   }
   const nReal = N - dupS.filter(Boolean).length, found = frames.filter(Boolean).length;
   if (found < nReal * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${nReal} frames of one angle. Use clips where his whole body stays in view.`);
-  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal };
+  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal, diffs };
 }
 
+
+// ---------------------------------------------------------------- finding the pitches in a clip
+// Clips from the internet often hold several pitches, the pitcher walking around between them, and camera cuts.
+// Built as one skeleton, that jumps at every cut and every reset. A quick scan (about 8 looks a second) finds each
+// delivery (a leg lift followed by a long stride) and every camera cut, and trims to one pitch inside one shot.
+let scan = null;                                                           // { forUrl, promise, pitches, cuts }
+function fmtClock(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(1).padStart(4, "0")}` }
+async function findPitches(url, onProgress) {
+  const v = await openVideo(url), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
+  if (!(dur > 0)) return { pitches: [], cuts: [] };
+  const sf = Math.min(8, Math.max(5, 400 / dur)), n = Math.max(2, Math.floor(dur * sf));
+  let tr = await makeTracker("fast", { mode: "VIDEO" });
+  const S = []; let prev = null, k0 = 0;
+  for (let i = 0; i < n; i++) {
+    if (scan && scan.forUrl !== url) break;                                 // another clip was chosen
+    v.currentTime = Math.min(dur - 0.01, (i + 0.5) / sf); await once(v, "seeked");
+    const sg = frameSig(v), dif = prev ? sigDiff(sg, prev) : 0; prev = sg;
+    // a camera cut is a one-off spike in picture change (steady big change is just the camera panning or fast motion)
+    const recent = S.slice(-5).map(x => x.dif).sort((p, q) => p - q), med = recent.length ? recent[recent.length >> 1] : 0;
+    const cut = dif > 16 && dif > 3.5 * Math.max(med, 2);
+    if (cut) { try { tr.close() } catch (e) {} trackers = trackers.filter(x => x !== tr); tr = await makeTracker("fast", { mode: "VIDEO" }); k0 = i }
+    const r = tr.detectForVideo(v, Math.round((i - k0) * 1000 / sf) + 1), L = r.landmarks && r.landmarks[0];
+    S.push({ t: (i + 0.5) / sf, cut, dif, p: L ? L.map(q => [q.x * W, q.y * H]) : null });
+    if (onProgress && i % 5 === 0) onProgress(i / n);
+  }
+  try { tr.close() } catch (e) {} trackers = trackers.filter(x => x !== tr);
+  // final cut list: a spike compared with the looks on BOTH sides
+  const cuts = [];
+  for (let i = 1; i < S.length; i++) {
+    const loc = [...S.slice(Math.max(1, i - 5), i), ...S.slice(i + 1, i + 6)].map(x => x.dif).sort((p, q) => p - q), med = loc.length ? loc[loc.length >> 1] : 0;
+    if (S[i].dif > 16 && S[i].dif > 3.5 * Math.max(med, 2)) cuts.push(S[i].t - 0.5 / sf);
+  }
+  // per look: stride (ankle to ankle, in body heights) and leg lift (front-most knee height relative to the hips)
+  const sig = S.map(x => {
+    if (!x.p) return null; const P = x.p, ys = [0, 27, 28].map(j => P[j][1]), h = Math.max(...ys) - Math.min(...ys);
+    if (!(h > 20)) return null;
+    const hipY = (P[23][1] + P[24][1]) / 2;
+    return { stride: Math.abs(P[27][0] - P[28][0]) / h, lift: Math.max(hipY - P[25][1], hipY - P[26][1]) / h };
+  });
+  const sm = (k, i) => { let a = 0, c = 0; for (let j = i - 1; j <= i + 1; j++) if (sig[j]) { a += sig[j][k]; c++ } return c ? a / c : null };
+  const stride = S.map((_, i) => sm("stride", i)), lift = S.map((_, i) => sm("lift", i));
+  const segOf = t => { let a = 0, b = dur; for (const c of cuts) { if (c <= t) a = Math.max(a, c); else { b = Math.min(b, c); break } } return [a, b] };
+  // deliveries: a stride peak clearly wider than how he stands in that shot, after a real leg lift, 1.5 s+ apart
+  const baseOf = (a, b) => { const v = []; S.forEach((x, i) => { if (x.t >= a && x.t < b && stride[i] != null) v.push(stride[i]) }); v.sort((p, q) => p - q); return v.length ? v[Math.floor(v.length * 0.3)] : 0.2 };
+  const cand = [];
+  for (let i = 1; i < S.length - 1; i++) {
+    const v0 = stride[i]; if (v0 == null || v0 < 0.7) continue;
+    if ((stride[i - 1] ?? 0) > v0 || (stride[i + 1] ?? 0) > v0) continue;
+    const [segA, segB] = segOf(S[i].t); if (v0 - baseOf(segA, segB) < 0.3) continue;
+    // the leg lift: highest knee in the 4 s before, in the same shot, up near hip height
+    let ll = null;
+    for (let j = i; j >= 0 && S[j].t >= Math.max(segA, S[i].t - 4); j--) if (lift[j] != null && (ll == null || lift[j] > lift[ll])) ll = j;
+    if (ll == null || lift[ll] < -0.08 || S[i].t - S[ll].t < 0.15) continue;
+    cand.push({ i, t: S[i].t, s: v0, ll, seg: [segA, segB] });
+  }
+  const wins = [];
+  for (const pk of cand) {
+    const llT = S[pk.ll].t, span = Math.max(0.25, pk.t - llT);
+    const a = Math.max(pk.seg[0], llT - Math.max(0.35, 0.6 * span)), b = Math.min(pk.seg[1], pk.t + Math.max(0.8, 1.6 * span));
+    if (b - a >= 0.6) wins.push({ start: +a.toFixed(2), end: +b.toFixed(2), t: pk.t, s: pk.s });
+  }
+  // strongest first: a detection inside a pitch already kept is that same pitch (slow motion holds the stride for seconds)
+  const kept = [];
+  for (const w of wins.sort((x, y) => y.s - x.s)) if (!kept.some(o => (o.start <= w.t && w.t <= o.end) || (w.start <= o.t && o.t <= w.end))) kept.push(w);
+  const pitches = kept.sort((x, y) => x.start - y.start).map(w => ({ start: w.start, end: w.end }));
+  return { pitches, cuts };
+}
+function showPitches() {
+  const box = $("pitchFind"), msg = $("pitchFindMsg"), chips = $("pitchChips");
+  if (!scan) { box.hidden = true; return }
+  box.hidden = false; chips.innerHTML = "";
+  if (scan.state === "busy") { msg.innerHTML = `Finding the pitch in this clip… <small>${Math.round(100 * (scan.prog || 0))}%</small>`; return }
+  const P = scan.pitches || [], nc = (scan.cuts || []).length;
+  if (!P.length) { msg.innerHTML = `Couldn't spot a single pitch automatically${nc ? ` (the camera cuts ${nc} time${nc > 1 ? "s" : ""})` : ""}, so the whole clip will be analysed. For the smoothest skeleton, drag the trim to just one pitch.`; return }
+  msg.innerHTML = P.length === 1 ? `<b>Found the pitch</b> and trimmed to it${nc ? `, inside one camera shot` : ""}.` : `<b>Found ${P.length} pitches</b>${nc ? ` and ${nc} camera cut${nc > 1 ? "s" : ""}` : ""}. Analysing one at a time keeps the skeleton smooth: pick which one.`;
+  P.forEach((p, k) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = `Pitch ${k + 1} · ${fmtClock(p.start)}`;
+    b.setAttribute("aria-pressed", String(k === scan.sel)); b.onclick = () => pickPitch(k); chips.append(b);
+  });
+  const all = document.createElement("button"); all.type = "button"; all.textContent = "Whole clip"; all.setAttribute("aria-pressed", String(scan.sel === -1));
+  all.onclick = () => pickPitch(-1); chips.append(all);
+}
+function pickPitch(k) {
+  if (!scan) return; scan.sel = k;
+  const d = +$("trimStart").max || 0, p = k >= 0 ? scan.pitches[k] : { start: 0, end: d };
+  $("trimStart").value = p.start; $("trimEnd").value = Math.min(d, p.end); updateTrim();
+  $("prepVideo").currentTime = p.start; showPitches();
+}
+function scanPitches(item) {
+  if (!item) return;
+  if (angles.length > 1) { scan = null; showPitches(); return }          // several angles: they're lined up their own way
+  scan = { forUrl: item.url, state: "busy", prog: 0, sel: 0 };
+  const mine = scan; showPitches();
+  mine.promise = findPitches(item.url, f => { if (scan === mine) { mine.prog = f; showPitches() } })
+    .then(r => { if (scan !== mine) return; Object.assign(mine, r, { state: "done" }); if (r.pitches.length) pickPitch(0); else showPitches() })
+    .catch(e => { console.warn("pitch finder", e); if (scan === mine) { mine.state = "done"; mine.pitches = []; showPitches() } });
+}
+
+// a camera cut inside the chosen window: keep the one shot with the most tracked frames (one skeleton never spans a cut)
+function keepOneShot(m) {
+  const d = m.diffs; if (!d) return m;
+  const cuts = []; for (let i = 1; i < d.length; i++) if (d[i] > 16 && d[i] < 1e8) cuts.push(i);
+  if (!cuts.length) return m;
+  const bounds = [0, ...cuts, m.frames.length]; let best = [0, m.frames.length], bn = -1;
+  for (let k = 0; k < bounds.length - 1; k++) { const a = bounds[k], b = bounds[k + 1], n = m.frames.slice(a, b).filter(Boolean).length; if (n > bn) { bn = n; best = [a, b] } }
+  const [a, b] = best;
+  return { ...m, frames: m.frames.slice(a, b), N: b - a, start: m.start + a / m.sampleFps, diffs: d.slice(a, b), cutTrimmed: cuts.length };
+}
 // ---------------------------------------------------------------- repeated frames
 // A lot of slow-motion video online (and every screen recording) repeats frames: the same picture 2, 4 or 9 times,
 // then a jump to the next real one. Tracked as they are, the skeleton freezes and jumps: freeze, jump, freeze, jump.
@@ -441,7 +551,7 @@ async function trackMax(src) {
   await new Promise(r => setTimeout(r, 20));
   window.__lastLooks = { W, H, fps: sampleFps, looks };
   const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
-  return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep };
+  return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs };
 }
 
 // ---------------------------------------------------------------- results
