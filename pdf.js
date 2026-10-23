@@ -8,7 +8,7 @@ function loadScript(src) {
   return new Promise((res, rej) => { if (window.jspdf) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("couldn't load the PDF maker")); document.head.append(s) });
 }
 // jsPDF's built-in fonts only cover Latin-1: swap the few other characters we use
-const clean = s => String(s ?? "").replace(/→/g, "->").replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/·/g, "|").replace(/≈/g, "~").replace(/[^\x00-\xff]/g, "");
+const clean = s => String(s ?? "").replace(/→/g, "->").replace(/′/g, "'").replace(/″/g, '"').replace(/[–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/·/g, "|").replace(/≈/g, "~").replace(/[^\x00-\xff]/g, "");
 
 // MediaPipe 33-point skeleton
 const BONES = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 14], [14, 16], [23, 25], [25, 27], [24, 26], [26, 28], [27, 29], [29, 31], [27, 31], [28, 30], [30, 32], [28, 32], [15, 19], [16, 20]];
@@ -112,7 +112,8 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   y = 100;
   text(data.name || "Pitch", 18, { bold: true, gap: 2 });
   const fpsTxt = `${Math.round(data.videoFps || data.fps)} fps`;
-  text(`${data.throwHand === "L" ? "Left" : "Right"}-handed | ${fpsTxt} | ${(data.frames / data.fps).toFixed(2)} s analysed${data.quality ? " | " + data.quality : ""}`, 9, { color: 110, gap: 10 });
+  const htTxt = rep.heightIn ? ` | ${Math.floor(rep.heightIn / 12)} ft ${rep.heightIn % 12} in` : "";
+  text(`${rep.levelName} | ${data.throwHand === "L" ? "Left" : "Right"}-handed${htTxt} | ${fpsTxt} | ${(data.frames / data.fps).toFixed(2)} s analysed${data.quality ? " | " + data.quality : ""}`, 9, { color: 110, gap: 10 });
 
   // ---- score + summary
   const sy = y;
@@ -122,7 +123,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   const top = (rep.work.length ? rep.work : rep.check).slice(0, 3).map(i => i.name.toLowerCase());
   const save = M; y = sy;
   doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(0);
-  const sumLines = doc.splitTextToSize(clean(top.length ? `Top priorities: ${top.join(", ")}.` : "Nothing stands out: every graded check is in the typical pro range."), CW - 80);
+  const sumLines = doc.splitTextToSize(clean(top.length ? `Top priorities: ${top.join(", ")}.` : `Nothing stands out: every graded check is in the typical ${rep.levelName.toLowerCase()} range.`), CW - 80);
   sumLines.forEach((l, i) => doc.text(l, M + 80, sy + 18 + i * 15));
   doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(90);
   doc.text(clean(`${rep.good.length} good | ${rep.work.length} to fix | ${rep.check.length} to improve`), M + 80, sy + 22 + sumLines.length * 15);
@@ -152,7 +153,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     list.forEach(i => {
       need(70);
       text(`${i.name}:  ${i.value}`, 10.5, { bold: true, gap: 1 });
-      text(`Target: ${i.target}   |   Measured: ${({ solid: "solid", est: "estimated", rough: "rough" })[i.conf]}`, 8.5, { color: 120, gap: 3 });
+      text(`Typical: ${i.target}   |   Measured: ${({ solid: "solid", est: "estimated", rough: "rough" })[i.conf]}`, 8.5, { color: 120, gap: 3 });
       if (showFix && i.fix) text(i.fix, 10, { gap: 2 });
       text(i.why, 9, { color: 90, gap: 2 });
       if (showFix && i.drill) text(`Drill: ${i.drill}`, 9, { color: 30, gap: 8 }); else y += 6;
@@ -160,10 +161,10 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     y += 6;
   };
   newPage();
-  section("What's wrong: work on this first", rep.work, [230, 70, 70], "Clearly outside the range most good pro deliveries fall in, and measured reliably from this video.", true);
-  section("What can be improved", rep.check, [235, 170, 40], "Outside the typical range, or measured less reliably from one camera. Worth checking on video and working on.", true);
-  section("What's good", rep.good, [60, 180, 110], "In the typical pro range. Keep these.", false);
-  if (!rep.work.length && !rep.check.length) text("Nothing needs fixing from this video. Every graded check is in the typical pro range.", 10);
+  section("What's wrong: work on this first", rep.work, [230, 70, 70], `Clearly outside the research range for ${rep.levelName.toLowerCase()} pitchers, and measured reliably from this video.`, true);
+  section("What can be improved", rep.check, [235, 170, 40], `Outside the middle of the ${rep.levelName.toLowerCase()} range, or measured less reliably from one camera. Worth checking on video and working on.`, true);
+  section("What's good", rep.good, [60, 180, 110], `In the middle of the ${rep.levelName.toLowerCase()} range. Keep these.`, false);
+  if (!rep.work.length && !rep.check.length) text(`Nothing needs fixing from this video. Every graded check is in the typical ${rep.levelName.toLowerCase()} range.`, 10);
 
   // ---- angles at each phase
   need(40);
@@ -187,7 +188,8 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     y += 16;
   });
   y += 10;
-  text("How to read this: ranges are typical of professional pitchers, not one ideal. 'Solid' checks are measured directly from a side-on video; 'estimated' ones need depth one camera can't see well, so they are never graded worse than 'improve'. Compare the same pitcher across sessions for the most useful picture. Film from the side, throwing-arm side, at 240 fps with the whole body in frame for the most exact skeleton.", 8, { color: 120 });
+  text(`How to read this: each check is graded against published research for ${rep.levelName.toLowerCase()} pitchers. 'Good' is the middle of the range (average +/- 1 standard deviation, or the 25th-75th percentile), 'improve' is the wider range (+/- 2 SD, or 5th-95th), 'work on' is outside it. 'Solid' checks are measured directly from a side-on video; 'estimated' ones need depth one camera can't see well, so they are never graded worse than 'improve'. Compare the same pitcher across sessions for the most useful picture.`, 8, { color: 120, gap: 6 });
+  text(`Sources: ${rep.sources.join("; ")}.`, 8, { color: 120 });
   footer();
   const name = (data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
   onStatus("");

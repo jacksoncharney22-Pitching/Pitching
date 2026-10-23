@@ -11,7 +11,12 @@ const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
 function show(v) { views.forEach(x => $(x).hidden = x !== v); window.scrollTo({ top: 0 }); document.body.dataset.view = v }
 const fmtTime = s => `${s.toFixed(2)} s`;
-const opts = { hand: "auto", slow: 1, quality: "max" };
+const opts = { hand: "auto", slow: 1, quality: "max", level: "hs", heightIn: null };
+// level and height are remembered in this browser (a convenience; everything works without it)
+try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn } catch (e) {}
+const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn })) } catch (e) {} };
+// carry the pitcher's details onto a freshly analysed result
+const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -26,6 +31,11 @@ function chips(groupId, key, parse = v => v) {
 $("handSel").onchange = e => { opts.hand = e.target.value };
 $("slowSel").onchange = e => { opts.slow = Number(e.target.value) };
 $("qualSel").onchange = e => { opts.quality = e.target.value; $("qualHint").textContent = QUAL_HINT[e.target.value] };
+$("levelSel").value = opts.level;
+if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)); $("heightIn").value = String(opts.heightIn % 12) } else $("heightFt").value = "";
+$("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
+const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
+$("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
   high: "High is about a third of the time of Max accuracy, a little less exact.",
@@ -173,6 +183,7 @@ async function run() {
       const data = analyse(raw, { hand: opts.hand });
       data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
+      data.level = opts.level; data.heightIn = opts.heightIn;
       bar(1); step("stBuild", "done", "Done");
       closeTrackers(); releaseWake();
       const id = await saveHistory(data, current.blob);
@@ -201,6 +212,7 @@ async function run() {
     const data = analyse(raw, { hand: opts.hand });
     data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
+    data.level = opts.level; data.heightIn = opts.heightIn;
     bar(1); step("stBuild", "done", "Done");
     closeTrackers(); releaseWake();
     const id = await saveHistory(data, current.blob);
@@ -398,7 +410,7 @@ function openResults(data, url, meta = {}) {
   $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
-    const d2 = analyse(meta.raw, { hand: data.throwHand, phases }); d2.name = data.name;
+    const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data);
     if (meta.id != null) updateHistory(meta.id, d2);
     openResults(d2, url, { ...meta, startFrame: frame });
   } : null;
@@ -407,8 +419,13 @@ function openResults(data, url, meta = {}) {
   try {
     const box = $("report");
     if (box) {
-      box.innerHTML = reportHTML(buildReport(data));
-      box.querySelectorAll(".rshow").forEach(b => b.onclick = () => { if (viewer && viewer.seek) { viewer.seek(+b.dataset.f); $("viewerMount").scrollIntoView({ behavior: "smooth", block: "start" }) } });
+      const draw = () => {
+        box.innerHTML = reportHTML(buildReport(data));
+        box.querySelectorAll(".rshow").forEach(b => b.onclick = () => { if (viewer && viewer.seek) { viewer.seek(+b.dataset.f); $("viewerMount").scrollIntoView({ behavior: "smooth", block: "start" }) } });
+        const ls = box.querySelector("#repLevel");
+        if (ls) ls.onchange = () => { data.level = ls.value; if (meta.id != null) updateHistory(meta.id, data); draw() };
+      };
+      draw();
     }
   } catch (e) { console.warn("report failed", e) }
 }
@@ -479,7 +496,7 @@ async function renderHistory() {
       const url = URL.createObjectURL(it.blob); lastRaw = it.raw;
       let data = it.data;
       if (it.raw) {                     // rebuild with the current skeleton engine (tracking is reused, so it's instant)
-        try { const d = analyse(it.raw, { hand: it.hand || "auto" }); d.name = it.data.name; d.quality = it.data.quality; data = d; updateHistory(it.id, d) } catch (e) { }
+        try { const d = tagResult(analyse(it.raw, { hand: it.hand || "auto" }), it.data); data = d; updateHistory(it.id, d) } catch (e) { }
       }
       openResults(data, url, { id: it.id, raw: it.raw });
     };

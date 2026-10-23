@@ -328,7 +328,7 @@ function computeMetrics(P) {
 export function analyse(raw, opts = {}) {
   if (opts.faithful === false || opts.footRepair === false || opts._inner) return analyseOnce(raw, opts);
   const first = analyseOnce(raw, { ...opts, _inner: true });
-  const fsF = first.phases.find(p => p.name === "Foot strike").frame, W = raw.width, H = raw.height;
+  const fsF = first.fsReach ?? first.phases.find(p => p.name === "Foot strike").frame, W = raw.width, H = raw.height;
   const lead = first.throwHand === "L" ? [28, 30, 32] : [27, 29, 31], back = lead.map(j => j - (first.throwHand === "L" ? 1 : -1));
   const kneeL = first.throwHand === "L" ? 26 : 25, kneeB = first.throwHand === "L" ? 25 : 26;
   const frames = raw.frames.map(f => f && { img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread });
@@ -406,11 +406,16 @@ function analyseOnce(raw, opts = {}) {
   const reach = P.map(F => F[Al][0] - mid(F[23], F[24])[0]);
   let fs_ = legLift; for (let t = legLift + 1; t < T; t++) if (reach[t] > reach[fs_]) fs_ = t;
   if (fs_ >= T - fk(4)) fs_ = Math.min(T - fk(6), Math.max(legLift + fk(6), fmax));
+  // the foot stops reaching forward a few frames BEFORE it lands. Foot contact (as the research defines it) is the
+  // first frame the lead foot is actually down: within 1.5 cm of the height it settles at once planted.
+  // (the skeleton is still built round the reach frame; only the reported Foot strike moves to the contact frame)
+  let contactF = fs_;     // set on the finished skeleton (feet anchored to the ground), below
   // release: fastest throwing hand on screen within 0.5 s after foot strike
   // wrist travel over three frames, so a repeated frame followed by a catch-up jump (screen recordings) can't look like release
   const k3 = Math.max(1, Math.round(1.5 * K)), wsp = imgSmooth.map((F, t) => { const a = imgSmooth[Math.max(0, t - k3)], b = imgSmooth[Math.min(T - 1, t + k3)]; return Math.hypot(b[W_][0] - a[W_][0], b[W_][1] - a[W_][1]) });
   let rel = fs_ + 1; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round(0.5 * fs)); t++) if (wsp[t] > wsp[rel]) rel = t;
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
+  const userFS = !!(opts.phases && opts.phases.footStrike != null);
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);
   fs_ = clamp(fs_, 1, T - 3); rel = clamp(rel, fs_ + 1, T - 2); cock = clamp(cock, fs_, rel); legLift = clamp(legLift, 0, fs_ - 1);
 
@@ -816,6 +821,15 @@ function analyseOnce(raw, opts = {}) {
   P = P.map(F => F.map(p => [p[0] - foot0[0], p[1], p[2] - foot0[2]]));
   const rubber = [P[0][28][0] - 0.045 - 0.076, 0];
 
+  // ---- foot contact for the report: first frame the lead foot is down (within 1.5 cm of where it settles)
+  contactF = fs_;
+  if (!userFS && opts.contactFix !== false) {
+    const lf = P.map(F => Math.min(F[Al][1], F[Al + 2][1], F[Al + 4][1]));
+    const settle = lf.slice(fs_, Math.min(T, fs_ + Math.max(3, Math.round(0.25 * fs)))).sort((a, b) => a - b);
+    const ground = settle[Math.floor(settle.length * 0.3)];
+    for (let t = fs_; t <= Math.min(T - 4, fs_ + Math.round(0.12 * fs)); t++) if (lf[t] <= ground + 0.015) { contactF = t; break }
+  }
+
   // ---- angles on the final pose
   const M = computeMetrics(P);
   M.throwHorz = M.throwHorz.map((v, t) => M.throwAbd[t] > 50 ? v : null);
@@ -844,7 +858,7 @@ function analyseOnce(raw, opts = {}) {
     cameraDir: cam.map(r4), footR: FOOT_R, rubberTop: RUB_TOP, moundDrop: r4(DROP), landX: r4(pose[settle][hand === "L" ? 28 : 27][0]), rubber: rub.map(r4), bones,
     pose: pose.map(F => F.map(p => p.map(r4))),
     img: img.map(F => F.map(p => [r4(p[0]), r4(p[1]), Math.round((p[2] ?? 1) * 100) / 100])),
-    phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: fs_ }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
-    metrics, match, swaps, depopped, armBridged: bridged, armFlips, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
+    phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
+    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armFlips, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
 }
