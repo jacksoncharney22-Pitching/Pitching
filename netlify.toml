@@ -1,0 +1,4 @@
+# JP Pitching is a static site: no build step, publish this folder as-is.
+[build]
+  publish = "."
+  command = ""

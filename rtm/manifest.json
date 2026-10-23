@@ -1,0 +1,1 @@
+{"model": "rtmpose-x halpe26 384x288 (fp16 weights)", "bytes": 100000616, "parts": ["rtm-x.part0.wasm", "rtm-x.part1.wasm", "rtm-x.part2.wasm", "rtm-x.part3.wasm", "rtm-x.part4.wasm", "rtm-x.part5.wasm", "rtm-x.part6.wasm", "rtm-x.part7.wasm"], "runtime": "all"}

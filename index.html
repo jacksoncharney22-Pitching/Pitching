@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JP Pitching</title>
+<meta name="description" content="JP Pitching turns any pitching video into a 3D skeleton with phases and pelvis, spine and arm angles. Runs in your browser.">
+<meta property="og:title" content="JP Pitching">
+<meta property="og:description" content="Turn any pitching video into a 3D skeleton with pelvis, spine and arm angles.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>html,body{margin:0;height:100%} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+<title>JP Pitching</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: JP Pitching. Pure black with white type; colour is reserved for the data (pelvis, spine, arms).
+   One working column (upload -> trim -> track -> 3D viewer) under a slim brand bar. */
+:root {
+  --bg: #000000; --panel: #0b0b0b; --panel-2: #141414; --fg: #ffffff; --muted: #a6a6a6; --line: #262626;
+  --clay: #ffffff; --clay-2: #d9d9d9; --chalk: #ffffff;
+  --throw: #ff8b4a; --glove: #5d9bff; --pelvis: #ff6fae; --trunk: #62d0ff; --blur: rgba(255,255,255,.07);
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 12px; color-scheme: dark;
+}
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; min-height: 100% }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+a { color: var(--clay-2) }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line) }
+.topbar .in { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; align-items: center; gap: 14px }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none }
+.brand .logo { height: 46px; width: auto; flex: none; display: block }
+.wm { display: flex; align-items: baseline; gap: 9px; line-height: 1 }
+.wm b { font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: .04em; font-style: italic }
+.wm span { font-family: var(--display); font-weight: 600; font-size: 19px; letter-spacing: .34em; color: #fff }
+.topbar nav { margin-left: auto; display: flex; gap: 8px }
+.wrap { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 22px }
+
+button, .btn { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px; cursor: pointer; line-height: 1.25; text-decoration: none; display: inline-flex; align-items: center; gap: 8px }
+button:hover { border-color: #3a4757 }
+button:focus-visible, .drop:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px }
+.primary { background: #fff; border-color: #fff; color: #000; font-weight: 600 }
+.primary:hover { background: #d9d9d9; border-color: #d9d9d9 }
+.ghost { background: transparent }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
+
+/* home */
+.hero { display: grid; gap: 8px; max-width: 780px }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(38px, 6vw, 64px); line-height: .95; margin: 0; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance }
+.lede { margin: 0; color: var(--muted); font-size: 16.5px; max-width: 64ch }
+.homegrid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; min-width: 0 }
+.card h2 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: .03em; text-transform: uppercase }
+.drop { border: 1.5px dashed #3a4757; border-radius: 12px; padding: 34px 18px; display: grid; justify-items: center; gap: 10px; text-align: center; cursor: pointer; background:
+  radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.06), transparent 60%), var(--panel-2); transition: border-color .15s, background .15s }
+.drop.over, .drop:hover { border-color: #fff }
+.drop svg { width: 46px; height: 46px; color: #fff }
+.drop strong { font-size: 17px }
+.drop small { color: var(--muted) }
+.opts { display: grid; gap: 12px }
+.opt { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px }
+.opt > label, .opt > span.lab { font-size: 13px; color: var(--muted); min-width: 120px }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden }
+.seg button { border: 0; border-radius: 0; background: transparent; padding: 6px 12px; font-size: 13px }
+.seg button + button { border-left: 1px solid var(--line) }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg) }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 }
+.tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px }
+.tips li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 14px; color: #c9d2dc }
+.tips li b { color: var(--fg); font-weight: 600 }
+.tips .n { font-family: var(--mono); font-size: 12px; color: #fff; border: 1px solid #3a3a3a; border-radius: 6px; text-align: center; line-height: 22px; height: 24px }
+.samplecard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
+.samplecard p { margin: 0; color: var(--muted); font-size: 14px; flex: 1 1 220px }
+#recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px }
+#recent li { display: flex; gap: 6px }
+.rec-open { flex: 1; justify-content: space-between; min-width: 0 }
+.rec-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.rec-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap }
+.rec-del { padding: 8px 11px; color: var(--muted) }
+
+/* prep */
+.prepgrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
+.player { background: #000; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line) }
+.player video { display: block; width: 100%; max-height: 62vh; background: #000 }
+.trim { position: relative; height: 34px }
+.trim .rail { position: absolute; left: 0; right: 0; top: 14px; height: 6px; border-radius: 3px; background: var(--line) }
+.trim .fillr { position: absolute; top: 14px; height: 6px; border-radius: 3px; background: #fff }
+.trim input[type=range] { position: absolute; inset: 0; width: 100%; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none }
+.trim input[type=range]::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 18px; height: 26px; border-radius: 5px; background: #fff; border: 2px solid #000; box-shadow: 0 0 0 1px #fff; cursor: ew-resize }
+.trim input[type=range]::-moz-range-thumb { pointer-events: auto; width: 16px; height: 24px; border-radius: 5px; background: #fff; border: 2px solid #000; cursor: ew-resize }
+.trimrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between }
+#trimLabel { font-family: var(--mono); font-size: 13px; color: var(--muted) }
+.field { display: grid; gap: 6px }
+.field label { font-size: 13px; color: var(--muted) }
+input[type=text], select { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100% }
+.err { background: rgba(255,111,80,.1); border: 1px solid rgba(255,111,80,.4); color: #ffb4a3; border-radius: 9px; padding: 10px 12px; font-size: 14px; margin: 0 }
+.warn { color: #ffd27a; font-size: 13px; margin: 0 }
+
+/* progress */
+.prog { max-width: 620px; margin: 6vh auto 0; width: 100% }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: center }
+.steps li i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center }
+.steps li[data-state="doing"] i { border-color: var(--clay); border-top-color: transparent; animation: spin .9s linear infinite }
+.steps li[data-state="done"] i { background: var(--clay); border-color: var(--clay) }
+.steps li[data-state="done"] i::after { content: ""; width: 8px; height: 5px; border-left: 2px solid #000; border-bottom: 2px solid #000; transform: rotate(-45deg) translate(1px, -1px) }
+.steps li span { display: grid } .steps small { color: var(--muted); font-family: var(--mono); font-size: 12px }
+.pbar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden } #bar { height: 100%; width: 0; background: #fff; transition: width .2s }
+@keyframes spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .steps li[data-state="doing"] i { animation: none } }
+
+/* results header */
+.reshead { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between }
+.reshead h1 { font-size: clamp(30px, 4.4vw, 46px) }
+#resMeta { font-family: var(--mono); font-size: 12.5px; color: var(--muted); letter-spacing: .03em }
+.resbtns { display: flex; gap: 8px; flex-wrap: wrap }
+.phase-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center }
+.phase-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+.phase-edit label { font-size: 12.5px; color: var(--muted) }
+.phase-edit select { width: auto; padding: 5px 8px; font-size: 13px }
+.phase-edit button { padding: 5px 10px; font-size: 13px }
+
+@media (max-width: 900px) { .homegrid, .prepgrid { grid-template-columns: minmax(0, 1fr) } .wm span { letter-spacing: .26em } }
+@media (max-width: 520px) { .topbar nav .label { display: none } }
+
+/* ---- viewer (shared component) ---- */
+
+
+.stage { display: grid; grid-template-columns: auto minmax(0, 1fr) 290px; gap: 12px; height: clamp(460px, 74vh, 760px) }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); position: relative; overflow: hidden; min-width: 0 }
+.vid { height: 100%; aspect-ratio: 1080 / 1526; max-width: 100%; background: #000 }
+.vid video, .vid canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain }
+.vid .tag { top: 10px; left: 10px; background: rgba(0,0,0,.55); color: #fff; border-color: rgba(255,255,255,.2) }
+.overlay-toggle { position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center }
+.overlay-toggle button { background: rgba(0,0,0,.6); color: #fff; border-color: rgba(255,255,255,.25) }
+.overlay-toggle button[aria-pressed="true"] { background: rgba(255,255,255,.9); color: #111; border-color: transparent }
+
+/* the 3D stage is always black */
+.three { min-height: 0; background: #000; border-color: #222; color: #f2f2f2;
+  --panel: #000; --panel-2: #141414; --fg: #f2f2f2; --muted: #9a9a9a; --line: #2e2e2e }
+.three canvas { display: block; width: 100%; height: 100%; touch-action: none }
+.three button[aria-pressed="true"] { background: #f2f2f2; color: #000; border-color: #f2f2f2 }
+.tag { position: absolute; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); pointer-events: none }
+.cams { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; pointer-events: none; z-index: 2 }
+.cams > div { display: flex; flex-wrap: wrap; gap: 6px; pointer-events: auto }
+.readout { position: absolute; left: 12px; bottom: 12px; pointer-events: none; display: grid; z-index: 2 }
+.readout .ph { font-family: var(--display); font-weight: 700; font-size: 28px; text-transform: uppercase; line-height: 1; letter-spacing: .02em }
+.readout .fr { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
+.legend3d { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 3px; font-family: var(--mono); font-size: 11px; color: #bdbdbd; pointer-events: none; z-index: 2; text-align: right }
+.legend3d i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-left: 6px }
+.skel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1 }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2 }
+.lbl { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font-family: var(--mono); font-size: 10.5px; line-height: 1; padding: 3px 5px; border-radius: 4px; border-width: 0 !important;
+  background: rgba(0,0,0,.6); color: #b8b8b8 }
+.lbl b { font-weight: 500; color: #fff; font-variant-numeric: tabular-nums; margin-left: 4px }
+.lbl.pel b { color: #ff8fc0 }
+.lbl.trk b { color: #8fdcff }
+.three .seg.dark { background: rgba(0,0,0,.5) }
+.lbl.arc b { color: #ffc978 }
+
+/* live angle sheet */
+.sheet { padding: 12px 14px; overflow-y: auto; display: grid; align-content: start; gap: 12px }
+.sheet h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 20px; text-transform: uppercase; letter-spacing: .02em }
+.grp { display: grid; gap: 2px }
+.grp .gh { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-bottom: 2px }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; padding: 2px 0; border-bottom: 1px dashed var(--line) }
+.row:last-child { border-bottom: 0 }
+.row span:first-child { color: var(--muted) }
+.row .v { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fg) }
+.row .v.na { color: var(--muted); font-weight: 400 }
+
+
+.rail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 12px }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 10px }
+.transport .play { width: 44px; height: 36px; display: grid; place-items: center; padding: 0; font-size: 15px }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden }
+.seg button { border: 0; border-radius: 0; background: transparent; padding: 6px 10px; font-family: var(--mono); font-size: 12.5px }
+.seg button + button { border-left: 1px solid var(--line) }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--panel) }
+.time { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); margin-left: auto }
+.time b { color: var(--fg); font-weight: 500 }
+.scrub { position: relative; height: 46px; cursor: pointer; touch-action: none; user-select: none; outline: none; border-radius: 6px }
+.scrub .track { position: absolute; left: 0; right: 0; top: 30px; height: 6px; border-radius: 3px; background: var(--line) }
+.scrub .fill { position: absolute; left: 0; top: 30px; height: 6px; border-radius: 3px; background: var(--fg) }
+.scrub .knob { position: absolute; top: 25px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--panel); border: 3px solid var(--fg) }
+.scrub .tick { position: absolute; top: 0; height: 36px; border-left: 1px dashed var(--muted); opacity: .7 }
+.scrub .tick span { position: absolute; top: 0; left: 4px; font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap }
+.phases { display: flex; flex-wrap: wrap; gap: 6px }
+.phases button { display: inline-flex; gap: 8px; align-items: baseline }
+.phases .ab { font-family: var(--mono); font-size: 11px; opacity: .7 }
+
+h2 { font-family: var(--display); font-weight: 700; font-size: 26px; text-transform: uppercase; letter-spacing: .02em; margin: 8px 0 0; line-height: 1.1 }
+.sub { margin: 2px 0 0; color: var(--muted); max-width: 76ch }
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius) }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 620px }
+th, td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums }
+th:first-child, td:first-child { text-align: left }
+thead th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 500; cursor: pointer }
+thead th span { display: block; font-size: 10.5px; letter-spacing: 0; text-transform: none; opacity: .8 }
+tbody td { font-family: var(--mono) }
+tbody td:first-child { font-family: var(--body) }
+tr.gr td { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--panel-2) }
+tbody tr:last-child td { border-bottom: 0 }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 12px 8px; display: grid; gap: 4px; min-width: 0 }
+.card .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px }
+.card h3 { margin: 0; font-size: 13.5px; font-weight: 600 }
+.card .def { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4 }
+.card .val { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right }
+.card .val small { display: block; font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--muted) }
+.chart { width: 100%; height: 120px; display: block; cursor: crosshair; touch-action: none; border-radius: 4px }
+.chart text { font-family: var(--mono); font-size: 10px; fill: var(--muted) }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 13.5px }
+.notes h4 { margin: 0 0 2px; color: var(--fg); font-size: 13.5px; font-weight: 600 }
+.notes p { margin: 0 }
+
+@media (max-width: 1180px) {
+  .stage { grid-template-columns: auto minmax(0, 1fr); height: auto }
+  .vid, .three { height: clamp(440px, 70vh, 700px) }
+  .sheet { grid-column: 1 / -1; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); overflow: visible }
+  .sheet h3 { grid-column: 1 / -1 }
+}
+@media (max-width: 760px) {
+  .stage { grid-template-columns: minmax(0, 1fr) }
+  .three { height: 440px; order: -1 }
+  .vid { height: auto; width: min(100%, 360px); justify-self: center }
+  .legend3d { display: none }
+  .charts { grid-template-columns: minmax(0, 1fr) }
+}
+
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block }
+#viewerMount h2 { font-family: var(--display); font-weight: 700; font-size: 26px; text-transform: uppercase; letter-spacing: .02em; margin: 8px 0 0; line-height: 1.1 }
+#viewerMount button { font-size: 13px; padding: 5px 10px; border-radius: 7px }
+
+/* v3 layout: video and skeleton side by side at the same size, growing with the window */
+.theater { display: grid; gap: 12px; background: var(--bg) }
+body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-width: 1880px }
+.stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; height: clamp(460px, calc(100vh - 210px), 1400px) !important }
+.vid { width: 100% !important; height: 100% !important; aspect-ratio: auto !important; max-width: none !important }
+.vid video, .vid canvas { object-fit: contain }
+.three { height: 100% !important }
+.sheet { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); overflow: visible; padding: 14px 16px }
+.sheet h3 { grid-column: 1 / -1 }
+.fs { margin-left: 4px }
+.cams > div { row-gap: 6px }
+.theater:fullscreen { padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; background: #000 }
+.theater:fullscreen .stage { flex: 1 1 auto; height: auto !important; min-height: 0 }
+.theater:fullscreen .rail { flex: none; padding: 8px 12px; gap: 8px }
+.theater:fullscreen .phase-row { display: none }
+.theater:-webkit-full-screen { padding: 12px; display: flex; flex-direction: column; gap: 10px; background: #000; width: 100%; height: 100% }
+.theater:-webkit-full-screen .stage { flex: 1 1 auto; height: auto !important; min-height: 0 }
+@media (max-width: 760px) {
+  .stage { grid-template-columns: minmax(0, 1fr) !important; height: auto !important }
+  .vid, .three { height: 62vh !important; min-height: 360px }
+}
+
+.angles { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px }
+.angle { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel-2) }
+.angle.main { border-color: #fff }
+.angle video { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #000 }
+.ainfo { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px }
+.ainfo select { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font: inherit }
+.abtns { display: flex; gap: 6px; flex-wrap: wrap }
+.abtns button { font-size: 12px; padding: 4px 9px }
+.anglerow { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap }
+.anglerow .hint.warn { color: #ffb347 }
+#analyze:disabled { opacity: .4; cursor: not-allowed }
+
+/* v11: cleaner home */
+.home { max-width: 760px; margin: 28px auto 40px; display: flex; flex-direction: column; gap: 14px }
+.htitle { font-size: clamp(30px, 5vw, 46px); margin: 0 }
+.home .lede { margin: 0 0 6px; color: var(--muted) }
+.home .drop { min-height: 220px }
+.selrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.sel { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); letter-spacing: .04em }
+.sel select { appearance: none; -webkit-appearance: none; background: var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 34px 11px 12px; font: inherit; font-size: 15px; letter-spacing: 0; cursor: pointer }
+.sel select:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+.fold { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 0 14px }
+.fold > summary { cursor: pointer; list-style: none; padding: 14px 0; font-weight: 600; display: flex; justify-content: space-between; align-items: center }
+.fold > summary::-webkit-details-marker { display: none }
+.fold > summary::after { content: "+"; font-size: 20px; line-height: 1; color: var(--muted) }
+.fold[open] > summary::after { content: "–" }
+.fold[open] { padding-bottom: 14px }
+.results-folds { display: flex; flex-direction: column; gap: 12px; margin-top: 16px }
+.results-folds .fold .sheet { border: 0; padding: 0; background: none }
+@media (max-width: 640px) { .selrow { grid-template-columns: 1fr } }
+
+/* v12: report */
+.report .rsum { display: flex; gap: 18px; align-items: center; padding: 4px 0 8px }
+.rscore { flex: 0 0 auto; width: 92px; height: 92px; border-radius: 50%; border: 2px solid var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center }
+.rscore span { font-size: 32px; font-weight: 700; line-height: 1 } .rscore small { color: var(--muted); font-size: 11px }
+.rlead { margin: 0 0 6px; font-size: 17px }
+.rnote { margin: 0; color: var(--muted); font-size: 13px; max-width: 80ch }
+.rsec { margin: 18px 0 8px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted) }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px }
+.rcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-2); border-left-width: 4px }
+.rcard.lv2 { border-left-color: #ff5c5c } .rcard.lv1 { border-left-color: #ffc14d } .rcard.lv0 { border-left-color: #4fd18b } .rcard.lvn { border-left-color: var(--muted) }
+.rhead { display: flex; align-items: center; gap: 10px }
+.rhead h4 { margin: 0; font-size: 15px; flex: 1 }
+.rtag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line) }
+.lv2 .rtag { color: #ff8a8a } .lv1 .rtag { color: #ffd27a } .lv0 .rtag { color: #7fe3ad }
+.rshow { padding: 4px 10px; font-size: 12px }
+.rnums { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 6px; font-size: 13px; color: var(--muted) } .rnums b { color: var(--fg); font-size: 15px }
+.rconf { border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 11px }
+.rcard p { margin: 6px 0 0; font-size: 14px } .rcard .rwhy { color: var(--muted); font-size: 13px } .rcard .rdrill { font-size: 13px }
+@media (max-width: 640px) { .rgrid { grid-template-columns: 1fr } .report .rsum { flex-direction: column; align-items: flex-start } }
+</style>
+
+<header class="topbar"><div class="in">
+  <a class="brand" id="brand" href="#" aria-label="JP Pitching home">
+    <img class="logo" src="logo.png" alt="" width="62" height="48">
+    <span class="wm"><span>PITCHING</span></span>
+  </a>
+  <nav></nav>
+</div></header>
+
+<div class="wrap">
+  <!-- HOME -->
+  <section id="home" class="view">
+    <div class="home">
+      <h1 class="htitle">3D pitching analysis</h1>
+      <p class="lede">Upload a pitch. Get the skeleton, the phases and every angle.</p>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a pitching video" onclick="document.getElementById('fileIn').click()">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="11" width="28" height="26" rx="4"/><path d="M34 20l9-5v18l-9-5"/><path d="M20 30V18m-5 5 5-5 5 5"/></svg>
+        <strong>Drop a pitching video here</strong>
+        <small>or click to choose · MP4, MOV or WebM</small>
+        <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden>
+      </div>
+      <div class="selrow">
+        <label class="sel"><span>Throwing hand</span><select id="handSel"><option value="auto" selected>Detect</option><option value="R">Right</option><option value="L">Left</option></select></label>
+        <label class="sel"><span>Analysis</span><select id="qualSel"><option value="max" selected>Max accuracy</option><option value="high">High</option><option value="fast">Fast</option></select></label>
+        <label class="sel"><span>Slow-motion clip</span><select id="slowSel"><option value="1" selected>Normal speed</option><option value="2">2× slow</option><option value="4">4× slow</option><option value="8">8× slow</option></select></label>
+      </div>
+      <p class="hint" id="qualHint">Max accuracy takes a few minutes. Keep this tab open.</p>
+      <details class="fold">
+        <summary>How to film for the best skeleton</summary>
+        <ul class="tips">
+          <li><span class="n">01</span><span><b>Side view, throwing-arm side.</b> Square to the pitcher: third-base side for a righty, first-base side for a lefty.</span></li>
+          <li><span class="n">02</span><span><b>Tripod, whole body.</b> Head to feet in frame the whole pitch, camera at belt height, 15–30 feet away.</span></li>
+          <li><span class="n">03</span><span><b>240 fps slow-motion.</b> iPhone: Settings › Camera › Record Slo-mo › 1080p at 240 fps. Good light.</span></li>
+          <li><span class="n">04</span><span><b>One pitch per clip.</b> Start before the leg lift, end after the follow-through. You can trim after uploading.</span></li>
+        </ul>
+      </details>
+      <details class="fold" id="recentWrap" hidden>
+        <summary>Recent pitches</summary>
+        <p class="hint">Saved in this browser only.</p>
+        <ul id="recent"></ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- PREP -->
+  <section id="prep" class="view" hidden>
+    <div class="reshead"><div><span class="eyebrow">Step 2 of 3</span><h1>Trim to the pitch</h1></div></div>
+    <div class="prepgrid">
+      <div class="card" style="padding:12px">
+        <div class="player"><video id="prepVideo" controls playsinline muted></video></div>
+        <div class="trim" aria-label="Trim"><div class="rail"></div><div class="fillr" id="trimFill"></div>
+          <input type="range" id="trimStart" min="0" max="1" step="0.01" value="0" aria-label="Start time">
+          <input type="range" id="trimEnd" min="0" max="1" step="0.01" value="1" aria-label="End time"></div>
+        <div class="trimrow"><span id="trimLabel">—</span>
+          <span style="display:flex;gap:6px"><button id="setStart">Start here</button><button id="setEnd">End here</button></span></div>
+        <p class="warn" id="trimWarn" hidden>Clips longer than 8 seconds take a while to analyse. Trim to one pitch for the best result.</p>
+        <ul class="angles" id="angleList"></ul>
+        <div class="anglerow"><span id="angleNote" class="hint"></span><button id="addAngle" class="ghost">+ Add a second angle (optional)</button>
+          <input type="file" id="fileIn2" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden></div>
+      </div>
+      <div class="card">
+        <div class="field"><label for="pitchName">Name this pitch</label><input type="text" id="pitchName" placeholder="e.g. Bullpen fastball #3"></div>
+        <p class="hint">Scrub the video and set the start just before the leg lift and the end after the follow-through.</p>
+        <p class="err" id="prepErr" hidden></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="analyze">Build skeleton</button><button class="ghost" id="backHome">Back</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <section id="progress" class="view" hidden>
+    <div class="prog card">
+      <span class="eyebrow">Step 3 of 3</span>
+      <h2 style="font-size:30px">Building the skeleton</h2>
+      <ol class="steps">
+        <li id="stModel" data-state="todo"><i></i><span>Load the body tracker<small></small></span></li>
+        <li id="stTrack" data-state="todo"><i></i><span>Track the pitcher frame by frame<small></small></span></li>
+        <li id="stBuild" data-state="todo"><i></i><span>Rebuild in 3D, find phases, measure angles<small></small></span></li>
+      </ol>
+      <div class="pbar"><div id="bar"></div></div>
+      <div><button class="ghost" id="cancelRun">Cancel</button></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="view" hidden>
+    <div class="reshead">
+      <div><span class="eyebrow">JP Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
+      <div class="resbtns"><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
+    </div>
+    <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
+    <div id="viewerMount" style="display:grid;gap:20px"></div>
+  </section>
+</div>
+
+<template id="viewerTpl">
+  <div class="theater" id="theater">
+  <section class="stage">
+    <div class="panel vid" id="vidPanel">
+      <video id="video" muted playsinline preload="auto"></video>
+      <canvas id="ov"></canvas>
+      <span class="tag">Source video</span>
+      <div class="overlay-toggle"><button id="ovBtn" aria-pressed="true">Skeleton overlay</button><button id="ovAngBtn" aria-pressed="true">Pelvis &amp; spine angles</button></div>
+    </div>
+    <div class="panel three" id="threePanel">
+      <canvas class="skel" id="skel"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="cams">
+        <div id="cams" role="group" aria-label="Camera angle"></div>
+        <div>
+          <div class="seg dark" id="styleModes" role="group" aria-label="Skeleton style"><button data-s="mocap" aria-pressed="true">Mocap</button><button data-s="anatomical" aria-pressed="false">Anatomical</button></div>
+          <div class="seg dark" id="angModes" role="group" aria-label="Angles shown"><button data-m="key" aria-pressed="true">Key angles</button><button data-m="all" aria-pressed="false">All</button><button data-m="off" aria-pressed="false">Off</button></div>
+          <button id="followBtn" aria-pressed="false">Follow</button>
+          <button id="pathBtn" aria-pressed="true">Hand trail</button>
+          <button id="ghostBtn" aria-pressed="false">Key poses</button>
+        </div>
+      </div>
+      <div class="readout"><span class="ph" id="phName">—</span><span class="fr" id="phFrame">frame 0</span></div>
+      <div class="legend3d"><span>Pelvis line · rotation<i style="background:#ff6fae"></i></span><span>Shoulder line · trunk rotation<i style="background:#62d0ff"></i></span><span>Joint angle<i style="background:#ffb347"></i></span></div>
+    </div>
+  </section>
+
+  <section class="rail" aria-label="Playback">
+    <div class="transport">
+      <button class="play" id="playBtn" aria-label="Pause">❚❚</button>
+      <button id="prevBtn" aria-label="Previous frame">◀ Frame</button>
+      <button id="nextBtn" aria-label="Next frame">Frame ▶</button>
+      <div class="seg" id="speeds" role="group" aria-label="Speed"></div>
+      <div class="time"><b id="tNow">0.00 s</b> · frame <b id="fNow">0</b> / <span id="fMax">71</span></div>
+      <button id="fsBtn" class="fs" aria-pressed="false">Full screen</button>
+    </div>
+    <div class="scrub" id="scrub" tabindex="0" role="slider" aria-label="Frame" aria-valuemin="0" aria-valuemax="71" aria-valuenow="0">
+      <div class="track"></div><div class="fill" id="fill"></div><div id="ticks"></div><div class="knob" id="knob"></div>
+    </div>
+    <div class="phase-row"><div class="phases" id="phases"></div>
+      <div class="phase-edit"><label for="phaseSel">Adjust</label><select id="phaseSel"><option value="legLift">Peak leg lift</option><option value="footStrike">Foot strike</option><option value="armCocked">Arm cocked</option><option value="release">Release</option></select><button id="phaseSet">Set to this frame</button></div></div>
+  </section>
+  </div>
+
+  <div class="results-folds">
+  <details class="fold report" open><summary>Report: what to work on</summary>
+  <div id="report"></div>
+  </details>
+  <details class="fold"><summary>Live angles</summary>
+  <aside class="panel sheet" id="sheet" aria-label="Live angles"></aside>
+  </details>
+  <details class="fold"><summary>Angles at each phase</summary>
+    <p class="sub">Degrees at the four key moments of the delivery. Click a column heading to jump there. Rotation is measured from the stretch position: 0° faces the third-base side and 90° faces home plate.</p>
+    <div class="tablewrap"><table id="ptable"></table></div>
+  </details>
+  <details class="fold"><summary>Angles over the delivery</summary>
+    <p class="sub">Each trace follows the playhead. Dashed lines mark the phases (LL leg lift, FS foot strike, AC arm cocked, R release). Drag across a chart to scrub.</p>
+    <section class="charts" id="charts"></section>
+  </details>
+  <details class="fold"><summary>About these numbers</summary>
+  <section class="notes">
+    <div><h4>Where they come from</h4><p>A body tracker finds the pitcher's joints in every frame (in Max accuracy, a stronger tracker reads where they are on screen and the built-in one adds depth). JP Pitching rebuilds them in 3D with constant bone lengths, keeps each planted foot in place and smooths the motion. Frames where an arm or leg is a motion blur are filled with a natural throwing motion between the clear frames either side.</p></div>
+    <div><h4>What to trust</h4><p>Timing, sequencing and the shape of each curve are solid. One camera can't see depth directly, so rotations and layback are estimated, and the throwing arm right at release is the least certain part.</p></div>
+    <div><h4>Better video</h4><p>A tripod, a side view from the throwing-arm side, the whole body in frame and 240 fps slow-motion give the most exact skeleton.</p></div>
+  </section>
+  </details>
+  </div>
+</template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="viewer.js" charset="utf-8"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
