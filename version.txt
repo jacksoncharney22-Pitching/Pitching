@@ -1,0 +1,3 @@
+JP Pitching
+Version: 2026-10-22 (report + stronger tracker + smoother skeleton)
+If you can read this on your Netlify site, GitHub auto-deploy is working.
