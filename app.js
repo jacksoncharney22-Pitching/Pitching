@@ -188,7 +188,7 @@ async function run() {
     const m = await trackOne(q, { url: angles[0].url, start: S, end: E, prog: { prefix: `Angle 1 of ${K} (${angles[0].label})`, from: 0, to: span } });
     views.push({ fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames, label: angles[0].label });
     if (K === 1) {                                    // one video: the standard single-camera skeleton
-      step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps`);
+      step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps${m.repeats ? ` · ${m.repeats} repeated frames skipped` : ""}`);
       step("stBuild", "doing", "Rebuilding the 3D skeleton");
       await new Promise(r => setTimeout(r, 30));
       const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames };
@@ -272,15 +272,18 @@ async function trackSimple(q, src) {
   // cover the WHOLE chosen window: if it's long, sample a little less densely rather than cutting the end off
   const capF = src.maxFrames || (high ? 900 : 600), want = Math.min(native, src.fpsCap || (high ? 120 : 60));
   const sampleFps = Math.max(1, Math.min(want, capF / Math.max(0.05, end - start))), N = Math.max(1, Math.min(capF, Math.floor((end - start) * sampleFps)));
-  const frames = [], passes = high ? 2 : 1;
+  const frames = [], passes = high ? 2 : 1, diffs = []; let prevSig = null;
   const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked") };
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
     await seekTo(i);
+    { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
     const r = lmA.detectForVideo(v, Math.round(i * 1000 / sampleFps) + 1);
     frames.push(r.landmarks && r.landmarks[0] ? { img: r.landmarks[0].map(p => [p.x, p.y, p.visibility ?? 1]), world: r.worldLandmarks[0].map(p => [p.x, p.y, p.z]) } : null);
     if (i % 3 === 0 || i === N - 1) say(`pass 1 of ${passes}: frame ${i + 1} of ${N}`, (i + 1) / N * (high ? 0.33 : 1));
   }
+  const dupS = repeatedFrames(diffs);
+  dupS.forEach((d, i) => { if (d) frames[i] = null });                 // repeats: filled in smoothly later
   if (high) {
     const ok = frames.map(Boolean);
     const raw = frames.map(f => { if (!f) return null; const xs = f.img.map(p => p[0] * W), ys = f.img.map(p => p[1] * H);
@@ -312,9 +315,29 @@ async function trackSimple(q, src) {
       if (i % 2 === 0 || i === N - 1) say(`pass 2 of 2 (zoomed, mirrored): frame ${i + 1} of ${N}`, 0.33 + (i + 1) / N * 0.67);
     }
   }
-  const found = frames.filter(Boolean).length;
-  if (found < N * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${N} frames of one angle. Use clips where his whole body stays in view.`);
-  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast" };
+  const nReal = N - dupS.filter(Boolean).length, found = frames.filter(Boolean).length;
+  if (found < nReal * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${nReal} frames of one angle. Use clips where his whole body stays in view.`);
+  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal };
+}
+
+// ---------------------------------------------------------------- repeated frames
+// A lot of slow-motion video online (and every screen recording) repeats frames: the same picture 2, 4 or 9 times,
+// then a jump to the next real one. Tracked as they are, the skeleton freezes and jumps: freeze, jump, freeze, jump.
+// Each frame gets a tiny greyscale fingerprint; a frame that barely differs from the one before it is a repeat, is
+// not tracked, and is filled in smoothly from the real frames either side.
+const SIG_W = 96, SIG_H = 54, sigCv = document.createElement("canvas"); sigCv.width = SIG_W; sigCv.height = SIG_H;
+const sigG = sigCv.getContext("2d", { willReadFrequently: true });
+function frameSig(v) { try { sigG.drawImage(v, 0, 0, SIG_W, SIG_H); const d = sigG.getImageData(0, 0, SIG_W, SIG_H).data, o = new Uint8Array(SIG_W * SIG_H); for (let i = 0; i < o.length; i++) o[i] = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10; return o } catch (e) { return null } }
+const sigDiff = (a, b) => { if (!a || !b) return 1e9; let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s / a.length };
+function repeatedFrames(diffs) {          // diffs[i]: change from the previous sampled frame
+  const N = diffs.length, dup = new Array(N).fill(false);
+  for (let i = 1; i < N; i++) {
+    const w = []; for (let k = Math.max(1, i - 20); k <= Math.min(N - 1, i + 20); k++) if (diffs[k] > 0.15 && diffs[k] < 1e8) w.push(diffs[k]);
+    w.sort((a, b) => a - b); const med = w.length ? w[w.length >> 1] : 1;
+    dup[i] = diffs[i] < Math.max(0.12, 0.35 * med);
+  }
+  if (dup.filter(d => !d).length < Math.max(6, N * 0.08)) return new Array(N).fill(false);   // a still video: keep everything
+  return dup;
 }
 
 // ---------------------------------------------------------------- max accuracy: many independent looks, kept where they agree
@@ -358,10 +381,11 @@ async function trackMax(src) {
   const tick = (label, i) => { doneU++; if (doneU % 3 && i !== N - 1) return; say(`${label}: frame ${i + 1} of ${N}`, doneU / units) };
   // pass 1: the whole picture, every frame; pick out the pitcher if other people are in view
   const looks = Array.from({ length: N }, () => []), first = new Array(N).fill(null);
-  let ref = null;
+  let ref = null; const diffs = []; let prevSig = null;
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
     await seekTo(i);
+    { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
     const who = pickPitcher(finder.detect(v), null, W, H, ref);         // the pitcher among everyone in view
     const f = pickPitcher(full.detectForVideo(v, ts(i)), null, W, H, who || ref);
     if (f) { f.src = "full"; looks[i].push(f) }
@@ -369,6 +393,7 @@ async function trackMax(src) {
     if (id) { first[i] = id; ref = id }
     tick("Pass 1 of 3 · full picture", i);
   }
+  const dup = repeatedFrames(diffs), nRep = dup.filter(Boolean).length;
   if (first.filter(Boolean).length < N * 0.5) throw new Error(`The tracker only found the pitcher in ${first.filter(Boolean).length} of ${N} frames. Use a clip where his whole body stays in view.`);
   // a smooth crop path that follows the pitcher over the whole clip
   const near = i => { if (first[i]) return first[i]; for (let k = 1; k < N; k++) { if (first[i - k]) return first[i - k]; if (first[i + k]) return first[i + k] } return null };
@@ -387,6 +412,7 @@ async function trackMax(src) {
   const zA = await makeTracker(q), zB = await makeTracker(q), still = rtm ? null : await makeTracker(q, { mode: "IMAGE" });
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
+    if (dup[i]) { tick("Pass 2 of 3 · zoomed in", i); tick("Pass 2 of 3 · zoomed in", i); tick("Pass 2 of 3 · zoomed in", i); continue }
     await seekTo(i);
     look(zA, i, i, cropAt(i, 1.4, false), true, "zoom"); tick("Pass 2 of 3 · zoomed in", i);
     look(zB, i, i, cropAt(i, 1.4, true), true, "zoomMirror"); tick("Pass 2 of 3 · zoomed in", i);
@@ -406,6 +432,7 @@ async function trackMax(src) {
   for (let k = 0; k < N; k++) {
     if (cancelled) throw new Error("cancelled");
     const i = N - 1 - k;
+    if (dup[i]) { tick("Pass 3 of 3 · backwards", k); tick("Pass 3 of 3 · backwards", k); continue }
     await seekTo(i);
     look(bA, i, k, cropAt(i, 1.4, false), true, "back"); tick("Pass 3 of 3 · backwards", k);
     look(bB, i, k, cropAt(i, 1.55, true), true, "backMirror"); tick("Pass 3 of 3 · backwards", k);
@@ -413,8 +440,8 @@ async function trackMax(src) {
   say("combining the seven passes", 1);
   await new Promise(r => setTimeout(r, 20));
   window.__lastLooks = { W, H, fps: sampleFps, looks };
-  const frames = looks.map(c => fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
-  return { frames, N, sampleFps, W, H, start, label: "max accuracy" };
+  const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
+  return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep };
 }
 
 // ---------------------------------------------------------------- results

@@ -687,7 +687,13 @@ function analyseOnce(raw, opts = {}) {
   let bridged = 0;
   if (faithful && opts.armBridge !== false) {
     const TH = opts.armSpread ?? 0.06, maxGap = Math.round(0.3 * fs);
-    const sp = (t, j) => { const f = raw.frames[t]; if (!f) return 1; return f.spread ? f.spread[hand === "L" ? mir(j) : j] ?? 0 : 0 };
+    // a frame that wasn't tracked because it repeats the one before it (or a short gap) takes the agreement of the real
+    // frames either side; only a long untracked stretch counts as a limb the camera couldn't see
+    const spOf = (f, j) => f.spread ? f.spread[hand === "L" ? mir(j) : j] ?? 0 : 0;
+    const sp = (t, j) => { const f = raw.frames[t]; if (f) return spOf(f, j);
+      let a = t - 1; while (a >= 0 && !raw.frames[a] && t - a <= 12) a--; let b = t + 1; while (b < T && !raw.frames[b] && b - t <= 12) b++;
+      const A = a >= 0 && raw.frames[a] ? spOf(raw.frames[a], j) : null, B = b < T && raw.frames[b] ? spOf(raw.frames[b], j) : null;
+      return A == null && B == null ? 1 : Math.max(A ?? 0, B ?? 0) };
     const trunkB = F => { const up = unit(sub(mid(F[11], F[12]), mid(F[23], F[24]))); let r = sub(F[12], F[11]); r = unit(sub(r, mul(up, dot(r, up)))); return { up, r, fw: cross(up, r) } };
     const pelvisB = F => { const up = unit(sub(mid(F[11], F[12]), mid(F[23], F[24]))); let r = sub(F[24], F[23]); r = unit(sub(r, mul(up, dot(r, up)))); return { up, r, fw: cross(up, r) } };
     const wrap = d => ((d + 180) % 360 + 360) % 360 - 180;
@@ -836,6 +842,43 @@ function analyseOnce(raw, opts = {}) {
   const torso = median(P.map(F => norm(sub(mid(F[11], F[12]), mid(F[23], F[24])))));
   const ndir = gauss(P.map(F => unit(sub(mid(F[7], F[8]), mid(F[11], F[12])))), 1.5 * K).map(unit);
   P.forEach((F, t) => { const shm = mid(F[11], F[12]), d = sub(add(shm, mul(ndir[t], 0.35 * torso)), mid(F[7], F[8])); for (let k = 0; k <= 10; k++) F[k] = add(F[k], d) });
+
+  // ---- final glitch guard, on every skeleton whatever the video: the zero-phase low-pass filter biomechanics labs run
+  // on motion-capture data (about 12 Hz for the body, 20 Hz for the throwing arm, which really does move that fast).
+  // Nothing a body does is faster than that, so whatever is left of a tracking glitch (a one- or two-frame jump) is
+  // removed, while real motion, release included, is kept. Bone lengths are then locked again.
+  let guarded = false;
+  if (opts.guard !== false && T >= 8) {
+    const bw = fc => { const w = Math.tan(Math.PI * fc / fs), k1 = Math.SQRT2 * w, k2 = w * w, a0 = 1 + k1 + k2;
+      return { b0: k2 / a0, b1: 2 * k2 / a0, b2: k2 / a0, a1: 2 * (k2 - 1) / a0, a2: (1 - k1 + k2) / a0 } };
+    const run = (x, c) => { const y = new Array(x.length); let x1 = x[0], x2 = x[0], y1 = x[0], y2 = x[0];
+      for (let i = 0; i < x.length; i++) { const v = c.b0 * x[i] + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2; x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v } return y };
+    const filtfilt = (x, c) => {
+      const pad = Math.max(1, Math.min(x.length - 2, Math.round(fs / 3)));
+      const head = x.slice(1, pad + 1).reverse().map(v => 2 * x[0] - v), tail = x.slice(x.length - pad - 1, x.length - 1).reverse().map(v => 2 * x[x.length - 1] - v);
+      let y = run([...head, ...x, ...tail], c); y = run(y.reverse(), c).reverse();
+      return y.slice(pad, pad + x.length);
+    };
+    const ARM_T = new Set([12, 14, 16, 18, 20, 22]);                    // throwing arm (right after mirroring)
+    const fcBody = Math.min(12, 0.42 * fs), fcArm = Math.min(20, 0.42 * fs);
+    const cB = bw(fcBody), cA = bw(fcArm);
+    for (let j = 0; j < 33; j++) {
+      const c = ARM_T.has(j) ? cA : cB;
+      for (let d = 0; d < 3; d++) { const y = filtfilt(P.map(F => F[j][d]), c); for (let t = 0; t < T; t++) P[t][j][d] = y[t] }
+    }
+    // bone lengths back to exact, down the tree; head follows the neck; nothing below the ground
+    P = P.map(F => {
+      const n = { "-2": nodeOf(F, -2) }, G = F.map(p => p.slice());
+      TREE.forEach(([a, b]) => { n[b] = add(n[a], mul(unit(sub(nodeOf(F, b), nodeOf(F, a))), BL[a + "," + b])) });
+      for (const k in n) if (+k >= 0) G[+k] = n[k];
+      const off = sub(n[-1], nodeOf(F, -1));
+      for (let k = 0; k <= 10; k++) G[k] = add(F[k], off);
+      const low = Math.min(...[27, 28, 29, 30, 31, 32].map(k => G[k][1]));
+      if (low < 0) G.forEach(p => { p[1] -= low });
+      return G;
+    });
+    guarded = true;
+  }
 
   // ---- how closely the skeleton matches the tracked video (camera view, hip-relative), in metres
   const MJ = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28], errs = [];
