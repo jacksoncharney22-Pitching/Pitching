@@ -325,6 +325,24 @@ function computeMetrics(P) {
 // two legs' labels, the tracked "lead foot" wanders off and comes back. A first pass finds foot strike; then each
 // frame after it is checked against the landing spot: traded labels are traded back, and a lead foot that leaves
 // the spot only to return to it is held on the spot. A move to a new spot that lasts to the end of the clip is kept.
+// How much a clip is slowed down, read from the motion itself: a delivery takes about 0.8 s from peak leg lift to
+// release, and about 0.2 s from foot strike to release (as this software marks them), whatever the pitcher.
+// Returns the nearest common slow-motion factor (1, 2, 4, 8 or 16).
+export function detectSlowFactor(raw) {
+  const vf = raw.videoFps || raw.fps;
+  let d;
+  try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: 60, armBridge: false, depop: false }) } catch (e) { return { factor: 1, basis: "none" } }
+  const ph = Object.fromEntries(d.phases.map(p => [p.name, p.frame]));
+  const LL = ph["Peak leg lift"], FS = ph["Foot strike"], R = ph["Release"], T = d.pose.length;
+  let est, basis;
+  if (LL >= 3 && R > LL + 2) { est = (R - LL) / vf / 0.8; basis = "leg lift to release" }
+  else if (R > FS) { est = (R - FS) / vf / 0.2; basis = "foot strike to release" }
+  else return { factor: 1, basis: "none" };
+  const opts = [1, 2, 4, 8, 16];
+  const factor = opts.reduce((b, f) => Math.abs(Math.log2(f) - Math.log2(est)) < Math.abs(Math.log2(b) - Math.log2(est)) ? f : b, 1);
+  return { factor, estimate: est, basis };
+}
+
 export function analyse(raw, opts = {}) {
   if (opts.faithful === false || opts.footRepair === false || opts._inner) return analyseOnce(raw, opts);
   const first = analyseOnce(raw, { ...opts, _inner: true });
@@ -372,6 +390,16 @@ function analyseOnce(raw, opts = {}) {
   raw = { ...raw, frames: raw.frames.map(f => f && f.img && f.world && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) && f.world.every(p => p.every(Number.isFinite)) ? f : null) };
   const fs = raw.fps, W = raw.width, H = raw.height, K = fs / 30;   // K scales frame-count constants to the sampling rate
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
+  // slow-motion clip: s video frames per step of a real-speed clip. The tracker's frame-to-frame wobble is the same as
+  // on any clip, but the body barely moves between neighbouring frames, so average the wobble over about one real step.
+  const slowF = raw.videoFps ? raw.fps / raw.videoFps : 1;
+  if (slowF > 1.4 && opts.slowSmooth !== false) {
+    const sg = 0.45 * slowF;
+    for (let j = 0; j < 33; j++) {
+      const im = gauss(frames.map(f => [f.img[j][0], f.img[j][1]]), sg), wd = gauss(frames.map(f => f.world[j]), sg);
+      frames.forEach((f, t) => { f.img[j][0] = im[t][0]; f.img[j][1] = im[t][1]; f.world[j] = wd[t] });
+    }
+  }
   const faithful = opts.faithful !== false;            // follow the video; no modelled motion
   const measured = !!raw.measured;                    // several camera angles: depth is measured, not guessed
   let swaps = 0;
@@ -414,7 +442,7 @@ function analyseOnce(raw, opts = {}) {
   // release: fastest throwing hand on screen within 0.5 s after foot strike
   // wrist travel over three frames, so a repeated frame followed by a catch-up jump (screen recordings) can't look like release
   const k3 = Math.max(1, Math.round(1.5 * K)), wsp = imgSmooth.map((F, t) => { const a = imgSmooth[Math.max(0, t - k3)], b = imgSmooth[Math.min(T - 1, t + k3)]; return Math.hypot(b[W_][0] - a[W_][0], b[W_][1] - a[W_][1]) });
-  let rel = fs_ + 1; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round(0.5 * fs)); t++) if (wsp[t] > wsp[rel]) rel = t;
+  let rel = fs_ + 1; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) if (wsp[t] > wsp[rel]) rel = t;
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
   const userFS = !!(opts.phases && opts.phases.footStrike != null);
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);

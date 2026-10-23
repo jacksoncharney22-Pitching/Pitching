@@ -1,6 +1,6 @@
 // Charney Pitching — app shell: upload, trim, track, analyse, view, history.
 import { FilesetResolver, PoseLandmarker } from "./lib/vision_bundle.mjs";
-import { analyse } from "./pipeline.js";
+import { analyse, detectSlowFactor } from "./pipeline.js";
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
@@ -11,12 +11,12 @@ const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
 function show(v) { views.forEach(x => $(x).hidden = x !== v); window.scrollTo({ top: 0 }); document.body.dataset.view = v }
 const fmtTime = s => `${s.toFixed(2)} s`;
-const opts = { hand: "auto", slow: 1, quality: "max", level: "hs", heightIn: null, velo: null };
+const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn: null, velo: null };
 // level and height are remembered in this browser (a convenience; everything works without it)
 try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn } catch (e) {}
 const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.velo = from.velo ?? null; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -29,7 +29,17 @@ function chips(groupId, key, parse = v => v) {
 }
 // options are drop-down menus
 $("handSel").onchange = e => { opts.hand = e.target.value };
-$("slowSel").onchange = e => { opts.slow = Number(e.target.value); if ($("trimStart").max) updateTrim() };
+$("slowSel").onchange = e => { opts.slow = e.target.value === "auto" ? "auto" : Number(e.target.value); if ($("trimStart").max) updateTrim() };
+// how much the clip is slowed: detected from the motion (a delivery's timing is nearly the same for every pitcher).
+// A manual choice is kept unless the motion clearly says otherwise (then the detected speed is used, and the results say so).
+function resolveSlow(raw) {
+  const det = detectSlowFactor(raw);
+  if (opts.slow === "auto") return { factor: det.factor, note: det.factor > 1 ? `${det.factor}× slow motion detected` : "" };
+  const chosen = opts.slow || 1;
+  if (det.basis === "leg lift to release" && Math.abs(Math.log2(det.factor) - Math.log2(chosen)) >= 1)
+    return { factor: det.factor, note: `You chose ${chosen === 1 ? "normal speed" : chosen + "× slow"}, but the motion is ${det.factor === 1 ? "normal speed" : det.factor + "× slow"}: used ${det.factor === 1 ? "normal speed" : det.factor + "×"}` };
+  return { factor: chosen, note: "" };
+}
 $("qualSel").onchange = e => { opts.quality = e.target.value; $("qualHint").textContent = QUAL_HINT[e.target.value] };
 $("levelSel").value = opts.level;
 if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)); $("heightIn").value = String(opts.heightIn % 12) } else $("heightFt").value = "";
@@ -108,7 +118,7 @@ function updateTrim(changed) {
   $("trimFill").style.left = (S / d * 100) + "%"; $("trimFill").style.width = ((E - S) / d * 100) + "%";
   $("trimLabel").textContent = `${fmtTime(S)} → ${fmtTime(E)} · ${(E - S).toFixed(1)} s analysed`;
   // real time covered (a slowed clip covers less real time than it plays for)
-  const real = (E - S) / (opts.slow || 1);
+  const real = (E - S) / (typeof opts.slow === "number" ? opts.slow : 1);
   $("trimWarn").hidden = real <= 8;
 }
 $("trimStart").oninput = () => { updateTrim("s"); $("prepVideo").currentTime = +$("trimStart").value };
@@ -181,9 +191,10 @@ async function run() {
       step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps`);
       step("stBuild", "doing", "Rebuilding the 3D skeleton");
       await new Promise(r => setTimeout(r, 30));
-      const raw = { fps: m.sampleFps * opts.slow, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames };
+      const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: S, frames: m.frames };
+      const sl = resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
       lastRaw = raw; window.__lastRaw = raw;
-      const data = analyse(raw, { hand: opts.hand });
+      const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
       data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
       data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
@@ -210,9 +221,10 @@ async function run() {
     step("stBuild", "doing", "Lining up the angles and measuring every joint in 3D");
     await new Promise(r => setTimeout(r, 30));
     const raw = combineViews(views, { hints });
-    raw.fps = views[0].fps * opts.slow; raw.videoFps = views[0].fps; raw.start = S;
+    raw.fps = views[0].fps; raw.videoFps = views[0].fps; raw.start = S;
+    { const sl = resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
     lastRaw = raw; window.__lastRaw = raw;
-    const data = analyse(raw, { hand: opts.hand });
+    const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
     data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
     data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
@@ -412,7 +424,7 @@ function openResults(data, url, meta = {}) {
   const mount = $("viewerMount"); mount.innerHTML = ""; mount.append($("viewerTpl").content.cloneNode(true));
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
-  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
     const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data);
