@@ -1,4 +1,4 @@
-JP Pitching - website files
+Feole Pitching - website files
 ===========================
 
 This folder is the whole website. It is static (no server code), so any web host works.

@@ -1,4 +1,4 @@
-// JP Pitching: the report. Turns the angles into "what to work on", graded against typical ranges from
+// Feole Pitching: the report. Turns the angles into "what to work on", graded against typical ranges from
 // professional pitchers, with a drill for each item.
 //
 // Honesty rules:

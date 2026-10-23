@@ -186,7 +186,7 @@ async function run() {
       const sync = findOffset(views[0], { fps: c.sampleFps, width: c.W, height: c.H, frames: c.frames });
       const coarse = { fps: c.sampleFps, width: c.W, height: c.H, frames: c.frames };
       if (sync.confidence < 0.45 || verticalMismatch(views[0], coarse, sync.offset) > SAME_PITCH_LIMIT)
-        throw new Error(`The ${a.label.toLowerCase()} video doesn't show the same pitch as the main angle. JP Pitching combines different camera angles of ONE pitch, filmed at the same moment (start every camera, clap, then pitch). Two clips of different pitches, even by the same pitcher, can't be combined.`);
+        throw new Error(`The ${a.label.toLowerCase()} video doesn't show the same pitch as the main angle. Feole Pitching combines different camera angles of ONE pitch, filmed at the same moment (start every camera, clap, then pitch). Two clips of different pitches, even by the same pitcher, can't be combined.`);
       const ws = Math.max(0, sync.offset - 0.35), we = Math.min(vd, sync.offset + (E - S) + 0.35);
       const p = await trackOne(q, { url: a.url, start: ws, end: we, prog: { prefix: `Angle ${k + 1} of ${K} (${a.label})`, from: base + span * 0.12, to: base + span } });
       views.push({ fps: p.sampleFps, videoFps: p.sampleFps, width: p.W, height: p.H, start: ws, frames: p.frames, label: a.label });

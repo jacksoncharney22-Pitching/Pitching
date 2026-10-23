@@ -1,4 +1,4 @@
-// JP Pitching: downloadable PDF report. The pitcher at the four key moments (video frame with the skeleton drawn
+// Feole Pitching: downloadable PDF report. The pitcher at the four key moments (video frame with the skeleton drawn
 // on it, plus a clean side-view skeleton), then what's good, what's wrong and what to improve, with drills, and the
 // key angles at each phase. Built in the browser with jsPDF (bundled in lib/), so nothing is uploaded anywhere.
 import { buildReport } from "./report.js";
@@ -93,7 +93,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
 
   const doc = new jsPDF({ unit: "pt", format: "letter" }), PW = 612, PHt = 792, M = 40, CW = PW - 2 * M;
   let y = 0;
-  const footer = () => { doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(140); doc.text(clean(`JP Pitching | ${data.name || "Pitch"} | page ${doc.getNumberOfPages()}`), PW / 2, PHt - 20, { align: "center" }) };
+  const footer = () => { doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(140); doc.text(clean(`Feole Pitching | ${data.name || "Pitch"} | page ${doc.getNumberOfPages()}`), PW / 2, PHt - 20, { align: "center" }) };
   const newPage = () => { footer(); doc.addPage(); y = M };
   const need = h => { if (y + h > PHt - 44) newPage() };
   const text = (s, size = 10, { bold = false, color = 20, indent = 0, gap = 4 } = {}) => {
@@ -105,9 +105,9 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
 
   // ---- header band
   doc.setFillColor(0, 0, 0); doc.rect(0, 0, PW, 78, "F");
-  if (logo) try { doc.addImage(logo, "PNG", M, 18, 42, 42) } catch (e) {}
-  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("JP PITCHING", M + 54, 40);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text("Delivery report", M + 54, 56);
+  if (logo) try { doc.addImage(logo, "PNG", M, 19, 59, 40) } catch (e) {}
+  doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("FEOLE PITCHING", M + 72, 40);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text("Delivery report", M + 72, 56);
   doc.setFontSize(9); doc.text(clean(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })), PW - M, 40, { align: "right" });
   y = 100;
   text(data.name || "Pitch", 18, { bold: true, gap: 2 });
@@ -191,5 +191,5 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   footer();
   const name = (data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
   onStatus("");
-  doc.save(`${name}_JP_Pitching_report.pdf`);
+  doc.save(`${name}_Feole_Pitching_report.pdf`);
 }

@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>JP Pitching</title>
-<meta name="description" content="JP Pitching turns any pitching video into a 3D skeleton with phases and pelvis, spine and arm angles. Runs in your browser.">
-<meta property="og:title" content="JP Pitching">
+<title>Feole Pitching</title>
+<meta name="description" content="Feole Pitching turns any pitching video into a 3D skeleton with phases and pelvis, spine and arm angles. Runs in your browser.">
+<meta property="og:title" content="Feole Pitching">
 <meta property="og:description" content="Turn any pitching video into a 3D skeleton with pelvis, spine and arm angles.">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="favicon.png" type="image/png">
@@ -13,12 +13,12 @@
 <style>html,body{margin:0;height:100%} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} img{max-width:100%} [hidden]{display:none!important}</style>
 </head>
 <body>
-<title>JP Pitching</title>
+<title>Feole Pitching</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: JP Pitching. Pure black with white type; colour is reserved for the data (pelvis, spine, arms).
+/* Layout: Feole Pitching. Pure black with white type; colour is reserved for the data (pelvis, spine, arms).
    One working column (upload -> trim -> track -> 3D viewer) under a slim brand bar. */
 :root {
   --bg: #000000; --panel: #0b0b0b; --panel-2: #141414; --fg: #ffffff; --muted: #a6a6a6; --line: #262626;
@@ -36,7 +36,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 a { color: var(--clay-2) }
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line) }
 .topbar .in { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; display: flex; align-items: center; gap: 14px }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none }
+.brand { display: flex; align-items: center; gap: 16px; color: var(--fg); text-decoration: none }
 .brand .logo { height: 46px; width: auto; flex: none; display: block }
 .wm { display: flex; align-items: baseline; gap: 9px; line-height: 1 }
 .wm b { font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: .04em; font-style: italic }
@@ -130,6 +130,7 @@ input[type=text], select { font: inherit; color: var(--fg); background: var(--pa
 .phase-edit button { padding: 5px 10px; font-size: 13px }
 
 @media (max-width: 900px) { .homegrid, .prepgrid { grid-template-columns: minmax(0, 1fr) } .wm span { letter-spacing: .26em } }
+@media (max-width: 480px) { .wm span { font-size: 15px; letter-spacing: .18em } .brand .logo { height: 36px } }
 @media (max-width: 520px) { .topbar nav .label { display: none } }
 
 /* ---- viewer (shared component) ---- */
@@ -319,9 +320,9 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 </style>
 
 <header class="topbar"><div class="in">
-  <a class="brand" id="brand" href="#" aria-label="JP Pitching home">
-    <img class="logo" src="logo.png" alt="" width="62" height="48">
-    <span class="wm"><span>PITCHING</span></span>
+  <a class="brand" id="brand" href="#" aria-label="Feole Pitching home">
+    <img class="logo" src="logo.png" alt="" width="68" height="46">
+    <span class="wm"><span>FEOLE PITCHING</span></span>
   </a>
   <nav></nav>
 </div></header>
@@ -404,7 +405,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <!-- RESULTS -->
   <section id="results" class="view" hidden>
     <div class="reshead">
-      <div><span class="eyebrow">JP Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
+      <div><span class="eyebrow">Feole Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
       <div class="resbtns"><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
@@ -473,7 +474,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   </details>
   <details class="fold"><summary>About these numbers</summary>
   <section class="notes">
-    <div><h4>Where they come from</h4><p>A body tracker finds the pitcher's joints in every frame (in Max accuracy, a stronger tracker reads where they are on screen and the built-in one adds depth). JP Pitching rebuilds them in 3D with constant bone lengths, keeps each planted foot in place and smooths the motion. Frames where an arm or leg is a motion blur are filled with a natural throwing motion between the clear frames either side.</p></div>
+    <div><h4>Where they come from</h4><p>A body tracker finds the pitcher's joints in every frame (in Max accuracy, a stronger tracker reads where they are on screen and the built-in one adds depth). Feole Pitching rebuilds them in 3D with constant bone lengths, keeps each planted foot in place and smooths the motion. Frames where an arm or leg is a motion blur are filled with a natural throwing motion between the clear frames either side.</p></div>
     <div><h4>What to trust</h4><p>Timing, sequencing and the shape of each curve are solid. One camera can't see depth directly, so rotations and layback are estimated, and the throwing arm right at release is the least certain part.</p></div>
     <div><h4>Better video</h4><p>A tripod, a side view from the throwing-arm side, the whole body in frame and 240 fps slow-motion give the most exact skeleton.</p></div>
   </section>
