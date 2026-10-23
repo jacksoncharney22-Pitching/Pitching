@@ -5,6 +5,7 @@ import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { buildReport, reportHTML } from "./report.js";
+import { downloadPDF } from "./pdf.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -411,6 +412,13 @@ function openResults(data, url, meta = {}) {
     }
   } catch (e) { console.warn("report failed", e) }
 }
+$("pdfBtn").onclick = async () => {
+  if (!lastResult) return;
+  const b = $("pdfBtn"), label = b.textContent; b.disabled = true;
+  try { await downloadPDF(lastResult.data, lastResult.url, msg => { b.textContent = msg || label }) }
+  catch (e) { console.warn(e); alert("Couldn't make the PDF: " + (e.message || e)) }
+  finally { b.disabled = false; b.textContent = label }
+};
 $("newBtn").onclick = () => { if (viewer) { viewer.stop(); viewer = null } show("home"); renderHistory() };
 $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
 
