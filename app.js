@@ -11,12 +11,12 @@ const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
 function show(v) { views.forEach(x => $(x).hidden = x !== v); window.scrollTo({ top: 0 }); document.body.dataset.view = v }
 const fmtTime = s => `${s.toFixed(2)} s`;
-const opts = { hand: "auto", slow: 1, quality: "max", level: "hs", heightIn: null };
+const opts = { hand: "auto", slow: 1, quality: "max", level: "hs", heightIn: null, velo: null };
 // level and height are remembered in this browser (a convenience; everything works without it)
 try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn } catch (e) {}
 const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.velo = from.velo ?? null; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -35,6 +35,7 @@ $("levelSel").value = opts.level;
 if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)); $("heightIn").value = String(opts.heightIn % 12) } else $("heightFt").value = "";
 $("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
 const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
+$("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
 $("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
@@ -183,7 +184,7 @@ async function run() {
       const data = analyse(raw, { hand: opts.hand });
       data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
-      data.level = opts.level; data.heightIn = opts.heightIn;
+      data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
       bar(1); step("stBuild", "done", "Done");
       closeTrackers(); releaseWake();
       const id = await saveHistory(data, current.blob);
@@ -212,7 +213,7 @@ async function run() {
     const data = analyse(raw, { hand: opts.hand });
     data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
-    data.level = opts.level; data.heightIn = opts.heightIn;
+    data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
     bar(1); step("stBuild", "done", "Done");
     closeTrackers(); releaseWake();
     const id = await saveHistory(data, current.blob);
@@ -424,6 +425,8 @@ function openResults(data, url, meta = {}) {
         box.querySelectorAll(".rshow").forEach(b => b.onclick = () => { if (viewer && viewer.seek) { viewer.seek(+b.dataset.f); $("viewerMount").scrollIntoView({ behavior: "smooth", block: "start" }) } });
         const ls = box.querySelector("#repLevel");
         if (ls) ls.onchange = () => { data.level = ls.value; if (meta.id != null) updateHistory(meta.id, data); draw() };
+        const vi = box.querySelector("#repVelo");
+        if (vi) vi.onchange = () => { const v = parseFloat(vi.value); data.velo = v >= 30 && v <= 110 ? v : null; if (meta.id != null) updateHistory(meta.id, data); draw() };
       };
       draw();
     }

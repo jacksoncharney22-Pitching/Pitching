@@ -1,7 +1,7 @@
 // Feole Pitching: downloadable PDF report. The pitcher at the four key moments (video frame with the skeleton drawn
 // on it, plus a clean side-view skeleton), then what's good, what's wrong and what to improve, with drills, and the
 // key angles at each phase. Built in the browser with jsPDF (bundled in lib/), so nothing is uploaded anywhere.
-import { buildReport } from "./report.js";
+import { buildReport, tagOf, veloLine } from "./report.js";
 
 const BASE = () => new URL(".", document.baseURI).href;
 function loadScript(src) {
@@ -115,19 +115,23 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   const htTxt = rep.heightIn ? ` | ${Math.floor(rep.heightIn / 12)} ft ${rep.heightIn % 12} in` : "";
   text(`${rep.levelName} | ${data.throwHand === "L" ? "Left" : "Right"}-handed${htTxt} | ${fpsTxt} | ${(data.frames / data.fps).toFixed(2)} s analysed${data.quality ? " | " + data.quality : ""}`, 9, { color: 110, gap: 10 });
 
-  // ---- score + summary
+  // ---- two scores + summary
   const sy = y;
-  doc.setDrawColor(0); doc.setLineWidth(2); doc.circle(M + 32, sy + 32, 30, "S");
-  doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(0); doc.text(String(rep.score ?? "-"), M + 32, sy + 39, { align: "center" });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(120); doc.text("/ 100", M + 32, sy + 50, { align: "center" });
-  const top = (rep.work.length ? rep.work : rep.check).slice(0, 3).map(i => i.name.toLowerCase());
-  const save = M; y = sy;
+  const ring = (cx, v, lbl) => {
+    doc.setDrawColor(0); doc.setLineWidth(2); doc.circle(cx, sy + 30, 28, "S");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(0); doc.text(v == null ? "-" : String(v), cx, sy + 36, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(90); doc.text(lbl, cx, sy + 70, { align: "center" });
+  };
+  ring(M + 30, rep.healthScore, "Arm health"); ring(M + 96, rep.perfScore, "Performance");
+  const tx = M + 140, tw = CW - 140;
+  const top = rep.priorities.slice(0, 3).map(i => i.name.toLowerCase());
   doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(0);
-  const sumLines = doc.splitTextToSize(clean(top.length ? `Top priorities: ${top.join(", ")}.` : `Nothing stands out: every graded check is in the typical ${rep.levelName.toLowerCase()} range.`), CW - 80);
-  sumLines.forEach((l, i) => doc.text(l, M + 80, sy + 18 + i * 15));
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(90);
-  doc.text(clean(`${rep.good.length} good | ${rep.work.length} to fix | ${rep.check.length} to improve`), M + 80, sy + 22 + sumLines.length * 15);
-  y = sy + 76;
+  const sumLines = doc.splitTextToSize(clean(top.length ? `Top priorities: ${top.join(", ")}.` : `Nothing to fix: every graded check is in the ${rep.levelName.toLowerCase()} range${rep.works.length ? " or clearly working for him" : ""}.`), tw);
+  sumLines.forEach((l, i) => doc.text(l, tx, sy + 14 + i * 15));
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(90);
+  const vl = doc.splitTextToSize(clean(`${veloLine(rep)} ${rep.work.length} to fix | ${rep.check.length} to check | ${rep.works.length} working for him | ${rep.good.length} good.`), tw);
+  vl.forEach((l, i) => doc.text(l, tx, sy + 20 + sumLines.length * 15 + i * 11));
+  y = sy + Math.max(84, 26 + sumLines.length * 15 + vl.length * 11);
 
   // ---- key moments: video + skeleton
   text("The delivery at four key moments", 12, { bold: true, gap: 6 });
@@ -143,28 +147,33 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   y += 24 + ch * 2 + 6;
   text("Top: the video with the tracked skeleton. Bottom: the 3D skeleton seen from the side. The throwing arm is in orange; the far-side limbs are grey.", 8, { color: 120, gap: 8 });
 
-  // ---- findings
-  const section = (title, list, color, intro, showFix) => {
+  // ---- findings, in three groups
+  const COL = { "Work on": [230, 70, 70], "Check": [235, 170, 40], "Good": [60, 180, 110], "Works for him": [70, 140, 230], "Style": [150, 150, 150], "Info": [150, 150, 150] };
+  const group = (g, title, intro) => {
+    const list = rep.items.filter(i => i.group === g).sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || (b.weight || 0) - (a.weight || 0));
     if (!list.length) return;
-    need(60);
-    doc.setFillColor(...color); doc.rect(M, y + 2, 4, 14, "F");
+    need(70);
+    doc.setFillColor(0); doc.rect(M, y + 2, 4, 14, "F");
     text(title, 13, { bold: true, indent: 10, gap: 2 });
-    if (intro) text(intro, 9, { color: 110, gap: 6 });
+    text(intro, 9, { color: 110, gap: 6 });
     list.forEach(i => {
-      need(70);
-      text(`${i.name}:  ${i.value}`, 10.5, { bold: true, gap: 1 });
+      need(64);
+      const tag = tagOf(i), c = COL[tag] || COL.Info;
+      doc.setFillColor(...c); doc.roundedRect(M, y + 1, 74, 13, 3, 3, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(255); doc.text(clean(tag.toUpperCase()), M + 37, y + 10, { align: "center" });
+      const save = y; text(`${i.name}:  ${i.value}`, 10.5, { bold: true, indent: 82, gap: 1 });
       text(`Typical: ${i.target}   |   Measured: ${({ solid: "solid", est: "estimated", rough: "rough" })[i.conf]}`, 8.5, { color: 120, gap: 3 });
-      if (showFix && i.fix) text(i.fix, 10, { gap: 2 });
-      text(i.why, 9, { color: 90, gap: 2 });
-      if (showFix && i.drill) text(`Drill: ${i.drill}`, 9, { color: 30, gap: 8 }); else y += 6;
+      if (i.level && i.fix) text(i.fix, 10, { gap: 2 });
+      if (i.note) text(i.note, 9, { color: 40, gap: 2 });
+      if (i.why) text(i.why, 9, { color: 90, gap: 2 });
+      if (i.level && i.drill) text(`Drill: ${i.drill}`, 9, { color: 30, gap: 8 }); else y += 6;
     });
     y += 6;
   };
   newPage();
-  section("What's wrong: work on this first", rep.work, [230, 70, 70], `Clearly outside the research range for ${rep.levelName.toLowerCase()} pitchers, and measured reliably from this video.`, true);
-  section("What can be improved", rep.check, [235, 170, 40], `Outside the middle of the ${rep.levelName.toLowerCase()} range, or measured less reliably from one camera. Worth checking on video and working on.`, true);
-  section("What's good", rep.good, [60, 180, 110], `In the middle of the ${rep.levelName.toLowerCase()} range. Keep these.`, false);
-  if (!rep.work.length && !rep.check.length) text(`Nothing needs fixing from this video. Every graded check is in the typical ${rep.levelName.toLowerCase()} range.`, 10);
+  group("health", "Arm health", "Linked to stress on the elbow and shoulder. Never excused by velocity.");
+  group("perf", "Performance", "Linked to velocity in the research, weighted by how strong that link is.");
+  group("style", "Style profile", `How this delivery is put together compared with ${rep.levelName.toLowerCase()} pitchers. Not graded: many great pitchers sit outside these.`);
 
   // ---- angles at each phase
   need(40);
@@ -188,7 +197,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     y += 16;
   });
   y += 10;
-  text(`How to read this: each check is graded against published research for ${rep.levelName.toLowerCase()} pitchers. 'Good' is the middle of the range (average +/- 1 standard deviation, or the 25th-75th percentile), 'improve' is the wider range (+/- 2 SD, or 5th-95th), 'work on' is outside it. 'Solid' checks are measured directly from a side-on video; 'estimated' ones need depth one camera can't see well, so they are never graded worse than 'improve'. Compare the same pitcher across sessions for the most useful picture.`, 8, { color: 120, gap: 6 });
+  text(`How to read this: each check is graded against published research for ${rep.levelName.toLowerCase()} pitchers. 'Good' is the middle of the range (average +/- 1 standard deviation, or the 25th-75th percentile), 'check' is the wider range (+/- 2 SD, or 5th-95th), 'work on' is outside it. With the pitcher's velocity, a performance measurement outside the range is marked 'works for him' when the velocity is high for the level. 'Solid' checks are measured directly from a side-on video; 'estimated' ones need depth one camera can't see well, so they are never graded worse than 'check'. Compare the same pitcher across sessions for the most useful picture.`, 8, { color: 120, gap: 6 });
   text(`Sources: ${rep.sources.join("; ")}.`, 8, { color: 120 });
   footer();
   const name = (data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";

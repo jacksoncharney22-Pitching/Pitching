@@ -10,6 +10,15 @@
 //  - Fortenbaugh, Fleisig & Andrews 2009, Sports Health 1(4): shoulder abducted about 90° at foot contact and release.
 //  Middle school uses the youth groups of these studies.
 //
+// Three readings instead of one score, because elite pitchers are often elite BECAUSE they move differently:
+//  - Performance: measurements research links to velocity (front leg firming up and trunk speed: NCAA D1 in-game study;
+//    stride and forward lean: level research). Weighted by how strong that link is.
+//  - Arm health: measurements linked to elbow and shoulder load (elbow height: Fortenbaugh 2009; excessive side tilt
+//    raises velocity AND joint loads: Oyama et al., 72 high school pitchers). Never excused by velocity.
+//  - Style: everything else, described against the level but not graded.
+// With the pitcher's velocity: when it's high for the level, a performance measurement outside the range is marked
+// "Works for him" (it's clearly not costing velocity) instead of a fault. When it's low, those are flagged as likely gains.
+//
 // Grading: "Good" inside the middle of the level's range (mean ± 1 SD, or 25th-75th percentile), "Check" inside the
 // wide range (± 2 SD, or 5th-95th), "Work on" outside it. Every check also carries how well one camera can measure
 // it: only "solid" checks (in the camera's view from the side) can be graded "Work on"; "estimated" ones (need depth)
@@ -22,6 +31,9 @@ const SRC = {
   uplift: "Uplift Labs pitching norms, 2025 (video, about 750 pitchers)",
   ffa: "Fortenbaugh, Fleisig & Andrews 2009, Sports Health",
   uplift_flag: "Uplift Labs 'knee collapse' flag (more than 20° of extra bend from landing to release)",
+  ncaa: "Kinematic predictors of in-game fastball velocity in NCAA Division I pitchers, IJESAB (front knee extension and trunk speed)",
+  oyama: "Oyama et al., excessive contralateral trunk tilt in 72 high school pitchers (higher velocity and higher elbow/shoulder loads)",
+  velo: "Fastball velocity by age (Eisenmann, showcase data: about 65 mph at 13, 87 mph at 18); MLB average fastball about 94 mph",
 };
 export const SOURCES = SRC;
 // Fleisig 1999 mean, SD by level
@@ -53,16 +65,23 @@ function gradeSD(v, [m, s], side = "both") {
   if (v == null || !Number.isFinite(v)) return null;
   const z = (v - m) / s;
   if (side === "low") return z >= -1 ? 0 : z >= -2 ? 1 : 2;
+  if (side === "high") return z <= 1 ? 0 : z <= 2 ? 1 : 2;
   return Math.abs(z) <= 1 ? 0 : Math.abs(z) <= 2 ? 1 : 2;
 }
 function gradePct(v, p, side = "both") {
   if (v == null || !Number.isFinite(v)) return null;
   if (side === "low") return v >= p[1] ? 0 : v >= p[0] ? 1 : 2;
+  if (side === "high") return v <= p[3] ? 0 : v <= p[4] ? 1 : 2;
   return v >= p[1] && v <= p[3] ? 0 : v >= p[0] && v <= p[4] ? 1 : 2;
 }
 
+
+// fastball velocity by level, mph: [typical, high]. Approximate, from the sources in SRC.velo.
+const VELO = { ms: [65, 72], hs: [80, 87], col: [88, 92], pro: [94, 96] };
+const GROUPS = { health: "Arm health", perf: "Performance", style: "Style" };
+
 export function buildReport(D, levelKey) {
-  const lv = LEVELS[levelKey] ? levelKey : (LEVELS[D.level] ? D.level : "hs"), L = LEVELS[lv];
+  const lv = LEVELS[levelKey] ? levelKey : (LEVELS[D.level] ? D.level : "hs"), L = LEVELS[lv], lvl = L.toLowerCase();
   const M = D.metrics, T = D.frames, FPS = D.fps, P = D.pose;
   const ph = Object.fromEntries(D.phases.map(p => [p.name, p.frame]));
   const LL = ph["Peak leg lift"], FS = ph["Foot strike"], AC = ph["Arm cocked"], R = ph["Release"];
@@ -73,149 +92,174 @@ export function buildReport(D, levelKey) {
 
   // body size from the skeleton's own bones (hip joint to ankle is about 49% of standing height: Drillis & Contini)
   const bl = (a, b) => { const k = D.bones[a + "," + b] ?? D.bones[b + "," + a]; return k ?? null };
-  const leg = (bl(23, 25) ?? 0.42) + (bl(25, 27) ?? 0.42);
-  const skelH = leg / 0.49;
-  const realH = D.heightIn > 0 ? D.heightIn * 0.0254 : null;            // metres, when the pitcher's height is entered
-  const toIn = m => realH ? m * (realH / skelH) / 0.0254 : null;           // skeleton length -> real inches
+  const skelH = ((bl(23, 25) ?? 0.42) + (bl(25, 27) ?? 0.42)) / 0.49;
+  const realH = D.heightIn > 0 ? D.heightIn * 0.0254 : null;
+  const toIn = m => realH ? m * (realH / skelH) / 0.0254 : null;
 
-  const side = Math.abs((D.cameraDir || [0, 0, 1])[2]) >= 0.9;          // camera within ~25° of side-on
+  // velocity band for this level
+  const mph = D.velo > 0 ? D.velo : null, vb = VELO[lv];
+  const band = mph == null ? null : mph >= vb[1] ? "high" : mph >= vb[0] - 4 ? "typical" : "low";
+
+  const side = Math.abs((D.cameraDir || [0, 0, 1])[2]) >= 0.9;
   const sideConf = side ? "solid" : "est";
   const items = [];
-  const add = (o) => { o.level = o.raw == null || CAP[o.conf] === 0 ? null : Math.min(o.raw, CAP[o.conf]); items.push(o) };
+  const add = (o) => { o.level = o.raw == null || CAP[o.conf] === 0 || o.group === "style" ? null : Math.min(o.raw, CAP[o.conf]); items.push(o); return o };
   const sdTxt = ([m, s]) => `${r0(m - s)}–${r0(m + s)}`;
   const pctTxt = p => `${p[1]}–${p[3]}`;
 
-  // 1. Stride length (% of height)
+  // ================= PERFORMANCE (linked to velocity)
+  let stridePct = null;
   {
-    const Fr = P[FS], s = Fr ? Math.hypot(Fr[lead][0] - Fr[back][0], Fr[lead][2] - Fr[back][2]) : null, pct = s != null ? 100 * s / skelH : null;
-    const n = F.stride[lv]; let raw = gradeSD(pct, n, "low"); if (pct != null && pct > n[0] + 2 * n[1]) raw = 1;
+    const Fr = P[FS], s = Fr ? Math.hypot(Fr[lead][0] - Fr[back][0], Fr[lead][2] - Fr[back][2]) : null; stridePct = s != null ? 100 * s / skelH : null;
+    const n = F.stride[lv]; let raw = gradeSD(stridePct, n, "low"); if (stridePct != null && stridePct > n[0] + 2 * n[1]) raw = 1;
     const inch = s != null ? toIn(s) : null;
-    add({ id: "stride", area: "Lower half", name: "Stride length", value: fmt(pct, "% of height") + (inch ? ` (${ftin(inch)})` : ""), target: `${L}: ${sdTxt(n)}% of height (average ${n[0]}%)`, src: "fleisig", frame: FS, conf: sideConf, raw,
+    add({ id: "stride", group: "perf", weight: 2, name: "Stride length", value: fmt(stridePct, "% of height") + (inch ? ` (${ftin(inch)})` : ""), target: `${L}: ${sdTxt(n)}% of height (average ${n[0]}%)`, src: "fleisig", frame: FS, conf: sideConf, raw,
       why: "A long, direct stride moves the body toward the plate and gives the hips time to turn before the arm comes through.",
-      fix: pct != null && pct < n[0] ? "Stride is short for this level. Drive off the rubber longer before the front foot lands." : "Stride is very long. Over-striding makes it hard to get over the front leg.",
+      fix: stridePct != null && stridePct < n[0] ? `Stride is short for ${lvl} pitchers. Drive off the rubber longer before the front foot lands.` : "Stride is very long. Over-striding makes it hard to get over the front leg.",
       drill: `Stride-length line drill: mark ${n[0]}% of height${realH ? ` (${ftin(D.heightIn * n[0] / 100)})` : ""} from the rubber and land on it for 10 throws; add step-behind (crow-hop) throws to feel the push.` });
   }
-  // 2. Lead knee at foot strike
-  {
-    const k = at("leadKnee", FS), n = F.kneeFC[lv];
-    add({ id: "kneeFC", area: "Lower half", name: "Front knee bend at landing", value: fmt(k), target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: FS, conf: "est", raw: gradeSD(k, n),
-      why: "Landing on a front knee that is bent but braced lets the leg absorb the stride and then push back against it.",
-      fix: k != null && k < n[0] ? "The front leg lands quite straight. Land softer, with the knee slightly more bent, so it can brace and push back." : "The front knee is very bent at landing. Land on a firmer front leg so it can brace.",
-      drill: "Stride-and-stick drill: stride, land and hold the landing for 2 s with the front knee bent and stable over the ankle." });
-  }
-  // 3. Lead leg firming up from landing to release
   {
     const kFS = at("leadKnee", FS), kR = at("leadKnee", R), ch = kR != null && kFS != null ? kR - kFS : null, n = F.kneeBR[lv];
-    add({ id: "block", area: "Lower half", name: "Front leg firming up", value: ch == null ? "—" : `${fmt(kFS)} at landing → ${fmt(kR)} at release`, target: `Knee straightens after landing (${L} average ${F.kneeFC[lv][0]}° → ${n[0]}°)`, src: "fleisig", frame: R, conf: "est",
+    add({ id: "block", group: "perf", weight: 3, name: "Front leg firming up", value: ch == null ? "—" : `${fmt(kFS)} at landing → ${fmt(kR)} at release`, target: `Straightens after landing (${L} average ${F.kneeFC[lv][0]}° → ${n[0]}°)`, src: "ncaa", frame: R, conf: "est",
       raw: ch == null ? null : ch <= 5 ? 0 : ch <= 20 ? 1 : 2,
-      why: "A front leg that firms up after landing stops the body's forward drift and turns it into rotation. A knee that keeps bending leaks that energy. More than 20° of extra bend is what Uplift flags as a knee collapse.",
+      why: "Straightening the front knee into release is one of the strongest links to velocity in the research: it stops the body's forward drift and turns it into rotation. More than 20° of extra bend is what Uplift flags as a knee collapse.",
       fix: "The front knee keeps bending after landing. Land on a braced knee and push back into the ground through release.",
       drill: "Lead-leg block holds: stride, land and freeze at release for 3 s; then med-ball rotational throws stepping into a firm front leg." });
   }
-  // 4. Hip-shoulder separation
+  let fwdV = null;
+  {
+    fwdV = at("trunkFwd", R); const n = F.fwdBR[lv];
+    add({ id: "fwd", group: "perf", weight: 2, name: "Forward lean at release", value: fmt(fwdV), target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: R, conf: sideConf, raw: gradeSD(fwdV, n, "low"),
+      why: "Getting the chest out over the front leg moves release closer to the plate (extension) and uses the trunk's flexion to add speed.",
+      fix: `Release is early or upright for ${lvl} pitchers. Finish with the chest over the front knee.`,
+      drill: "Towel drill to a partner's glove at full extension; chest-to-knee finishes, holding the end position for 2 s." });
+  }
   {
     const sep = Math.max(...range("separation", LL, AC), -999), p = U.xfac[lv], v = sep > -999 ? sep : null;
-    add({ id: "sep", area: "Rotation", name: "Hip–shoulder separation", value: fmt(v), target: `${L}: ${pctTxt(p)}° (middle half; median ${p[2]}°)`, src: "uplift", frame: FS, conf: "est", raw: gradePct(v, p, "low"),
-      why: "Hips turning ahead of the shoulders stretches the trunk like a spring. Research links it to velocity, though the link is modest and varies from pitcher to pitcher.",
+    add({ id: "sep", group: "perf", weight: 1, name: "Hip–shoulder separation", value: fmt(v), target: `${L}: ${pctTxt(p)}° (middle half; median ${p[2]}°)`, src: "uplift", frame: FS, conf: "est", raw: gradePct(v, p, "low"),
+      why: "Hips turning ahead of the shoulders stretches the trunk like a spring. Its link to velocity is real but small and varies a lot from pitcher to pitcher, so it counts least.",
       fix: "The hips and shoulders turn together. Lead with the hips and keep the front shoulder closed a moment longer.",
       drill: "Hip-lead drills: rocker throws and step-behind throws with the glove arm held closed; med-ball scoop tosses leading with the hip." });
   }
-  // 5. Forward trunk tilt at release
-  {
-    const f = at("trunkFwd", R), n = F.fwdBR[lv];
-    add({ id: "fwd", area: "Trunk", name: "Forward lean at release", value: fmt(f), target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: R, conf: sideConf, raw: gradeSD(f, n),
-      why: "Getting the chest out over the front leg moves release closer to the plate (extension) and uses the trunk's flexion to add speed.",
-      fix: f != null && f < n[0] ? "Release is early or upright for this level. Finish with the chest over the front knee." : "Leaning far over at release can pull the head and arm off line.",
-      drill: "Towel drill to a partner's glove at full extension; chest-to-knee finishes, holding the end position for 2 s." });
-  }
-  // 6. Side tilt at release
-  {
-    const l = at("trunkLat", R), p = U.lat[lv];
-    add({ id: "lat", area: "Trunk", name: "Side tilt at release", value: fmt(l), target: `${L}: ${pctTxt(p)}° (middle half; median ${p[2]}°)`, src: "uplift", frame: R, conf: "est", raw: gradePct(l, p),
-      why: "Leaning toward the glove side raises the arm slot. A lot of side tilt adds stress on the arm and can hurt command; very little usually means a lower slot.",
-      fix: l != null && l > p[3] ? "More side tilt than most pitchers at this level. Make sure it's the arm slot you want and that it repeats." : "Less side tilt than most at this level, which usually means a lower arm slot. Fine if that's the slot you want.",
-      drill: "Film several pitches and compare this number: repeating the same tilt matters more than the exact value." });
-  }
-  // 7. Elbow height (shoulder abduction) at release
+
+  // ================= ARM HEALTH (linked to elbow and shoulder load: never excused by velocity)
   {
     const a = at("throwAbd", R);
-    add({ id: "abd", area: "Throwing arm", name: "Elbow height at release", value: fmt(a), target: "About 90° (elbow level with the shoulders), all levels", src: "ffa", frame: R, conf: "est", raw: gradeSD(a, [90, 10]),
-      why: "Around 90° the shoulder is in its strongest, safest position. A dropped or very high elbow adds stress on the elbow and shoulder.",
+    add({ id: "abd", group: "health", weight: 3, name: "Elbow height at release", value: fmt(a), target: "About 90° (elbow level with the shoulders), all levels", src: "ffa", frame: R, conf: "est", raw: gradeSD(a, [90, 10]),
+      why: "Around 90–100° the shoulder is in its strongest, safest position. A dropped or very high elbow increases stress on the elbow and shoulder.",
       fix: a != null && a < 90 ? "The elbow sits low at release. Get the elbow up to shoulder height as the trunk turns." : "The elbow is high at release. Check this matches the arm slot you want.",
       drill: "Wall drills for arm path; reverse throws and connection-ball throws to keep the elbow at shoulder height." });
   }
-  // 8. Arm ready at foot strike (elbow bend)
+  {
+    const l = at("trunkLat", R), p = U.lat[lv];
+    add({ id: "lat", group: "health", weight: 2, name: "Side tilt at release", value: fmt(l), target: `${L}: up to ${p[3]}° (75th percentile; median ${p[2]}°)`, src: "oyama", frame: R, conf: "est", raw: gradePct(l, p, "high"),
+      why: "Leaning hard toward the glove side raises the arm slot and can add velocity, but research on high school pitchers found it also raises elbow and shoulder loads. A trade-off worth managing, not ignoring.",
+      fix: "More side tilt than most pitchers at this level. It may be helping velocity, but it loads the arm more: watch workload and keep it from growing.",
+      drill: "Film several pitches and keep this number steady; core and hip mobility work so the tilt isn't covering for a lack of rotation." });
+  }
   {
     const e = at("throwElbow", FS), n = F.elbowFC[lv];
-    add({ id: "timing", area: "Throwing arm", name: "Arm ready at landing", value: fmt(e) + " elbow bend", target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: FS, conf: "est", raw: gradeSD(e, n),
-      why: "At landing the arm should be up and bent so it's ready to turn with the trunk. A straight (long) or late arm has to rush to catch up.",
+    add({ id: "timing", group: "health", weight: 2, name: "Arm ready at landing", value: fmt(e) + " elbow bend", target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: FS, conf: "est", raw: gradeSD(e, n),
+      why: "At landing the arm should be up and bent so it turns with the trunk. A long (straight) or late arm has to rush to catch up, which loads the shoulder and elbow.",
       fix: e != null && e < n[0] ? "The arm is long (straighter) at landing and may be running late. Break the hands earlier." : "The arm is very bent at landing. Check it isn't early.",
       drill: "Arm-path drills: 'up and show' throws (arm up at landing), plyo-ball pivot picks." });
   }
-  // ---- shown with the research value but not graded (one side camera can't measure these well enough)
+
+  // ================= STYLE (described against the level, not graded)
   {
-    const er = Math.max(...range("throwER", FS, R).filter(v => v != null), -999), n = F.mer[lv];
-    add({ id: "er", area: "Throwing arm", name: "Layback", value: er >= 90 && er <= 220 ? fmt(er) : "couldn't measure", target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: AC, conf: "rough", raw: null,
-      why: "How far the forearm lays back before it whips forward. A single camera can't see it, so treat this as a rough guide.", fix: "", drill: "" });
-  }
-  {
-    const sp = k => { const a = M[k], v = a.map((_, i) => (a[Math.min(T - 1, i + 1)] - a[Math.max(0, i - 1)]) * FPS / (Math.min(T - 1, i + 1) - Math.max(0, i - 1))); return v };
-    const ps = sp("pelvisRot"), ts = sp("trunkRot");
-    let pm = FS, tm = FS; for (let t = LL; t <= Math.min(T - 1, R + 3); t++) { if (ps[t] > ps[pm]) pm = t; if (ts[t] > ts[tm]) tm = t }
-    add({ id: "speed", area: "Rotation", name: "Hip and trunk turning speed", value: `hips ${Math.round(ps[pm])}°/s, trunk ${Math.round(ts[tm])}°/s`, target: `${L} average: hips ${F.pelvisV[lv][0]}°/s, trunk ${F.trunkV[lv][0]}°/s`, src: "fleisig", frame: pm, conf: "rough", raw: null,
-      why: "How fast the hips and then the trunk turn. Video, especially below 240 fps, reads these low, so compare your own sessions rather than the research average.", fix: "",
-      drill: "For a true reading, film at 240 fps; compare the same pitcher week to week." });
+    const k = at("leadKnee", FS), n = F.kneeFC[lv];
+    add({ id: "kneeFC", group: "style", name: "Front knee bend at landing", value: fmt(k), target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: FS, conf: "est",
+      why: k == null ? "" : k < n[0] - n[1] ? "Lands on a straighter front leg than most at this level." : k > n[0] + n[1] ? "Lands on a more bent front leg than most at this level." : "Lands with a typical front-knee bend for this level." });
   }
   {
     const h = at("leadHip", LL);
-    add({ id: "lift", area: "Lower half", name: "Leg lift height", value: fmt(h), target: "No research standard: style varies", src: null, frame: LL, conf: "rough", raw: null,
-      why: "The leg lift loads the back hip and sets up the stride. Its height is a style choice; there is no published range to grade it against.", fix: "", drill: "" });
+    add({ id: "lift", group: "style", name: "Leg lift height", value: fmt(h), target: "Style choice: no research standard", src: null, frame: LL, conf: "solid",
+      why: h == null ? "" : h >= 100 ? "A high leg lift." : h >= 75 ? "A medium leg lift (thigh about level)." : "A low or short leg lift." });
+  }
+  {
+    const er = Math.max(...range("throwER", FS, R).filter(v => v != null), -999), n = F.mer[lv];
+    add({ id: "er", group: "style", name: "Layback", value: er >= 90 && er <= 220 ? fmt(er) : "couldn't measure", target: `${L}: ${sdTxt(n)}° (average ${n[0]}°)`, src: "fleisig", frame: AC, conf: "rough",
+      why: "How far the forearm lays back before it whips forward. One camera can't see it well; a rough guide only." });
+  }
+  {
+    const sp = k => { const a = M[k]; return a.map((_, i) => (a[Math.min(T - 1, i + 1)] - a[Math.max(0, i - 1)]) * FPS / (Math.min(T - 1, i + 1) - Math.max(0, i - 1))) };
+    const ps = sp("pelvisRot"), ts = sp("trunkRot");
+    let pm = FS, tm = FS; for (let t = LL; t <= Math.min(T - 1, R + 3); t++) { if (ps[t] > ps[pm]) pm = t; if (ts[t] > ts[tm]) tm = t }
+    const gap = Math.round((tm - pm) / FPS * 1000);
+    add({ id: "speed", group: "style", name: "Hip and trunk turning", value: `hips ${Math.round(ps[pm])}°/s, trunk ${Math.round(ts[tm])}°/s; ${gap >= 0 ? `hips peak first by ${gap} ms` : `trunk peaks first by ${-gap} ms`}`, target: `${L} average: hips ${F.pelvisV[lv][0]}°/s, trunk ${F.trunkV[lv][0]}°/s, hips first`, src: "fleisig", frame: pm, conf: "rough",
+      why: "Trunk speed is a strong velocity predictor in the research, but video (especially below 240 fps) reads turning speed low and its order unreliably. Compare your own sessions; film at 240 fps for a real reading." });
   }
   {
     const tr = at("trunkRot", FS);
-    add({ id: "closed", area: "Rotation", name: "Shoulders at landing", value: tr == null ? "—" : tr <= 0 ? `closed (turned back ${Math.round(-tr)}°)` : `open ${Math.round(tr)}°`, target: "Coaching guide: still mostly facing the side", src: null, frame: FS, conf: "rough", raw: null,
-      why: "If the shoulders are already turning toward the plate at landing, the trunk has less left to stretch. Shown for reference: measured from one side camera.", fix: "", drill: "" });
+    add({ id: "closed", group: "style", name: "Shoulders at landing", value: tr == null ? "—" : tr <= 0 ? `closed (turned back ${Math.round(-tr)}°)` : `open ${Math.round(tr)}°`, target: "Most pitchers are still mostly facing the side", src: null, frame: FS, conf: "rough",
+      why: "Opening early leaves the trunk less to stretch and, in research on high school pitchers, rotation out of order went with higher shoulder load. Measured from one side camera: reference only." });
   }
   if (realH) {
     const fx = Math.sign((P[FS] ? P[FS][lead][0] : 1) - (P[0] ? P[0][back][0] : 0)) || 1;
     const rub = (D.rubber || [0, 0])[0], hx = P[R] ? P[R][wrist][0] : null;
     const ext = hx != null ? toIn(Math.max(0, (hx - rub) * fx)) : null;
-    if (ext) add({ id: "ext", area: "Release", name: "Release extension", value: `${ftin(ext)} in front of the rubber`, target: "No level norm; MLB pitchers are often around 6–7 ft", src: null, frame: R, conf: "rough", raw: null,
-      why: "How far toward the plate the ball is let go. More extension makes the pitch reach the hitter sooner. Measured from the hand, so it reads slightly short of where the ball leaves.", fix: "", drill: "" });
+    if (ext) add({ id: "ext", group: "style", name: "Release extension", value: `${ftin(ext)} in front of the rubber`, target: "MLB pitchers are often around 6–7 ft", src: null, frame: R, conf: "rough",
+      why: "How far toward the plate the ball is let go: more extension gets the pitch to the hitter sooner. Measured from the hand, so slightly short of the ball." });
   }
 
+  // ---- compensations: one strength making up for another
+  const byId = Object.fromEntries(items.map(i => [i.id, i]));
+  const n = F.fwdBR[lv];
+  if (byId.stride && byId.stride.level >= 1 && stridePct != null && stridePct < F.stride[lv][0] && fwdV != null && fwdV >= n[0]) {
+    byId.stride.level -= 1; byId.stride.note = `Partly made up for by a strong forward lean at release (${fmt(fwdV)}), which also carries the release toward the plate.`;
+  }
+  // ---- velocity: high for the level -> a performance measurement outside the range is clearly not costing velocity
+  for (const i of items) {
+    if (i.group !== "perf" || i.level == null || i.level === 0) continue;
+    if (band === "high") { i.works = true; i.prevLevel = i.level; i.level = 0; i.note = `Outside the typical ${lvl} range, but at ${mph} mph it is clearly working for him: treat it as part of his style. Change it only with a coach, and only if it costs nothing else.` }
+    else if (band === "low") i.note = `With velocity below typical for ${lvl} pitchers, this is a likely place to gain.`;
+  }
+  if (band === "high") for (const i of items) if (i.group === "health" && i.level) i.note = `He throws hard (${mph} mph), so arm stress matters even more here.`;
+
+  // ---- scores (weighted), priorities
+  const score = g => { const gi = items.filter(i => i.group === g && i.level != null); const w = gi.reduce((a, i) => a + i.weight, 0); return w ? Math.round(100 * gi.reduce((a, i) => a + i.weight * (2 - i.level), 0) / (2 * w)) : null };
   const graded = items.filter(i => i.level != null);
-  const work = graded.filter(i => i.level === 2), check = graded.filter(i => i.level === 1), good = graded.filter(i => i.level === 0), info = items.filter(i => i.level == null);
-  const score = graded.length ? Math.round(100 * graded.reduce((a, i) => a + (2 - i.level), 0) / (2 * graded.length)) : null;
-  const used = [...new Set(items.map(i => i.src).filter(Boolean))].map(k => SRC[k]);
-  return { items, work, check, good, info, score, height: skelH, level: lv, levelName: L, heightIn: D.heightIn || null, sources: used };
+  const work = graded.filter(i => i.level === 2), check = graded.filter(i => i.level === 1), good = graded.filter(i => i.level === 0 && !i.works), works = items.filter(i => i.works);
+  const rank = i => (i.group === "health" ? 0 : 1) + (2 - i.level) * 2 - i.weight * 0.1;
+  const priorities = [...work, ...check].sort((a, b) => rank(a) - rank(b));
+  const used = [...new Set([...items.map(i => i.src), mph ? "velo" : null].filter(Boolean))].map(k => SRC[k]);
+  return { items, work, check, good, works, priorities, style: items.filter(i => i.group === "style"),
+    perfScore: score("perf"), healthScore: score("health"), score: null,
+    level: lv, levelName: L, heightIn: D.heightIn || null, velo: mph, band, veloRef: vb, sources: used, height: skelH };
 }
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+export const tagOf = i => i.works ? "Works for him" : i.level == null ? (i.group === "style" ? "Style" : "Info") : LEVEL[i.level];
+export function veloLine(rep) {
+  if (!rep.velo) return `Add the pitcher's velocity to tell style from faults (typical ${rep.levelName.toLowerCase()}: about ${rep.veloRef[0]} mph).`;
+  return rep.band === "high" ? `${rep.velo} mph is high for ${rep.levelName.toLowerCase()} pitchers (typical about ${rep.veloRef[0]}): unusual performance measurements are treated as his style.`
+    : rep.band === "low" ? `${rep.velo} mph is below typical for ${rep.levelName.toLowerCase()} pitchers (about ${rep.veloRef[0]}): performance flags are likely places to gain.`
+    : `${rep.velo} mph is typical for ${rep.levelName.toLowerCase()} pitchers (about ${rep.veloRef[0]}).`;
+}
 export function reportHTML(rep) {
-  const card = (i) => `<article class="rcard lv${i.level ?? "n"}">
-    <div class="rhead"><span class="rtag">${i.level == null ? "Info" : LEVEL[i.level]}</span><h4>${esc(i.name)}</h4><button class="rshow" data-f="${i.frame}" type="button">Show</button></div>
+  const card = (i) => `<article class="rcard lv${i.works ? "w" : i.level ?? "n"}">
+    <div class="rhead"><span class="rtag">${tagOf(i)}</span><h4>${esc(i.name)}</h4><button class="rshow" data-f="${i.frame}" type="button">Show</button></div>
     <div class="rnums"><span><b>${esc(i.value)}</b></span><span>${esc(i.target)}</span><span class="rconf">${CONF[i.conf]}</span></div>
-    <p>${esc(i.level ? i.fix : i.why)}</p>
-    ${i.level ? `<p class="rwhy">${esc(i.why)}</p>` : ""}
-    ${i.level && i.drill ? `<p class="rdrill"><b>Drill:</b> ${esc(i.drill)}</p>` : (i.level == null && i.drill ? `<p class="rwhy">${esc(i.drill)}</p>` : "")}
+    ${i.level ? `<p>${esc(i.fix)}</p>` : ""}
+    ${i.note ? `<p class="rnote2">${esc(i.note)}</p>` : ""}
+    ${i.why ? `<p class="${i.level ? "rwhy" : ""}">${esc(i.why)}</p>` : ""}
+    ${i.level && i.drill ? `<p class="rdrill"><b>Drill:</b> ${esc(i.drill)}</p>` : ""}
     ${i.src ? `<p class="rsrc">Source: ${esc(SRC[i.src])}</p>` : ""}
   </article>`;
-  const sec = (title, list, note) => list.length ? `<h3 class="rsec">${title}</h3>${note ? `<p class="rnote">${note}</p>` : ""}<div class="rgrid">${list.map(card).join("")}</div>` : "";
-  const top = rep.work.length ? rep.work : rep.check;
-  const summary = top.length
-    ? `Top priorities: ${top.slice(0, 3).map(i => `<b>${esc(i.name.toLowerCase())}</b>`).join(", ")}.`
-    : `Nothing stands out. Every graded check is in the typical ${esc(rep.levelName.toLowerCase())} range.`;
+  const grp = (g, title, note) => { const list = rep.items.filter(i => i.group === g).sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || (b.weight || 0) - (a.weight || 0)); return list.length ? `<h3 class="rsec">${title}</h3>${note ? `<p class="rnote">${note}</p>` : ""}<div class="rgrid">${list.map(card).join("")}</div>` : "" };
+  const summary = rep.priorities.length
+    ? `Top priorities: ${rep.priorities.slice(0, 3).map(i => `<b>${esc(i.name.toLowerCase())}</b>`).join(", ")}.`
+    : `Nothing to fix. Every graded check is in the ${esc(rep.levelName.toLowerCase())} range${rep.works.length ? " or clearly working for him" : ""}.`;
   const opts = Object.entries(LEVELS).map(([k, v]) => `<option value="${k}"${k === rep.level ? " selected" : ""}>${v}</option>`).join("");
+  const ring = (v, lbl) => `<div class="rscore"><span>${v ?? "—"}</span><small>${lbl}</small></div>`;
   return `<div class="rsum">
-      <div class="rscore"><span>${rep.score ?? "—"}</span><small>/ 100</small></div>
+      <div class="rrings">${ring(rep.healthScore, "Arm health")}${ring(rep.perfScore, "Performance")}</div>
       <div><p class="rlead">${summary}</p>
-      <div class="rctl"><label>Compared with <select id="repLevel">${opts}</select></label>${rep.heightIn ? `<span>Height ${ftin(rep.heightIn)}</span>` : `<span>Height not entered (add it on the home page for real distances)</span>`}</div>
-      <p class="rnote">${rep.work.length} to work on · ${rep.check.length} to check · ${rep.good.length} good. Graded against published research for ${esc(rep.levelName.toLowerCase())} pitchers. <b>Solid</b> checks are measured directly from a side-on video; <b>estimated</b> ones need depth one camera can't see well, so they're never graded worse than "Check".</p></div>
+      <div class="rctl"><label>Compared with <select id="repLevel">${opts}</select></label><label>Velocity <input id="repVelo" type="number" min="30" max="110" step="0.5" inputmode="decimal" placeholder="mph" value="${rep.velo ?? ""}"> mph</label>${rep.heightIn ? `<span>Height ${ftin(rep.heightIn)}</span>` : `<span>Height not entered</span>`}</div>
+      <p class="rnote">${esc(veloLine(rep))} Arm health is never excused by velocity. Style is described, not graded. <b>Solid</b> = measured directly from a side-on video; <b>estimated</b> = needs depth one camera can't see well, so never graded worse than "Check".</p></div>
     </div>
-    ${sec("Work on", rep.work)}
-    ${sec("Check", rep.check, "Outside the middle of the range for this level, or measured less reliably. Press Show to jump to the moment.")}
-    ${sec("Good", rep.good)}
-    ${sec("For reference (not graded)", rep.info)}
+    ${grp("health", "Arm health", "Linked to stress on the elbow and shoulder.")}
+    ${grp("perf", "Performance", "Linked to velocity in the research, weighted by how strong that link is.")}
+    ${grp("style", "Style profile", "How this delivery is put together, compared with " + esc(rep.levelName.toLowerCase()) + " pitchers. Not graded: many great pitchers are outside these.")}
     <p class="rnote rsources"><b>Sources:</b> ${rep.sources.map(esc).join(" · ")}.</p>`;
 }

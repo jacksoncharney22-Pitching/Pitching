@@ -319,7 +319,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 @media (max-width: 640px) { .rgrid { grid-template-columns: 1fr } .report .rsum { flex-direction: column; align-items: flex-start } }
 
 /* v13: level + height */
-.sel2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) }
+.sel2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) }
 .hrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
 .hrow select { appearance: none; -webkit-appearance: none; background: var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
   color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 34px 11px 12px; font: inherit; font-size: 15px; letter-spacing: 0; cursor: pointer }
@@ -328,6 +328,15 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .rcard .rsrc { color: var(--muted); font-size: 11.5px; margin-top: 8px }
 .rsources { margin-top: 16px }
 @media (max-width: 640px) { .sel2 { grid-template-columns: 1fr } }
+
+/* v14: three readings */
+.numin { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font: inherit; font-size: 15px; letter-spacing: 0; width: 100%; box-sizing: border-box }
+.rrings { display: flex; gap: 12px; flex: 0 0 auto }
+.rrings .rscore small { font-size: 10.5px; text-align: center; max-width: 76px; line-height: 1.2; margin-top: 3px }
+.rcard.lvw { border-left-color: #62a8ff } .lvw .rtag { color: #9cc8ff }
+.rcard .rnote2 { font-size: 13px; color: #cfe3ff; background: #0f1a2a; border-radius: 8px; padding: 6px 9px }
+.rctl input { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 14px; width: 76px; margin: 0 4px 0 6px }
+@media (max-width: 900px) { .sel2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) } .sel2 > .sel:last-child { grid-column: 1 / -1 } }
 </style>
 
 <header class="topbar"><div class="in">
@@ -357,6 +366,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       </div>
       <div class="selrow sel2">
         <label class="sel"><span>Pitcher level</span><select id="levelSel"><option value="ms">Middle school</option><option value="hs" selected>High school</option><option value="col">College</option><option value="pro">Professional</option></select></label>
+        <label class="sel"><span>Fastball velocity (optional)</span><input id="veloIn" class="numin" type="number" min="30" max="110" step="0.5" inputmode="decimal" placeholder="mph"></label>
         <div class="sel"><span id="heightLbl">Pitcher height</span><div class="hrow" role="group" aria-labelledby="heightLbl"><select id="heightFt" aria-label="Feet"><option value="">Not set</option><option value="4">4 ft</option><option value="5">5 ft</option><option value="6" selected>6 ft</option><option value="7">7 ft</option></select><select id="heightIn" aria-label="Inches"><option value="0">0 in</option><option value="1">1 in</option><option value="2">2 in</option><option value="3">3 in</option><option value="4">4 in</option><option value="5">5 in</option><option value="6">6 in</option><option value="7">7 in</option><option value="8">8 in</option><option value="9">9 in</option><option value="10">10 in</option><option value="11">11 in</option></select></div></div>
       </div>
       <p class="hint" id="qualHint">Max accuracy takes a few minutes. Keep this tab open.</p>
