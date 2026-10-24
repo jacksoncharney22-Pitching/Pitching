@@ -7,6 +7,7 @@ import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { buildReport, reportHTML } from "./report.js";
 import { downloadPDF } from "./pdf.js";
 import { createEditor } from "./editor.js";
+import { learnDepth } from "./lifter.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -190,10 +191,16 @@ async function run() {
       await new Promise(r => setTimeout(r, 30));
       const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames };
       const sl = resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
+      // learned 3D motion model: how far each joint is toward/away from the camera, from how real bodies move
+      try { step("stBuild", "doing", "Learned 3D motion model: reading the whole motion");
+        raw.l3 = await learnDepth(raw, f => step("stBuild", "doing", `Learned 3D motion model ${Math.round(100 * f)}%`)) }
+      catch (e) { console.warn("learned 3D model unavailable", e); raw.l3 = null }
+      step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
       lastRaw = raw; window.__lastRaw = raw;
       const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
       data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
+      if (data.learned) data.quality += " · learned 3D";
       data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
       bar(1); step("stBuild", "done", "Done");
       closeTrackers(); releaseWake();

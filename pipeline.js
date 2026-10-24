@@ -202,6 +202,35 @@ function mirrorFrames(frames) {
   }));
 }
 
+// ---------------------------------------------------------------- learned depth (3D motion model)
+// raw.l3: per frame, the 17 joints of a learned 2D-to-3D motion model (MotionAGFormer, trained on motion capture),
+// camera axes (x right, y down, z away), in screen units. Its depth replaces the per-frame tracker's depth guess:
+// it has seen how real bodies move, so it doesn't send an arm the wrong way toward/away from the camera.
+const H36 = { 0: 9, 11: 11, 12: 14, 13: 12, 14: 15, 15: 13, 16: 16, 23: 4, 24: 1, 25: 5, 26: 2, 27: 6, 28: 3 };
+const H36_PARENT = j => j <= 10 ? 0 : j === 17 || j === 19 || j === 21 ? 15 : j === 18 || j === 20 || j === 22 ? 16 : j === 29 || j === 31 ? 27 : j === 30 || j === 32 ? 28 : j;
+function injectLearnedDepth(frames, l3) {
+  const T = frames.length, ks = [];
+  for (let t = 0; t < T; t++) {
+    const L = l3[t], f = frames[t]; if (!L || !f) continue;
+    const mw = f.world, tl = Math.hypot(...[0, 1, 2].map(k => (mw[11][k] + mw[12][k] - mw[23][k] - mw[24][k]) / 2));
+    const ll = Math.hypot(...[0, 1, 2].map(k => L[8][k] - L[0][k]));
+    if (tl > 0 && ll > 0) ks.push(tl / ll);
+  }
+  if (ks.length < 3) return 0;
+  const k = median(ks); let n = 0;
+  for (let t = 0; t < T; t++) {
+    const L = l3[t], f = frames[t]; if (!L || !f) continue;
+    const old = f.world.map(p => p[2]), hz = (old[23] + old[24]) / 2;
+    const z = j => k * L[H36[j]][2];                                  // pelvis is the lifter's origin = hip centre
+    f.world = f.world.map((p, j) => {
+      if (j in H36) return [p[0], p[1], z(j) + hz];
+      const par = H36_PARENT(j); return [p[0], p[1], z(par) + hz + (old[j] - old[par])];
+    });
+    n++;
+  }
+  return n;
+}
+
 // ---------------------------------------------------------------- 1. video-anchored lifting
 // screen-plane positions from the 2D tracker (metres via a per-frame scale), depth solved per bone
 // so every bone keeps a constant symmetric length, toward/away sign from the 3D model
@@ -482,6 +511,7 @@ function analyseOnce(raw, opts = {}) {
   raw = { ...raw, frames: raw.frames.map(f => f && f.img && f.world && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) && f.world.every(p => p.every(Number.isFinite)) ? f : null) };
   const fs = raw.fps, W = raw.width, H = raw.height, K = fs / 30;   // K scales frame-count constants to the sampling rate
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
+  const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null)) : 0;
   // slow-motion clip: s video frames per step of a real-speed clip. The tracker's frame-to-frame wobble is the same as
   // on any clip, but the body barely moves between neighbouring frames, so average the wobble over about one real step.
   const slowF = raw.videoFps ? raw.fps / raw.videoFps : 1;
@@ -1049,6 +1079,6 @@ function analyseOnce(raw, opts = {}) {
     pose: pose.map(F => F.map(p => p.map(r4))),
     img: img.map(F => F.map(p => [r4(p[0]), r4(p[1]), Math.round((p[2] ?? 1) * 100) / 100])),
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
-    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
+    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
 }
