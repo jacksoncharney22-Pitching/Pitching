@@ -6,6 +6,7 @@ import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { buildReport, reportHTML } from "./report.js";
 import { downloadPDF } from "./pdf.js";
+import { createEditor } from "./editor.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -86,6 +87,7 @@ function setMain(i, keepTrim) {
     const d = v.duration || 0;
     $("trimStart").max = $("trimEnd").max = d.toFixed(2);
     $("trimStart").value = 0; $("trimEnd").value = d.toFixed(2);         // the whole clip by default: any length works
+    editor.load(current.url, d);
     updateTrim();
     scanPitches(current);                                                  // then narrow it to one pitch, automatically
   };
@@ -111,21 +113,14 @@ function renderAngles() {
     : "Optional: if a second camera filmed this same pitch at the same time, add it for measured 3D.";
   $("angleNote").classList.remove("warn");
 }
-function updateTrim(changed) {
-  const s = +$("trimStart").value, e = +$("trimEnd").value;
-  if (changed === "s" && s > e - 0.4) $("trimStart").value = Math.max(0, e - 0.4);
-  if (changed === "e" && e < s + 0.4) $("trimEnd").value = s + 0.4;
-  const S = +$("trimStart").value, E = +$("trimEnd").value, d = +$("trimStart").max || 1;
-  $("trimFill").style.left = (S / d * 100) + "%"; $("trimFill").style.width = ((E - S) / d * 100) + "%";
+function updateTrim() {
+  const S = +$("trimStart").value, E = +$("trimEnd").value;
   $("trimLabel").textContent = `${fmtTime(S)} → ${fmtTime(E)} · ${(E - S).toFixed(1)} s analysed`;
   // real time covered (a slowed clip covers less real time than it plays for)
   const real = (E - S) / (typeof opts.slow === "number" ? opts.slow : 1);
   $("trimWarn").hidden = real <= 8;
 }
-$("trimStart").oninput = () => { updateTrim("s"); $("prepVideo").currentTime = +$("trimStart").value };
-$("trimEnd").oninput = () => { updateTrim("e"); $("prepVideo").currentTime = +$("trimEnd").value };
-$("setStart").onclick = () => { $("trimStart").value = $("prepVideo").currentTime.toFixed(2); updateTrim("s") };
-$("setEnd").onclick = () => { $("trimEnd").value = $("prepVideo").currentTime.toFixed(2); updateTrim("e") };
+const editor = createEditor({ root: $("clipEditor"), video: $("prepVideo"), startInput: $("trimStart"), endInput: $("trimEnd"), onChange: () => updateTrim() });
 $("backHome").onclick = () => show("home");
 
 // ---------------------------------------------------------------- pose tracking in the browser
@@ -407,8 +402,7 @@ function showPitches() {
 function pickPitch(k) {
   if (!scan) return; scan.sel = k;
   const d = +$("trimStart").max || 0, p = k >= 0 ? scan.pitches[k] : { start: 0, end: d };
-  $("trimStart").value = p.start; $("trimEnd").value = Math.min(d, p.end); updateTrim();
-  $("prepVideo").currentTime = p.start; showPitches();
+  editor.select(p.start, Math.min(d, p.end)); updateTrim(); showPitches();
 }
 function scanPitches(item) {
   if (!item) return;
@@ -416,7 +410,7 @@ function scanPitches(item) {
   scan = { forUrl: item.url, state: "busy", prog: 0, sel: 0 };
   const mine = scan; showPitches();
   mine.promise = findPitches(item.url, f => { if (scan === mine) { mine.prog = f; showPitches() } })
-    .then(r => { if (scan !== mine) return; Object.assign(mine, r, { state: "done" }); if (r.pitches.length) pickPitch(0); else showPitches() })
+    .then(r => { if (scan !== mine) return; Object.assign(mine, r, { state: "done" }); editor.markers(r.pitches, r.cuts); if (r.pitches.length) pickPitch(0); else showPitches() })
     .catch(e => { console.warn("pitch finder", e); if (scan === mine) { mine.state = "done"; mine.pitches = []; showPitches() } });
 }
 
