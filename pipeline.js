@@ -279,6 +279,98 @@ function lift(frames, W, H, fs, opts = {}) {
   return { P: out, imgSmooth: img, scale: s };
 }
 
+// ---------------------------------------------------------------- throwing arm through release (when the camera loses it)
+// Angles in the trunk's frame: abduction (0 = arm hanging, 90 = out at shoulder height), horizontal angle (0 = in line
+// with the shoulders, + = behind them), elbow bend, and forearm turn about the upper arm (≈ external rotation, 180 =
+// fully laid back). Keys: the clear frames either side (with their speeds), maximum layback just before release and
+// release itself, from the motion-capture averages (Fleisig 1999, Werner 2001): arm abducted ~95°, a little ahead of
+// the shoulder line at release, elbow ~90° at layback extending to ~25° at release, layback ~165° falling to ~100°.
+function throwPath(A0, A, B1, B2, a, b, rel, fs) {
+  const wrap = d => ((d + 180) % 360 + 360) % 360 - 180;
+  const ang = q => [Math.acos(clamp(-q.u[1], -1, 1)) * DEG, Math.atan2(-q.u[0], q.u[2]) * DEG, q.fl, q.er];
+  const a0 = ang(A0), a1 = ang(A), b1 = ang(B1), b2 = ang(B2);
+  const abdR = clamp(0.5 * 95 + 0.5 * a1[0], 85, 110);
+  const keys = [[a, a1]];
+  const mer = rel - Math.max(1, Math.round(0.02 * fs));
+  if (mer - a >= 1 && a1[3] < 155) keys.push([mer, [abdR, 5, 90, 165]]);
+  keys.push([rel, [abdR, -10, 25, 100]]);
+  keys.push([b, b1]);
+  // unwrap the angles that go round (horizontal angle, forearm turn) so each key is the nearest turn to the last
+  for (let k = 1; k < keys.length; k++) for (const d of [1, 3]) keys[k][1][d] = keys[k - 1][1][d] + wrap(keys[k][1][d] - keys[k - 1][1][d]);
+  const vA = a1.map((v, d) => d === 1 || d === 3 ? wrap(v - a0[d]) : v - a0[d]), vB = b2.map((v, d) => d === 1 || d === 3 ? wrap(v - b1[d]) : v - b1[d]);
+  const K = keys.length, slope = [];
+  for (let k = 0; k < K - 1; k++) slope.push(keys[k + 1][1].map((v, d) => (v - keys[k][1][d]) / (keys[k + 1][0] - keys[k][0])));
+  const tan = keys.map((_, k) => [0, 1, 2, 3].map(d => {
+    if (k === 0) return clamp(vA[d], -2 * Math.abs(slope[0][d]), 2 * Math.abs(slope[0][d]));
+    if (k === K - 1) return clamp(vB[d], -2 * Math.abs(slope[K - 2][d]), 2 * Math.abs(slope[K - 2][d]));
+    const s1 = slope[k - 1][d], s2 = slope[k][d];
+    return s1 * s2 <= 0 ? 0 : 2 / (1 / s1 + 1 / s2);              // monotone between keys: no overshoot
+  }));
+  return t => {
+    let k = 0; while (k < K - 2 && t > keys[k + 1][0]) k++;
+    const n = keys[k + 1][0] - keys[k][0], i = t - keys[k][0], out = [];
+    for (let d = 0; d < 4; d += 2) { const h = hermite([keys[k][1][d], keys[k][1][d + 1], 0], [tan[k][d], tan[k][d + 1], 0], [keys[k + 1][1][d], keys[k + 1][1][d + 1], 0], [tan[k + 1][d], tan[k + 1][d + 1], 0], n, i); out.push(h[0], h[1]) }
+    return out;
+  };
+}
+
+// ---------------------------------------------------------------- arms locked to the video
+// For each arm bone the tracked video gives its on-screen direction and length exactly; with the bone's true length
+// that fixes how far it leans toward/away from the camera, leaving only which way (toward or away). That choice is
+// taken from the reconstruction (P), held steady by a two-state Viterbi (no flipping faster than an arm can move).
+function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}) {
+  const T = P.length, ex = rot([1, 0, 0]), ey = [0, 1, 0], cz = unit(cam);
+  // [parent, joint, joints carried along, hand points rotated with the forearm]; shoulders first, then each arm down
+  const CH = [[-1, 12, [14, 16, 18, 20, 22]], [-1, 11, [13, 15, 17, 19, 21]],
+              [12, 14, [16, 18, 20, 22]], [14, 16, [], [18, 20, 22]], [11, 13, [15, 17, 19, 21]], [13, 15, [], [17, 19, 21]]];
+  const scr = (t, j, k) => { const A = j === -1 ? [(img[t][11][0] + img[t][12][0]) / 2, (img[t][11][1] + img[t][12][1]) / 2] : img[t][j];
+    const dx = (img[t][k][0] - A[0]) * scale[t], dy = -(img[t][k][1] - A[1]) * scale[t]; return add(mul(ex, dx), mul(ey, dy)) };
+  const Q = P.map(F => F.map(p => p.slice()));
+  const BLk = (a, b) => a === -1 ? BL["-1," + b] : BL[a + "," + b];
+  const M0 = P.map(F => nodeOf(F, -1)), baseOf = (F, a, t) => a === -1 ? M0[t] : F[a];
+  const trust = {};
+  for (const sh of [11, 12]) { const u = unseen[sh]; trust[sh] = u ? gauss(u.map(v => v ? 0 : 1), Math.max(0.7, 0.7 * K)).map((w, t) => u[t] ? Math.min(w, 0.15) : w) : P.map(() => 1) }
+  for (const [a, b, carry, hand] of CH) {
+    const wt = a === -1 ? P.map(() => 1) : trust[[12, 14, 16].includes(b) ? 12 : 11];
+    if (opts.lockThrowOnly && ![12, 14, 16].includes(b)) continue;
+    if (a === -1 && opts.lockShoulders === false) continue;
+    const L = BLk(a, b), ip = [], dz = [], cur = [];
+    for (let t = 0; t < T; t++) {
+      let v = scr(t, a, b); const n = norm(v);
+      if (n > 0.995 * L) v = mul(v, 0.995 * L / n);
+      ip.push(v); dz.push(Math.sqrt(Math.max(0, L * L - dot(v, v)))); cur.push(dot(sub(Q[t][b], baseOf(Q[t], a, t)), cz));
+    }
+    // toward/away: agree with the reconstruction, change only as fast as the bone end can travel
+    const su = 0.35 * L, step = (b === 16 || b === 15 ? 14 : a === -1 ? 3 : 8) / fs;
+    const un = (t, s) => Math.min(9, ((s ? -dz[t] : dz[t]) - cur[t]) ** 2 / (su * su));
+    const tr = (t, s, u) => Math.min(400, ((s ? -dz[t] : dz[t]) - (u ? -dz[t - 1] : dz[t - 1])) ** 2 / (step * step));
+    let D = [un(0, 0), un(0, 1)]; const bk = [];
+    for (let t = 1; t < T; t++) {
+      const nd = [0, 0], b2 = [0, 0];
+      for (let s = 0; s < 2; s++) { const c0 = D[0] + tr(t, s, 0), c1 = D[1] + tr(t, s, 1); nd[s] = Math.min(c0, c1) + un(t, s); b2[s] = c1 < c0 ? 1 : 0 }
+      D = nd; bk.push(b2);
+    }
+    const st = new Array(T); st[T - 1] = D[1] < D[0] ? 1 : 0;
+    for (let t = T - 1; t > 0; t--) st[t - 1] = bk[t - 1][st[t]];
+    if (opts._dbgLock) opts._dbgLock.push({ a, b, L, ip: ip.map(v => norm(v)), dz, cur, st, wt });
+    // the tracker's own frame-to-frame wobble is evened out (shoulders more: they're often half hidden), lengths kept exact
+    const sgm = (a === -1 ? 1.5 : opts._armSig ?? 0.6) * K;
+    const VS = gauss(ip.map((v, t) => add(v, mul(cz, st[t] ? -dz[t] : dz[t]))), sgm);
+    for (let t = 0; t < T; t++) {
+      const F = Q[t], base = baseOf(F, a, t);
+      let vec = mul(unit(VS[t]), L);
+      if (wt[t] < 0.999) vec = mul(unit(add(mul(vec, wt[t]), mul(unit(sub(F[b], base)), L * (1 - wt[t])))), L);
+      const oldEnd = F[b], dl = sub(add(base, vec), oldEnd);
+      F[b] = add(base, vec); carry.forEach(k => F[k] = add(F[k], dl));
+      if (hand) {
+        const fOld = unit(sub(oldEnd, base)), fNew = unit(vec), axis = cross(fOld, fNew), an = Math.acos(clamp(dot(fOld, fNew), -1, 1));
+        hand.forEach(k => { const off = sub(F[k], oldEnd); F[k] = add(F[b], norm(axis) > 1e-9 ? rodrigues(off, axis, an) : off) });
+      }
+    }
+  }
+  return Q;
+}
+
 // ---------------------------------------------------------------- 2. angles
 const S_ = 12, E_ = 14, W_ = 16, H_ = 24, K_ = 26, A_ = 28;     // throwing side (right, after mirroring)
 const Sg = 11, Eg = 13, Wg = 15, Hl = 23, Kl = 25, Al = 27;    // glove / lead side
@@ -425,6 +517,7 @@ function analyseOnce(raw, opts = {}) {
   P = P.map(F => F.map(rot));
   const camDir = rot([0, 0, 1]);
 
+  if (opts._snap) opts._snap("rot", P, { imgSmooth, liftScale, rot, camDir });
   // ---- phases (auto, or given)
   const lowFeet = F => Math.min(...[27, 28, 29, 30, 31, 32].map(j => F[j][1]));
   const floor0 = gauss(P.map(lowFeet), 2 * K);
@@ -503,6 +596,7 @@ function analyseOnce(raw, opts = {}) {
     }
   }
 
+  if (opts._snap) opts._snap("armDepth", P, { imgSmooth, liftScale, rot, camDir });
   // ---- constant, symmetric bone lengths
   const BL = {};
   TREE.forEach(([a, b]) => { BL[a + "," + b] = median(P.map(F => norm(sub(nodeOf(F, b), nodeOf(F, a))))) });
@@ -519,6 +613,7 @@ function analyseOnce(raw, opts = {}) {
 
   const FOOT_R = 0.028, RUB_TOP = 0.02;
   let DROP = 0.12, settle = Math.min(T - 1, fs_ + fk(2)), contact = null;
+  if (opts._snap) opts._snap("bones", P, { imgSmooth, liftScale, rot, camDir });
   // ---- planted feet + legs (two-bone IK with constant lengths and a steady knee direction)
   const POLES = {};
   const legIK = (t, hip, knee, ank, extra, target, reachMax = 0.9999) => {
@@ -654,6 +749,7 @@ function analyseOnce(raw, opts = {}) {
   for (const j of [23, 24, 27, 28, 29, 30, 31, 32]) { const sm = oe(P.map(F => F[j]), fs); P.forEach((F, t) => F[j] = sm[t]) }
   for (let t = 0; t < T; t++) { legIK(t, 23, 25, 27, [29, 31], P[t][27].slice()); legIK(t, 24, 26, 28, [30, 32], P[t][28].slice()) }
   }
+  if (opts._snap) opts._snap("feet", P, { imgSmooth, liftScale, rot, camDir });
   // ---- upper body: trunk/head, hands as direction + reach (blur frames bridged), elbows by IK
   for (const j of [11, 12, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) { const sm = oe(P.map(F => F[j]), fs); P.forEach((F, t) => F[j] = sm[t]) }
   let BLUR = [rel - 1, rel, rel + 1].filter(t => t > 0 && t < T - 1);
@@ -677,6 +773,7 @@ function analyseOnce(raw, opts = {}) {
   }
   for (let t = 0; t < T; t++) { legIK(t, 11, 13, 15, FING[15], P[t][15].slice()); legIK(t, 12, 14, 16, FING[16], P[t][16].slice()) }
 
+  if (opts._snap) opts._snap("upper", P, { imgSmooth, liftScale, rot, camDir });
   // ---- limbs the camera couldn't see (motion blur at release, a leg whipping through): a limb is treated as unseen
   // where the tracking looks disagree about its middle or end joint, where the frame wasn't tracked, or where a joint
   // would have to move faster than a body can (throwing hand 50 m/s and elbow 25, glove hand 18 and elbow 12, foot 20, knee 12). Unseen stretches are filled
@@ -684,7 +781,7 @@ function analyseOnce(raw, opts = {}) {
   // shoulder/hip in the body's own frame (so it turns with the body), the elbow/knee bending smoothly, and the lower
   // bone rotating about the upper one in the direction it was already turning. Every curve joins the clear frames
   // with matching speed, so there is no snap where the tracking takes over again.
-  let bridged = 0;
+  let bridged = 0, armModelled = 0; const unseen = {};
   if (faithful && opts.armBridge !== false) {
     const TH = opts.armSpread ?? 0.06, maxGap = Math.round(0.3 * fs);
     // a frame that wasn't tracked because it repeats the one before it (or a short gap) takes the agreement of the real
@@ -716,6 +813,7 @@ function analyseOnce(raw, opts = {}) {
       }
       if (isLeg && contact) for (let t = 0; t < T; t++) if (contact[ci][t] > 0.5) bad[t] = false;   // planted feet are handled already
       const bd = bad.map((v, t) => v || !!bad[t - 1] || !!bad[t + 1]);
+      if (!isLeg) unseen[Sh] = bd;
       const L1 = boneLen(Sh, El), L2 = boneLen(El, Wr);
       for (let t = 2; t < T - 2; t++) {
         if (!bd[t]) continue;
@@ -728,12 +826,23 @@ function analyseOnce(raw, opts = {}) {
           let dE = wrap(B1.er - A.er);
           if (!isLeg && Math.abs(dE) > 120 && vaE !== 0 && Math.sign(dE) !== Math.sign(vaE)) dE -= 360 * Math.sign(dE);   // a forearm keeps turning the same way; a shin can't spin round the thigh
           const lim = (v, span) => clamp(v, -Math.abs(span) / n * 2 - 1e-6, Math.abs(span) / n * 2 + 1e-6);      // no overshoot
+          // the throwing arm unseen through release: it follows the path every overhand/sidearm throw shares
+          // (upper arm held out at shoulder height and swinging forward, elbow extending and the forearm coming
+          // forward out of layback), joined to the clear frames either side with matching speed
+          const path = li === 0 && opts.throwModel !== false && a < rel && b > rel ? throwPath(A0, A, B1, B2, a, b, rel, fs) : null;
+          if (path) armModelled += n - 1;
           for (let i = 1; i < n; i++) {
             const tt = a + i, F = P[tt], Bs = basis(F);
-            const ul = hermite(A.u, vaU, B1.u, vbU, n, i);
-            const u = unit(add(add(mul(Bs.fw, ul[0]), mul(Bs.up, ul[1])), mul(Bs.r, ul[2])));
-            const fl = clamp(hermite([A.fl, 0, 0], [lim(vaF, B1.fl - A.fl), 0, 0], [B1.fl, 0, 0], [lim(vbF, B1.fl - A.fl), 0, 0], n, i)[0], 0, 160) / DEG;
-            const er = hermite([A.er, 0, 0], [lim(vaE, dE), 0, 0], [A.er + dE, 0, 0], [lim(vbE, dE), 0, 0], n, i)[0] / DEG;
+            let u, fl, er;
+            if (path) {
+              const [abd, hz, fl_, er_] = path(tt), h = sub(mul(Bs.r, Math.cos(hz / DEG)), mul(Bs.fw, Math.sin(hz / DEG)));
+              u = unit(add(mul(Bs.up, -Math.cos(abd / DEG)), mul(h, Math.sin(abd / DEG)))); fl = clamp(fl_, 0, 160) / DEG; er = er_ / DEG;
+            } else {
+              const ul = hermite(A.u, vaU, B1.u, vbU, n, i);
+              u = unit(add(add(mul(Bs.fw, ul[0]), mul(Bs.up, ul[1])), mul(Bs.r, ul[2])));
+              fl = clamp(hermite([A.fl, 0, 0], [lim(vaF, B1.fl - A.fl), 0, 0], [B1.fl, 0, 0], [lim(vbF, B1.fl - A.fl), 0, 0], n, i)[0], 0, 160) / DEG;
+              er = hermite([A.er, 0, 0], [lim(vaE, dE), 0, 0], [A.er + dE, 0, 0], [lim(vbE, dE), 0, 0], n, i)[0] / DEG;
+            }
             const [av, bv] = frameAbout(u, Bs, isLeg);
             const fdir = add(mul(u, Math.cos(fl)), mul(add(mul(av, Math.cos(er)), mul(bv, Math.sin(er))), Math.sin(fl)));
             const oldW = F[Wr], fOld = unit(sub(F[Wr], F[El]));
@@ -749,6 +858,7 @@ function analyseOnce(raw, opts = {}) {
     });
   }
 
+  if (opts._snap) opts._snap("bridge", P, { imgSmooth, liftScale, rot, camDir });
   // ---- de-pop: a single frame where a hand, knee or foot jumps further than a body can accelerate is the tracker
   // guessing (usually a hand hidden behind the body). Those frames are rebuilt from the clear frames either side, in
   // the body's own frame with constant bone lengths, and a rebuild is kept only if it is genuinely smoother.
@@ -838,10 +948,16 @@ function analyseOnce(raw, opts = {}) {
     }
   }
 
+  if (opts._snap) opts._snap("depop", P, { imgSmooth, liftScale, rot, camDir });
   // ---- head on a constant-length neck, tilting smoothly
   const torso = median(P.map(F => norm(sub(mid(F[11], F[12]), mid(F[23], F[24])))));
   const ndir = gauss(P.map(F => unit(sub(mid(F[7], F[8]), mid(F[11], F[12])))), 1.5 * K).map(unit);
   P.forEach((F, t) => { const shm = mid(F[11], F[12]), d = sub(add(shm, mul(ndir[t], 0.35 * torso)), mid(F[7], F[8])); for (let k = 0; k <= 10; k++) F[k] = add(F[k], d) });
+
+  // ---- arms locked to the video. Seen from the camera, each arm bone points exactly where the tracked arm does
+  // (upper arm from the shoulder, forearm from the elbow); only the part the camera can't see, how far each bone
+  // leans toward or away from it, comes from the 3D reconstruction above. Bone lengths stay exact.
+  if (opts.armLock !== false && !measured) P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, opts);
 
   // ---- final glitch guard, on every skeleton whatever the video: the zero-phase low-pass filter biomechanics labs run
   // on motion-capture data (about 12 Hz for the body, 20 Hz for the throwing arm, which really does move that fast).
@@ -880,6 +996,8 @@ function analyseOnce(raw, opts = {}) {
     guarded = true;
   }
 
+  if (opts._snap) opts._snap("guard", P, { imgSmooth, liftScale, rot, camDir });
+  if (opts._snap) opts._snap("lock", P, { imgSmooth, liftScale, rot, camDir });
   // ---- how closely the skeleton matches the tracked video (camera view, hip-relative), in metres
   const MJ = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28], errs = [];
   for (let t = 0; t < T; t++) {
@@ -931,6 +1049,6 @@ function analyseOnce(raw, opts = {}) {
     pose: pose.map(F => F.map(p => p.map(r4))),
     img: img.map(F => F.map(p => [r4(p[0]), r4(p[1]), Math.round((p[2] ?? 1) * 100) / 100])),
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
-    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armFlips, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
+    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
 }
