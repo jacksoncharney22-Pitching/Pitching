@@ -842,6 +842,12 @@ function analyseOnce(raw, opts = {}) {
         if (vm > vMid || ve > vEnd) for (let k = -fk(2); k <= fk(2); k++) if (t + k >= 0 && t + k < T) bad[t + k] = true;
       }
       if (isLeg && contact) for (let t = 0; t < T; t++) if (contact[ci][t] > 0.5) bad[t] = false;   // planted feet are handled already
+      // a throwing elbow still sharply bent right at release can't be real (the elbow is ~20-30° from straight there):
+      // the tracker lost the forearm in the blur
+      if (li === 0 && opts.relCheck !== false) for (let t = Math.max(1, rel - fk(2)); t <= Math.min(T - 2, rel + fk(1)); t++) {
+        const F = P[t], fl = Math.acos(clamp(dot(unit(sub(F[El], F[Sh])), unit(sub(F[Wr], F[El]))), -1, 1)) * DEG;
+        if (fl > 105) bad[t] = true;
+      }
       const bd = bad.map((v, t) => v || !!bad[t - 1] || !!bad[t + 1]);
       if (!isLeg) unseen[Sh] = bd;
       const L1 = boneLen(Sh, El), L2 = boneLen(El, Wr);
@@ -1053,7 +1059,12 @@ function analyseOnce(raw, opts = {}) {
   // ---- angles on the final pose
   const M = computeMetrics(P);
   M.throwHorz = M.throwHorz.map((v, t) => M.throwAbd[t] > 50 ? v : null);
-  M.throwER = M.throwER.map((v, t) => t >= fs_ - 2 && t <= rel + 3 ? v : null);
+  // layback is only measured from foot strike to just after release: unwrap within that window only (before it the
+  // forearm can swing all the way round, which would otherwise add whole turns), then put it in the usual range
+  { const lo = Math.max(0, fs_ - 2), hi = Math.min(T - 1, rel + 3), w = [];
+    for (let t = lo; t <= hi; t++) { let v = ((M.throwER[t] % 360) + 540) % 360 - 180; if (w.length) v = w[w.length - 1] + (((v - w[w.length - 1]) % 360) + 540) % 360 - 180; w.push(v) }
+    const md = median(w), sh = md < -90 ? 360 : md > 270 ? -360 : 0;
+    M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
 
   // ---- mirror left-handers back for display
   let pose = P, img = imgSmooth.map((F, t) => F.map((p, j) => [p[0] / W, p[1] / H, frames[t].img[j][2] ?? 1]));
