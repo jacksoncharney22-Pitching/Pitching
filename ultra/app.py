@@ -20,7 +20,7 @@ image = (
     .pip_install("numpy<2", "cython", "setuptools<70", "wheel")
     .run_commands("python -m pip install --no-build-isolation chumpy cython-bbox")
     .pip_install("gvhmr[preproc]==1.6.1", "fastapi[standard]", "python-multipart")
-    .env({"HF_HOME": f"{CACHE}/hf", "GVHMR_HOME": f"{CACHE}/gvhmr", "XDG_CACHE_HOME": f"{CACHE}/xdg", "TORCH_HOME": f"{CACHE}/torch"})
+    .env({"HF_HOME": f"{CACHE}/hf", "GVHMR_HOME": f"{CACHE}/gvhmr", "XDG_CACHE_HOME": f"{CACHE}/xdg", "TORCH_HOME": f"{CACHE}/torch", "GVHMR_CHECKPOINTS": f"{CACHE}/checkpoints"})
 )
 
 
