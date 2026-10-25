@@ -19,10 +19,10 @@ jobs:
           export MODAL_TOKEN_SECRET="$(printf '%s' "$MODAL_TOKEN_SECRET" | tr -d '[:space:]')"
           URL=$(python ultra/url.py 2>/dev/null || true)
           echo "::notice::ULTRA_URL=$URL"
-          curl -s -m 60 "$URL/health" -o health.json -w "%{http_code}" > code.txt || true
+          curl -s -L -m 300 "$URL/health" -o health.json -w "%{http_code}" > code.txt || true
           echo "::notice::health $(cat code.txt) $(head -c 200 health.json)"
           START=$(date +%s)
-          curl -s -m 1500 -X POST "$URL/analyze" -F "video=@ultra/test_pitch.webm" -F start=0 -F end=3 -F static=true -o res.json -w "%{http_code}" > code2.txt || true
+          curl -s -L -m 1500 -X POST "$URL/analyze" -F "video=@ultra/test_pitch.webm" -F start=0 -F end=3 -F static=true -o res.json -w "%{http_code}" > code2.txt || true
           python - <<'PY'
           import json, time
           code = open("code2.txt").read().strip()
