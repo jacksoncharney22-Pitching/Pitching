@@ -1,0 +1,38 @@
+name: Test Ultra (cloud 3D)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install modal==1.6.2
+      - name: Send a test pitch
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          export MODAL_TOKEN_ID="$(printf '%s' "$MODAL_TOKEN_ID" | tr -d '[:space:]')"
+          export MODAL_TOKEN_SECRET="$(printf '%s' "$MODAL_TOKEN_SECRET" | tr -d '[:space:]')"
+          URL=$(python ultra/url.py 2>/dev/null || true)
+          echo "::notice::ULTRA_URL=$URL"
+          curl -s -m 60 "$URL/health" -o health.json -w "%{http_code}" > code.txt || true
+          echo "::notice::health $(cat code.txt) $(head -c 200 health.json)"
+          START=$(date +%s)
+          curl -s -m 1500 -X POST "$URL/analyze" -F "video=@ultra/test_pitch.webm" -F start=0 -F end=3 -F static=true -o res.json -w "%{http_code}" > code2.txt || true
+          python - <<'PY'
+          import json, time
+          code = open("code2.txt").read().strip()
+          try:
+              r = json.load(open("res.json"))
+          except Exception:
+              r = {"ok": False, "error": open("res.json", errors="ignore").read()[:600] if __import__("os").path.exists("res.json") else "no response"}
+          if r.get("ok"):
+              print(f"::notice::analyze OK http {code}: {r['frames']} frames at {r['fps']:.1f} fps, {len(r['joints_camera'][0])} joints, camera {r.get('camera')}, size {r['width']}x{r['height']}")
+          else:
+              print(f"::error::analyze failed http {code}: {str(r.get('error'))[:900]}")
+          PY
+          echo "::notice::took $(( $(date +%s) - START )) s"
