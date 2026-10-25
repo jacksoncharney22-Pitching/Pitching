@@ -51,8 +51,6 @@ if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)
 $("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
 const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
 $("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
-if (opts.weightLb) $("weightIn").value = String(opts.weightLb);
-$("weightIn").onchange = () => { const v = parseFloat($("weightIn").value); opts.weightLb = v >= 60 && v <= 400 ? Math.round(v) : null; keepPitcher() };
 $("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
