@@ -34,7 +34,18 @@ class Ultra:
     def load(self):
         import gvhmr
         from gvhmr.utils import assets
-        assets.ensure_body_models(smpl=False)       # SMPL-X only (motion recovery); fetched once into the volume
+        import os
+        from gvhmr.utils import mpi_download
+        target = assets.BODY_MODEL_ROOT / "smplx" / "SMPLX_NEUTRAL.npz"
+        if not target.exists():                      # SMPL-X only (motion recovery); fetched once into the volume
+            u, p = os.environ.get("SMPLX_USER", ""), os.environ.get("SMPLX_PW", "")
+            print(f"FEOLE body model: fetching SMPL-X (login set: user {len(u.strip())} chars, password {len(p)} chars)", flush=True)
+            try:
+                mpi_download.fetch_body_models(assets.BODY_MODEL_ROOT, smpl=False, smplx=True, smplx_credentials=(u.strip(), p.strip()))
+                print("FEOLE body model: SMPL-X downloaded OK", flush=True)
+            except Exception as e:
+                print(f"FEOLE body model FAILED: {type(e).__name__}: {e}".replace("\n", " "), flush=True)
+                raise
         cache.commit()
         self.pipe = gvhmr.pipeline("human-motion-recovery", device="cuda")
         cache.commit()

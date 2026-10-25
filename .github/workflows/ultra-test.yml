@@ -47,6 +47,6 @@ jobs:
           PY
           echo "::notice::took $(( $(date +%s) - START )) s"
           timeout 40 modal app logs feole-ultra > applogs.txt 2>&1 || true
-          echo "::notice::mpi: $(grep -iE 'refused|login failed|MPI|body-model fetch' applogs.txt | tail -n 4 | cut -c1-400 | tr '\n' ' ')"
+          echo "::notice::mpi: $(grep -E 'FEOLE body model' applogs.txt | tail -n 3 | cut -c1-600 | tr '\n' ' ')"
           echo "::notice::app logs: $(grep -iE 'error|exception|traceback|killed|memory|assert|raise|fail' applogs.txt | tail -n 15 | cut -c1-250 | tr '\n' ' ')"
           echo "::notice::log tail: $(tail -c 1200 applogs.txt | tr '\n' ' ')"
