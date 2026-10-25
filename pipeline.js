@@ -208,7 +208,7 @@ function mirrorFrames(frames) {
 // it has seen how real bodies move, so it doesn't send an arm the wrong way toward/away from the camera.
 const H36 = { 0: 9, 11: 11, 12: 14, 13: 12, 14: 15, 15: 13, 16: 16, 23: 4, 24: 1, 25: 5, 26: 2, 27: 6, 28: 3 };
 const H36_PARENT = j => j <= 10 ? 0 : j === 17 || j === 19 || j === 21 ? 15 : j === 18 || j === 20 || j === 22 ? 16 : j === 29 || j === 31 ? 27 : j === 30 || j === 32 ? 28 : j;
-function injectLearnedDepth(frames, l3) {
+function injectLearnedDepth(frames, l3, only = null) {
   const T = frames.length, ks = [];
   for (let t = 0; t < T; t++) {
     const L = l3[t], f = frames[t]; if (!L || !f) continue;
@@ -223,8 +223,10 @@ function injectLearnedDepth(frames, l3) {
     const old = f.world.map(p => p[2]), hz = (old[23] + old[24]) / 2;
     const z = j => k * L[H36[j]][2];                                  // pelvis is the lifter's origin = hip centre
     f.world = f.world.map((p, j) => {
+      const par = j in H36 ? j : H36_PARENT(j);
+      if (only && !only.has(par)) return p;
       if (j in H36) return [p[0], p[1], z(j) + hz];
-      const par = H36_PARENT(j); return [p[0], p[1], z(par) + hz + (old[j] - old[par])];
+      return [p[0], p[1], z(par) + hz + (old[j] - old[par])];
     });
     n++;
   }
@@ -311,18 +313,17 @@ function lift(frames, W, H, fs, opts = {}) {
 // ---------------------------------------------------------------- throwing arm through release (when the camera loses it)
 // Angles in the trunk's frame: abduction (0 = arm hanging, 90 = out at shoulder height), horizontal angle (0 = in line
 // with the shoulders, + = behind them), elbow bend, and forearm turn about the upper arm (≈ external rotation, 180 =
-// fully laid back). Keys: the clear frames either side (with their speeds), maximum layback just before release and
-// release itself, from the motion-capture averages (Fleisig 1999, Werner 2001): arm abducted ~95°, a little ahead of
-// the shoulder line at release, elbow ~90° at layback extending to ~25° at release, layback ~165° falling to ~100°.
+// fully laid back). Keys: the clear frames either side (with their speeds), and the average path of 411 fastballs
+// measured in a motion-capture lab (Driveline OpenBiomechanics, 328 righties and 83 lefties): max layback 32 ms before
+// release, then release, then 17, 33 and 67 ms after it.
+const ARM_PATH = [[-0.032, [100, -20, 94, 175]], [0, [99, -7, 29, 97]], [1 / 60, [109, -6, 46, 27]], [2 / 60, [116, -24, 50, 8]], [4 / 60, [97, -64, 34, 45]]];
 function throwPath(A0, A, B1, B2, a, b, rel, fs) {
   const wrap = d => ((d + 180) % 360 + 360) % 360 - 180;
   const ang = q => [Math.acos(clamp(-q.u[1], -1, 1)) * DEG, Math.atan2(-q.u[0], q.u[2]) * DEG, q.fl, q.er];
   const a0 = ang(A0), a1 = ang(A), b1 = ang(B1), b2 = ang(B2);
-  const abdR = clamp(0.5 * 95 + 0.5 * a1[0], 85, 110);
+  const dAbd = 0.5 * clamp(a1[0] - 100, -15, 15);          // a pitcher who throws from a higher or lower slot keeps it
   const keys = [[a, a1]];
-  const mer = rel - Math.max(1, Math.round(0.02 * fs));
-  if (mer - a >= 1 && a1[3] < 155) keys.push([mer, [abdR, 5, 90, 165]]);
-  keys.push([rel, [abdR, -10, 25, 100]]);
+  for (const [dt, v] of ARM_PATH) { const t = rel + Math.round(dt * fs); if (t > keys[keys.length - 1][0] && t < b) keys.push([t, [v[0] + dAbd, v[1], v[2], v[3]]]) }
   keys.push([b, b1]);
   // unwrap the angles that go round (horizontal angle, forearm turn) so each key is the nearest turn to the last
   for (let k = 1; k < keys.length; k++) for (const d of [1, 3]) keys[k][1][d] = keys[k - 1][1][d] + wrap(keys[k][1][d] - keys[k - 1][1][d]);
@@ -403,7 +404,7 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}) {
 // ---------------------------------------------------------------- 2. angles
 const S_ = 12, E_ = 14, W_ = 16, H_ = 24, K_ = 26, A_ = 28;     // throwing side (right, after mirroring)
 const Sg = 11, Eg = 13, Wg = 15, Hl = 23, Kl = 25, Al = 27;    // glove / lead side
-function computeMetrics(P) {
+export function computeMetrics(P) {
   const T = P.length, M = {};
   const keys = ["throwElbow","gloveElbow","throwAbd","gloveAbd","throwER","throwHorz","leadKnee","backKnee","leadHip","backHip","pelvisRot","trunkRot","separation","trunkFwd","trunkLat","pelvisTilt"];
   keys.forEach(k => M[k] = new Array(T));
@@ -511,7 +512,7 @@ function analyseOnce(raw, opts = {}) {
   raw = { ...raw, frames: raw.frames.map(f => f && f.img && f.world && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) && f.world.every(p => p.every(Number.isFinite)) ? f : null) };
   const fs = raw.fps, W = raw.width, H = raw.height, K = fs / 30;   // K scales frame-count constants to the sampling rate
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
-  const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null)) : 0;
+  const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null), opts.learnedParts === "all" ? null : new Set(opts.learnedParts || [11, 12, 13, 14, 15, 16])) : 0;
   // slow-motion clip: s video frames per step of a real-speed clip. The tracker's frame-to-frame wobble is the same as
   // on any clip, but the body barely moves between neighbouring frames, so average the wobble over about one real step.
   const slowF = raw.videoFps ? raw.fps / raw.videoFps : 1;
@@ -566,6 +567,16 @@ function analyseOnce(raw, opts = {}) {
   // wrist travel over three frames, so a repeated frame followed by a catch-up jump (screen recordings) can't look like release
   const k3 = Math.max(1, Math.round(1.5 * K)), wsp = imgSmooth.map((F, t) => { const a = imgSmooth[Math.max(0, t - k3)], b = imgSmooth[Math.min(T - 1, t + k3)]; return Math.hypot(b[W_][0] - a[W_][0], b[W_][1] - a[W_][1]) });
   let rel = fs_ + 1; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) if (wsp[t] > wsp[rel]) rel = t;
+  // with the learned 3D model: release is just after the hand's fastest moment in 3D (lab: 8 ms after, spread 6 ms).
+  // Speed on screen alone peaks early or late depending on where the camera is (up to 3 frames off at 60 fps;
+  // tested on 60 lab pitches seen from 5 camera angles: within 1 frame went from 19 to 31 of 60).
+  if (raw.l3 && opts.rel3d !== false) {
+    const wj = hand === "L" ? 13 : 16, L3 = raw.l3, ok = t => L3[t - 1] && L3[t + 1];
+    const sp3 = t => ok(t) ? Math.hypot(...[0, 1, 2].map(d => L3[t + 1][wj][d] - L3[t - 1][wj][d])) : -1;
+    let best = -1, at = rel; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) { const v = sp3(t); if (v > best) { best = v; at = t } }
+    // the 3D model is better on average but can run late on a blurred real arm: take the midpoint of the two
+    if (best > 0) rel = clamp(Math.round((at - 0.012 * fs + rel) / 2), fs_ + 1, T - 2);
+  }
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
   const userFS = !!(opts.phases && opts.phases.footStrike != null);
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);
@@ -631,6 +642,22 @@ function analyseOnce(raw, opts = {}) {
   const BL = {};
   TREE.forEach(([a, b]) => { BL[a + "," + b] = median(P.map(F => norm(sub(nodeOf(F, b), nodeOf(F, a))))) });
   TREE.forEach(([a, b]) => { const k = mir(a) + "," + mir(b); if (k in BL && k !== a + "," + b) { const m = (BL[a + "," + b] + BL[k]) / 2; BL[a + "," + b] = BL[k] = m } });
+  // real body size and proportions. Measured on 411 pitches in a motion-capture lab (Driveline OpenBiomechanics): each
+  // segment is a steady share of standing height (upper arm 18.2%, forearm 14.3%, thigh 24.7%, shin 24.8%, hips to
+  // shoulders 29.2%, between the shoulders 18.0%, between the hips 15.2%; spread 3-7%). The tracker's own lengths are
+  // biased (its upper arm comes out ~15% short, its shoulders too wide), and the whole body comes out too small.
+  // With the pitcher's height entered, the skeleton gets its true size; either way the proportions are pulled to the lab's.
+  let sizeK = 1, heightM = null;
+  if (opts.proportions !== false) {
+    const RATIO = { "-2,-1": 0.292, "-1,11": 0.0898, "-1,12": 0.0898, "11,13": 0.1818, "12,14": 0.1818, "13,15": 0.1429, "14,16": 0.1429,
+                    "-2,23": 0.076, "-2,24": 0.076, "23,25": 0.2471, "24,26": 0.2471, "25,27": 0.2484, "26,28": 0.2484 };
+    const W8 = k => k.startsWith("-2,2") ? 0.5 : 0.7;
+    const est = median(["13,15", "23,25", "25,27", "-2,-1"].map(k => BL[k] / RATIO[k]));
+    heightM = raw.heightIn > 40 && raw.heightIn < 96 ? raw.heightIn * 0.0254 : (opts.heightIn > 40 ? opts.heightIn * 0.0254 : null);
+    const Hm = heightM || est; sizeK = Hm / est;
+    for (const k in BL) BL[k] = k in RATIO ? W8(k) * RATIO[k] * Hm + (1 - W8(k)) * sizeK * BL[k] : sizeK * BL[k];
+    if (sizeK !== 1) { P = P.map(F => F.map(p => mul(p, sizeK))); for (let t = 0; t < liftScale.length; t++) liftScale[t] *= sizeK }
+  }
   P = P.map(F => {
     const n = { "-2": nodeOf(F, -2) }, G = F.map(p => p.slice());
     TREE.forEach(([a, b]) => { n[b] = add(n[a], mul(unit(sub(nodeOf(F, b), nodeOf(F, a))), BL[a + "," + b])) });
@@ -1090,6 +1117,6 @@ function analyseOnce(raw, opts = {}) {
     pose: pose.map(F => F.map(p => p.map(r4))),
     img: img.map(F => F.map(p => [r4(p[0]), r4(p[1]), Math.round((p[2] ?? 1) * 100) / 100])),
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
-    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
+    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, heightUsed: heightM ? +heightM.toFixed(3) : null, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
 }

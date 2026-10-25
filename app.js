@@ -8,6 +8,7 @@ import { buildReport, reportHTML } from "./report.js";
 import { downloadPDF } from "./pdf.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
+import { armZoom } from "./armzoom.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -189,7 +190,7 @@ async function run() {
       step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps${m.repeats ? ` · ${m.repeats} repeated frames skipped` : ""}`);
       step("stBuild", "doing", "Rebuilding the 3D skeleton");
       await new Promise(r => setTimeout(r, 30));
-      const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames };
+      const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames, heightIn: opts.heightIn || null };
       const sl = resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
       // learned 3D motion model: how far each joint is toward/away from the camera, from how real bodies move
       try { step("stBuild", "doing", "Learned 3D motion model: reading the whole motion");
@@ -225,7 +226,7 @@ async function run() {
     step("stBuild", "doing", "Lining up the angles and measuring every joint in 3D");
     await new Promise(r => setTimeout(r, 30));
     const raw = combineViews(views, { hints });
-    raw.fps = views[0].fps; raw.videoFps = views[0].fps; raw.start = S;
+    raw.fps = views[0].fps; raw.videoFps = views[0].fps; raw.start = S; raw.heightIn = opts.heightIn || null;
     { const sl = resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
     lastRaw = raw; window.__lastRaw = raw;
     const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
@@ -552,8 +553,10 @@ async function trackMax(src) {
   await new Promise(r => setTimeout(r, 20));
   window.__lastLooks = { W, H, fps: sampleFps, looks };
   const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
+  if (rtm && opts.armZoom !== false) { try { await armZoom(v, frames, W, H, sampleFps, seekTo, say, () => cancelled) } catch (e) { console.warn("arm close-up skipped", e) } }
   return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs };
 }
+
 
 // ---------------------------------------------------------------- results
 function openResults(data, url, meta = {}) {
