@@ -21,6 +21,9 @@ jobs:
           [ -z "$MODAL_TOKEN_ID" ] && echo "::error::MODAL_TOKEN_ID repository secret is missing or empty"
           [ -z "$MODAL_TOKEN_SECRET" ] && echo "::error::MODAL_TOKEN_SECRET repository secret is missing or empty"
           if [ -z "$MODAL_TOKEN_ID" ] || [ -z "$MODAL_TOKEN_SECRET" ]; then exit 1; fi
+          # shape check only (first 3 characters and length; the values themselves are never printed)
+          echo "::warning::token id starts '${MODAL_TOKEN_ID:0:3}' length ${#MODAL_TOKEN_ID}; token secret starts '${MODAL_TOKEN_SECRET:0:3}' length ${#MODAL_TOKEN_SECRET}"
+          case "$MODAL_TOKEN_ID$MODAL_TOKEN_SECRET" in *" "*|*$'\n'*|*$'\r'*) echo "::warning::a token has a space or line break in it";; esac
           set -o pipefail
           if ! modal deploy ultra/app.py 2>&1 | tee deploy.log; then
             echo "::error::modal deploy failed: $(tail -c 900 deploy.log | tr '\n' ' ')"
