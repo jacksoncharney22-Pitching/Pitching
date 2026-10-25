@@ -18,8 +18,14 @@ jobs:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         run: |
-          if [ -z "$MODAL_TOKEN_ID" ]; then echo "Add the MODAL_TOKEN_ID and MODAL_TOKEN_SECRET repository secrets first."; exit 1; fi
-          modal deploy ultra/app.py
+          [ -z "$MODAL_TOKEN_ID" ] && echo "::error::MODAL_TOKEN_ID repository secret is missing or empty"
+          [ -z "$MODAL_TOKEN_SECRET" ] && echo "::error::MODAL_TOKEN_SECRET repository secret is missing or empty"
+          if [ -z "$MODAL_TOKEN_ID" ] || [ -z "$MODAL_TOKEN_SECRET" ]; then exit 1; fi
+          set -o pipefail
+          if ! modal deploy ultra/app.py 2>&1 | tee deploy.log; then
+            echo "::error::modal deploy failed: $(tail -c 900 deploy.log | tr '\n' ' ')"
+            exit 1
+          fi
       - name: Warm up (downloads the models once into the cache)
         env:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
