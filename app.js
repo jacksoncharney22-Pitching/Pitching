@@ -10,6 +10,7 @@ import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
+import { runUltra, ultraToRaw } from "./ultra.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -55,6 +56,7 @@ const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
   high: "High is about a third of the time of Max accuracy, a little less exact.",
   fast: "Fast is a quick look. Least exact.",
+  ultra: "Ultra sends the clip to a cloud graphics card that fits a full 3D body model (GVHMR). Most exact from one camera; needs an internet connection. Usually 1 to 3 minutes.",
 };
 
 // ---------------------------------------------------------------- upload: two or three camera angles of the same pitch
@@ -201,6 +203,7 @@ async function run() {
     if (!angles.length) throw new Error("Choose a pitching video first.");
     if (scan && scan.state === "busy" && scan.promise) { step("stModel", "doing", "Finding the pitch in this clip"); await scan.promise.catch(() => {}) }
     const q = opts.quality, K = angles.length, S = +$("trimStart").value, E = Math.max(S + 0.4, +$("trimEnd").value);
+    if (q === "ultra") return await runUltraPitch(S, E);
     await holdWake();
     const span = 0.93 / K, views = [], hints = [null];
     // main angle: the trimmed window
@@ -275,6 +278,23 @@ function progress(prog) {
     const eta = left != null ? ` · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.max(5, Math.round(left / 5) * 5) + " s"} left for this angle` : "";
     step("stTrack", "doing", `${prog.prefix} · ${label}${eta}`); bar(prog.from + (prog.to - prog.from) * Math.min(1, frac));
   };
+}
+// Ultra: the cloud 3D body model (see ultra.js). One camera, the main angle; the 3D comes back measured.
+async function runUltraPitch(S, E) {
+  step("stModel", "done", "Cloud 3D body model");
+  step("stTrack", "doing", "Uploading the video");
+  const res = await runUltra(current.blob, { start: S, end: E, staticCam: true, onStatus: (msg, f) => { step("stTrack", "doing", msg); bar(f) } });
+  step("stTrack", "done", `${res.frames} frames at ${Math.round(res.fps)} fps`);
+  step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
+  const raw = ultraToRaw(res); raw.heightIn = opts.heightIn || null;
+  const sl = resolveSlow(raw); raw.fps = res.fps * sl.factor; raw.slowNote = sl.note;
+  lastRaw = raw; window.__lastRaw = raw;
+  const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+  data.name = $("pitchName").value.trim() || current.name; data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
+  data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
+  bar(1); step("stBuild", "done", "Done"); releaseWake();
+  const id = await saveHistory(data, current.blob);
+  return openResults(data, current.url, { id, raw });
 }
 async function trackOne(q, src) { return q === "max" ? trackMax(src) : trackSimple(q, src) }
 async function openVideo(url) {
@@ -585,7 +605,7 @@ function openResults(data, url, meta = {}) {
   const mount = $("viewerMount"); mount.innerHTML = ""; mount.append($("viewerTpl").content.cloneNode(true));
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
-  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
     const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data);

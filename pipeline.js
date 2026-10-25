@@ -241,6 +241,7 @@ function lift(frames, W, H, fs, opts = {}) {
   let img = frames.map(f => f.img.map(p => [p[0] * W, p[1] * H]));
   let wd = frames.map(f => f.world.map(p => p.slice(0, 3)));
   for (let j = 0; j < 33; j++) {
+    if (opts.measured && opts.measuredRaw !== false) continue;          // measured 3D is already clean
     const si = oe(img.map(F => F[j]), fs), sw = oe(wd.map(F => F[j]), fs);
     for (let t = 0; t < T; t++) { img[t][j] = si[t]; wd[t][j] = sw[t] }
   }
@@ -306,7 +307,7 @@ function lift(frames, W, H, fs, opts = {}) {
     const h = mid(F[23], F[24]);
     out.push(F.map(p => sub(p, h)));
   }
-  for (let j = 0; j < 33; j++) { const z = gauss(out.map(F => F[j][2]), fs / 30); for (let t = 0; t < T; t++) out[t][j][2] = z[t] }
+  if (!opts.measured) for (let j = 0; j < 33; j++) { const z = gauss(out.map(F => F[j][2]), fs / 30); for (let t = 0; t < T; t++) out[t][j][2] = z[t] }
   return { P: out, imgSmooth: img, scale: s };
 }
 
@@ -537,7 +538,7 @@ function analyseOnce(raw, opts = {}) {
   // lift and convert to y-up (x right, y up, z toward camera)
   const { P: Pc, imgSmooth, scale: liftScale } = lift(frames, W, H, fs, { ...opts, measured });
   let P = Pc.map(F => F.map(p => [p[0], -p[1], -p[2]]));
-  for (let j = 0; j < 33; j++) { const sm = oe(P.map(F => F[j]), fs); for (let t = 0; t < T; t++) P[t][j] = sm[t] }
+  if (!measured) for (let j = 0; j < 33; j++) { const sm = oe(P.map(F => F[j]), fs); for (let t = 0; t < T; t++) P[t][j] = sm[t] }
 
   // rotate so the stride (back ankle -> lead ankle) points +x
   let fmax = 0, smax = -1;
@@ -580,8 +581,9 @@ function analyseOnce(raw, opts = {}) {
   // measured 3D (several cameras, OpenCap): release from the hand's real 3D speed (lab: 8 ms after its peak)
   if (measured && opts.rel3d !== false) {
     let best = -1, at = rel;
-    for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) { const v = norm(sub(P[t + 1][W_], P[t - 1][W_])); if (v > best) { best = v; at = t } }
+    for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) { const v = norm(sub(frames[t + 1].world[W_], frames[t - 1].world[W_])); if (v > best) { best = v; at = t } }
     rel = clamp(at + Math.round(0.008 * fs), fs_ + 1, T - 2);
+    if (opts._dbgRel) opts._dbgRel.push({ at, rel, fs_ })
   }
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
   const userFS = !!(opts.phases && opts.phases.footStrike != null);
@@ -814,7 +816,7 @@ function analyseOnce(raw, opts = {}) {
   }
   if (opts._snap) opts._snap("feet", P, { imgSmooth, liftScale, rot, camDir });
   // ---- upper body: trunk/head, hands as direction + reach (blur frames bridged), elbows by IK
-  for (const j of [11, 12, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) { const sm = oe(P.map(F => F[j]), fs); P.forEach((F, t) => F[j] = sm[t]) }
+  if (!measured) for (const j of [11, 12, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) { const sm = oe(P.map(F => F[j]), fs); P.forEach((F, t) => F[j] = sm[t]) }
   let BLUR = [rel - 1, rel, rel + 1].filter(t => t > 0 && t < T - 1);
   if (faithful && BLUR.filter(t => (frames[t].img[16][2] ?? 1) < 0.5).length < 2) BLUR = [];   // bridge only frames the tracker couldn't see
   const FING = { 15: [17, 19, 21], 16: [18, 20, 22] };
@@ -825,14 +827,14 @@ function analyseOnce(raw, opts = {}) {
       const t0 = BLUR[0] - 1, t1 = BLUR[BLUR.length - 1] + 1;
       if (t0 >= 0 && t1 < T) BLUR.forEach(t => { const u = (t - t0) / (t1 - t0); dir[t] = slerp(dir[t0], dir[t1], u); rch[t] = rch[t0] + (rch[t1] - rch[t0]) * u });
     }
-    dir = oe(dir, fs, { beta: 12 }).map(unit);
-    rch = oe(rch, fs, { beta: 12 }).map(v => clamp(v, 0.3, faithful ? 0.985 : 0.96));      // ~20° elbow at full reach
+    if (!measured) { dir = oe(dir, fs, { beta: 12 }).map(unit); rch = oe(rch, fs, { beta: 12 }) }
+    rch = rch.map(v => clamp(v, 0.3, measured ? 0.999 : faithful ? 0.985 : 0.96));      // ~20° elbow at full reach
     for (let t = 0; t < T; t++) { const tgt = add(P[t][sh], mul(dir[t], rch[t] * arm)), dl = sub(tgt, P[t][wr]); [wr, ...FING[wr]].forEach(k => P[t][k] = add(P[t][k], dl)) }
-    { const sm = oe(P.map(F => F[el]), fs); P.forEach((F, t) => F[el] = sm[t]) }
+    if (!measured) { const sm = oe(P.map(F => F[el]), fs); P.forEach((F, t) => F[el] = sm[t]) }
     let last = null;
     let poles = P.map(F => { const u = unit(sub(F[wr], F[sh])); let p = sub(F[el], F[sh]); p = sub(p, mul(u, dot(p, u))); const n = norm(p); if (n > 0.025 || !last) last = mul(p, 1 / (n || 1)); return last.slice() });
     if (el === 14 && BLUR.length) { const t0 = BLUR[0] - 1, t1 = BLUR[BLUR.length - 1] + 1; if (t0 >= 0 && t1 < T) BLUR.forEach(t => poles[t] = slerp(unit(poles[t0]), unit(poles[t1]), (t - t0) / (t1 - t0))) }
-    POLES[el] = gauss(poles, K).map(unit);
+    POLES[el] = (measured ? poles : gauss(poles, K)).map(unit);
   }
   for (let t = 0; t < T; t++) { legIK(t, 11, 13, 15, FING[15], P[t][15].slice()); legIK(t, 12, 14, 16, FING[16], P[t][16].slice()) }
 
@@ -877,7 +879,7 @@ function analyseOnce(raw, opts = {}) {
       if (isLeg && contact) for (let t = 0; t < T; t++) if (contact[ci][t] > 0.5) bad[t] = false;   // planted feet are handled already
       // a throwing elbow still sharply bent right at release can't be real (the elbow is ~20-30° from straight there):
       // the tracker lost the forearm in the blur
-      if (li === 0 && opts.relCheck !== false) for (let t = Math.max(1, rel - fk(2)); t <= Math.min(T - 2, rel + fk(1)); t++) {
+      if (li === 0 && !measured && opts.relCheck !== false) for (let t = Math.max(1, rel - fk(2)); t <= Math.min(T - 2, rel + fk(1)); t++) {
         const F = P[t], fl = Math.acos(clamp(dot(unit(sub(F[El], F[Sh])), unit(sub(F[Wr], F[El]))), -1, 1)) * DEG;
         if (fl > 105) bad[t] = true;
       }

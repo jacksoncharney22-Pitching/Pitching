@@ -1,0 +1,30 @@
+name: Deploy Ultra (cloud 3D)
+on:
+  push:
+    branches: [main]
+    paths: ["ultra/**", ".github/workflows/ultra.yml"]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install modal==1.6.2
+      - name: Deploy to Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          if [ -z "$MODAL_TOKEN_ID" ]; then echo "Add the MODAL_TOKEN_ID and MODAL_TOKEN_SECRET repository secrets first."; exit 1; fi
+          modal deploy ultra/app.py
+      - name: Warm up (downloads the models once into the cache)
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          URL=$(python ultra/url.py 2>/dev/null || true)
+          echo "ULTRA_URL=$URL"
+          if [ -n "$URL" ]; then curl -s -m 900 "$URL/health" || true; fi
