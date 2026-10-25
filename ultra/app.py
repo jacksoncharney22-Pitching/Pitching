@@ -24,8 +24,11 @@ image = (
 )
 
 
+# one container handles everything (so the app can ask "is my pitch done?" of the same machine that's working on it);
+# the work runs in a background thread and the app checks back every few seconds
 @app.cls(image=image, gpu="L4", secrets=[modal.Secret.from_name("smplx")], volumes={CACHE: cache},
-         timeout=900, scaledown_window=120, max_containers=2)
+         timeout=900, scaledown_window=180, max_containers=1)
+@modal.concurrent(max_inputs=16)
 class Ultra:
     @modal.enter()
     def load(self):
@@ -78,14 +81,36 @@ class Ultra:
         def health():
             return {"ok": True}
 
+        import threading, time, uuid
+        jobs, lock = {}, threading.Lock()
+
+        def work(job, data, start, end, static):
+            try:
+                with lock:                                  # one pitch at a time on the graphics card
+                    jobs[job] = {"pending": True, "stage": "fitting the 3D body"}
+                    out = self.run(data, start, end, static)
+            except Exception as e:  # report the reason to the app instead of a bare 500
+                out = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+            out["t"] = time.time(); jobs[job] = out
+
         @api.post("/analyze")
         async def analyze(video: UploadFile = File(...), start: float = Form(0.0), end: float = Form(1e9), static: bool = Form(True)):
-            try:
-                data = await video.read()
-                if len(data) > 800 * 1024 * 1024:
-                    return {"ok": False, "error": "That video is too large for Ultra (over 800 MB). Trim it or export a smaller copy."}
-                return self.run(data, start, end, static)
-            except Exception as e:  # report the reason to the app instead of a bare 500
-                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+            data = await video.read()
+            if len(data) > 800 * 1024 * 1024:
+                return {"ok": False, "error": "That video is too large for Ultra (over 800 MB). Trim it or export a smaller copy."}
+            for k in [k for k, v in jobs.items() if not v.get("pending") and time.time() - v.get("t", 0) > 900]: jobs.pop(k, None)
+            job = uuid.uuid4().hex
+            jobs[job] = {"pending": True, "stage": "waiting for the graphics card"}
+            threading.Thread(target=work, args=(job, data, start, end, static), daemon=True).start()
+            return {"ok": True, "pending": True, "job": job}
+
+        @api.get("/result/{job}")
+        def result(job: str):
+            r = jobs.get(job)
+            if r is None:
+                return {"ok": False, "error": "This analysis was lost (the cloud machine restarted). Please run it again."}
+            if r.get("pending"):
+                return {"ok": True, "pending": True, "stage": r.get("stage")}
+            return jobs.pop(job)
 
         return api
