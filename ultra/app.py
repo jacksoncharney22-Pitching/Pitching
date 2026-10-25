@@ -36,7 +36,7 @@ class Ultra:
     def run(self, video_bytes: bytes, start: float, end: float, static: bool) -> dict:
         import json, subprocess, tempfile, os
         import numpy as np, torch
-        from gvhmr.inference._smpl import _load_assets
+        from gvhmr.utils.smplx_utils import make_smplx
         d = tempfile.mkdtemp()
         src, clip = os.path.join(d, "in"), os.path.join(d, "clip.mp4")
         open(src, "wb").write(video_bytes)
@@ -51,7 +51,8 @@ class Ultra:
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", src,
                         "-vf", vf, "-r", "30", "-an", "-c:v", "libx264", "-crf", "16", "-preset", "veryfast", clip], check=True)
         res = self.pipe(clip, static_camera=static, flip_test=True, progress=False, output_dir=os.path.join(d, "out"))
-        smplx, _, _, _ = _load_assets("cuda")
+        if not hasattr(self, "smplx"): self.smplx = make_smplx("supermotion").to("cuda")   # SMPL-X only (SMPL not needed)
+        smplx = self.smplx
         to = lambda p: {k: v.to("cuda") for k, v in p.items()}
         with torch.no_grad():
             jc = smplx(**to(res.smpl_params_camera)).joints[:, :76].cpu().numpy()
