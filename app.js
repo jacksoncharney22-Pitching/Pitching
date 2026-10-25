@@ -9,6 +9,7 @@ import { downloadPDF } from "./pdf.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
+import { parseTRC, trcToRaw } from "./opencap.js";
 
 const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
@@ -61,12 +62,31 @@ const drop = $("drop"), fileIn = $("fileIn");
 let angles = [];                 // [{blob, url, name, label}], angles[0] is the main angle (the one you trim and watch)
 const LABELS = ["Side", "Behind", "Front", "Other"];
 const isVideo = f => f.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(f.name);
-fileIn.onchange = () => { const fs = [...fileIn.files]; fileIn.value = ""; if (fs.length) addAngles(fs) };   // cleared so the same file can be chosen again
+const isTRC = f => /\.trc$/i.test(f.name);
+// OpenCap (two phones, measured 3D): its marker file becomes the skeleton directly; one of its videos is shown beside it
+async function importOpenCap(files) {
+  const trcF = files.find(isTRC), vid = files.find(isVideo);
+  if (!trcF) { alert("Choose the OpenCap marker file (MarkerData/....trc)."); return }
+  try {
+    const raw = trcToRaw(parseTRC(await trcF.text()));
+    raw.heightIn = opts.heightIn || null; lastRaw = raw; window.__lastRaw = raw;
+    const data = analyse(raw, { hand: opts.hand });
+    data.name = trcF.name.replace(/\.trc$/i, "") || "OpenCap pitch"; data.quality = "OpenCap · 3D measured with two phones";
+    data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo; data.slowNote = ""; data.source = "opencap";
+    const url = vid ? URL.createObjectURL(vid) : "";
+    current = { blob: vid || null, url, name: data.name };
+    const id = await saveHistory(data, vid || null);
+    openResults(data, url, { id, raw });
+  } catch (e) { console.warn(e); alert("Couldn't read that OpenCap file: " + (e.message || e)) }
+}
+fileIn.onchange = () => { const fs = [...fileIn.files]; fileIn.value = ""; if (fs.some(isTRC)) importOpenCap(fs); else if (fs.length) addAngles(fs) };   // cleared so the same file can be chosen again
+$("ocBtn").onclick = () => $("ocIn").click();
+$("ocIn").onchange = () => { const fs = [...$("ocIn").files]; $("ocIn").value = ""; if (fs.length) importOpenCap(fs) };
 $("fileIn2").onchange = () => { const fs = [...$("fileIn2").files]; $("fileIn2").value = ""; if (fs.length) addAngles(fs) };
 $("addAngle").onclick = () => $("fileIn2").click();
 ["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over") }));
 ["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("over") }));
-drop.addEventListener("drop", ev => { const fs = [...(ev.dataTransfer?.files || [])].filter(isVideo); if (fs.length) addAngles(fs) });
+drop.addEventListener("drop", ev => { const all = [...(ev.dataTransfer?.files || [])]; if (all.some(isTRC)) return importOpenCap(all); const fs = all.filter(isVideo); if (fs.length) addAngles(fs) });
 drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileIn.click() } });
 
 function addAngles(files) {
@@ -565,7 +585,7 @@ function openResults(data, url, meta = {}) {
   const mount = $("viewerMount"); mount.innerHTML = ""; mount.append($("viewerTpl").content.cloneNode(true));
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
-  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
     const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data);

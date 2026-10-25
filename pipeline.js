@@ -577,6 +577,12 @@ function analyseOnce(raw, opts = {}) {
     // the 3D model is better on average but can run late on a blurred real arm: take the midpoint of the two
     if (best > 0) rel = clamp(Math.round((at - 0.012 * fs + rel) / 2), fs_ + 1, T - 2);
   }
+  // measured 3D (several cameras, OpenCap): release from the hand's real 3D speed (lab: 8 ms after its peak)
+  if (measured && opts.rel3d !== false) {
+    let best = -1, at = rel;
+    for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) { const v = norm(sub(P[t + 1][W_], P[t - 1][W_])); if (v > best) { best = v; at = t } }
+    rel = clamp(at + Math.round(0.008 * fs), fs_ + 1, T - 2);
+  }
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
   const userFS = !!(opts.phases && opts.phases.footStrike != null);
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);

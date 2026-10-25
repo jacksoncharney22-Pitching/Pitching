@@ -377,6 +377,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .ed-keys { margin: 0; font-size: 12px; color: var(--muted) }
 .ed-keys kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; background: var(--panel) }
 @media (max-width: 640px) { .ed-sp { margin-left: 0 } .ed-keys { display: none } .ed-tl { height: 72px } }
+.ocline{margin:10px 2px 0;color:var(--muted,#a6a6a6);font-size:14px}.ocline a{color:inherit}.linkbtn{background:none;border:0;padding:0;color:var(--fg,#fff);font:inherit;text-decoration:underline;cursor:pointer}.ocline small{display:block;margin-top:2px}
 </style>
 
 <header class="topbar"><div class="in">
@@ -397,8 +398,9 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="11" width="28" height="26" rx="4"/><path d="M34 20l9-5v18l-9-5"/><path d="M20 30V18m-5 5 5-5 5 5"/></svg>
         <strong>Drop a pitching video here</strong>
         <small>or click to choose · MP4, MOV or WebM</small>
-        <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden>
+        <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm,.trc" multiple hidden>
       </div>
+      <p class="ocline">Filmed with two phones in <a href="https://www.opencap.ai" target="_blank" rel="noopener">OpenCap</a>? <button type="button" class="linkbtn" id="ocBtn">Import the OpenCap recording</button> <small>(its MarkerData .trc file, plus one of its videos if you like)</small><input type="file" id="ocIn" accept=".trc,video/*,.mov,.mp4" multiple hidden></p>
       <div class="selrow">
         <label class="sel"><span>Throwing hand</span><select id="handSel"><option value="auto" selected>Detect</option><option value="R">Right</option><option value="L">Left</option></select></label>
         <label class="sel"><span>Analysis</span><select id="qualSel"><option value="max" selected>Max accuracy</option><option value="high">High</option><option value="fast">Fast</option></select></label>
