@@ -30,6 +30,8 @@ class Ultra:
     @modal.enter()
     def load(self):
         import gvhmr
+        from gvhmr.utils import assets
+        assets.ensure_body_models(smpl=True)        # the HMR2 feature network needs SMPL too (SMPL_USER / SMPL_PW)
         self.pipe = gvhmr.pipeline("human-motion-recovery", device="cuda")
         cache.commit()
 
