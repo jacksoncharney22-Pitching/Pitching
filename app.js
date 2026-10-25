@@ -16,12 +16,12 @@ const $ = id => document.getElementById(id);
 const views = ["home", "prep", "progress", "results"];
 function show(v) { views.forEach(x => $(x).hidden = x !== v); window.scrollTo({ top: 0 }); document.body.dataset.view = v }
 const fmtTime = s => `${s.toFixed(2)} s`;
-const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn: null, velo: null };
+const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn: null, velo: null, weightLb: null };
 // level and height are remembered in this browser (a convenience; everything works without it)
-try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn } catch (e) {}
-const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn })) } catch (e) {} };
+try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn; if (sv.weightLb) opts.weightLb = sv.weightLb } catch (e) {}
+const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn, weightLb: opts.weightLb })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -51,6 +51,8 @@ if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)
 $("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
 const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
 $("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
+if (opts.weightLb) $("weightIn").value = String(opts.weightLb);
+$("weightIn").onchange = () => { const v = parseFloat($("weightIn").value); opts.weightLb = v >= 60 && v <= 400 ? Math.round(v) : null; keepPitcher() };
 $("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
@@ -74,7 +76,7 @@ async function importOpenCap(files) {
     raw.heightIn = opts.heightIn || null; lastRaw = raw; window.__lastRaw = raw;
     const data = analyse(raw, { hand: opts.hand });
     data.name = trcF.name.replace(/\.trc$/i, "") || "OpenCap pitch"; data.quality = "OpenCap · 3D measured with two phones";
-    data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo; data.slowNote = ""; data.source = "opencap";
+    data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo; data.slowNote = ""; data.source = "opencap";
     const url = vid ? URL.createObjectURL(vid) : "";
     current = { blob: vid || null, url, name: data.name };
     const id = await saveHistory(data, vid || null);
@@ -225,7 +227,7 @@ async function run() {
       data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
       if (data.learned) data.quality += " · learned 3D";
-      data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
+      data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
       bar(1); step("stBuild", "done", "Done");
       closeTrackers(); releaseWake();
       const id = await saveHistory(data, current.blob);
@@ -255,7 +257,7 @@ async function run() {
     const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
     data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
-    data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
+    data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
     bar(1); step("stBuild", "done", "Done");
     closeTrackers(); releaseWake();
     const id = await saveHistory(data, current.blob);
@@ -291,7 +293,7 @@ async function runUltraPitch(S, E) {
   lastRaw = raw; window.__lastRaw = raw;
   const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
   data.name = $("pitchName").value.trim() || current.name; data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
-  data.level = opts.level; data.heightIn = opts.heightIn; data.velo = opts.velo;
+  data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
   bar(1); step("stBuild", "done", "Done"); releaseWake();
   const id = await saveHistory(data, current.blob);
   return openResults(data, current.url, { id, raw });

@@ -103,7 +103,7 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.1; controls.minDistance = 1.2; controls.maxDistance = 12;
 controls.maxPolarAngle = Math.PI * 0.495;
 const travel = DATA.pose[T - 1][23][0];
-const TARGET = new V3((DATA.pose[0][23][0] + DATA.pose[T - 1][23][0]) / 2, 0.95, 0);
+const TARGET = new V3((DATA.pose[0][23][0] + DATA.pose[T - 1][23][0]) / 2, 0.7, 0);   // aimed low so the body sits above the force chart
 controls.target.copy(TARGET);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x202020, 0.55));
@@ -190,7 +190,7 @@ function bez(p0, p1, p2, p3, u) { const v = 1 - u; return p0.clone().multiplySca
 function drawMocap(P) {
   const dpr = skel.width / Math.max(1, panel.clientWidth);
   sg.clearRect(0, 0, skel.width, skel.height);
-  const J = P.j, W = 2.2 * dpr, FA = 1;
+  const J = P.j, W = 2.6 * dpr, FA = 1;
   const camDist = v => camera.position.distanceTo(v);
   const leftFar = camDist(J[11]) + camDist(J[23]) > camDist(J[12]) + camDist(J[24]);
   const far = j => j !== 0 && j <= 32 && ((j % 2 === 1) === leftFar);
@@ -201,7 +201,7 @@ function drawMocap(P) {
   const BONES = [[11,13],[13,15],[15,19],[12,14],[14,16],[16,20],[23,25],[25,27],[27,29],[29,31],[27,31],[24,26],[26,28],[28,30],[30,32],[28,32],[11,23],[12,24],[11,12],[23,24]];
   BONES.map(([a, b]) => ({ a, b, al: far(a) && far(b) ? FA : 1 })).sort((x, y) => x.al - y.al).forEach(s => seg(S[s.a], S[s.b], s.al));
   seg(shm, ear, 0.9);
-  [11,12,13,14,15,16,23,24,25,26,27,28,29,30,31,32].forEach(j => { sg.globalAlpha = far(j) ? FA + 0.1 : 1; sg.beginPath(); sg.arc(S[j][0], S[j][1], (j >= 29 ? 2.2 : 3.0) * dpr, 0, 7); sg.fill() });
+  [11,12,13,14,15,16,23,24,25,26,27,28,29,30,31,32].forEach(j => { sg.globalAlpha = far(j) ? FA + 0.1 : 1; sg.beginPath(); sg.arc(S[j][0], S[j][1], (j >= 29 ? 2.8 : 3.6) * dpr, 0, 7); sg.fill() });
   [0,1,2,3,4,5,6,7,8,9,10].forEach(j => { sg.globalAlpha = 1; sg.beginPath(); sg.arc(S[j][0], S[j][1], (j === 0 || j === 7 || j === 8 ? 3.0 : 2.2) * dpr, 0, 7); sg.fill() });
   sg.globalAlpha = 1;
 }
@@ -413,7 +413,7 @@ const CAMS = [
 let camIdx = 0;
 function fitDist(i) {
   const width = state.follow ? 1.6 : CAMS[i][2](), height = CAMS[i][0] === "Overhead" ? 1.7 : CAMS[i][0] === "Video view" ? 2.5 : 2.0, t = Math.tan(camera.fov * Math.PI / 360);
-  return Math.max((height / 2) / t, (width / 2) / (t * Math.max(camera.aspect, 0.2))) * 1.0;
+  return Math.max((height / 2) / t, (width / 2) / (t * Math.max(camera.aspect, 0.2))) * 1.4;   // room for the force chart
 }
 const camWrap = document.getElementById("cams"); let camAnim = null;
 CAMS.forEach(([name], i) => {
@@ -643,6 +643,111 @@ function drawCharts() {
   });
 }
 
+// ---------- centre of mass, body speed and ground force (estimated from the motion, like a force-plate readout) ----------
+// Segment masses and centre positions: Dempster's body-segment table (Winter, Biomechanics of Human Movement).
+// Ground force = body mass x (centre-of-mass acceleration + gravity): the total push the feet make on the ground.
+const BODY_LB = DATA.weightLb || 190, BODY_KG = BODY_LB * 0.4536, WEIGHT_EST = !DATA.weightLb;
+const mid3 = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+const along = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+function comOf(F) {
+  const hip = mid3(F[23], F[24]), sh = mid3(F[11], F[12]), head = mid3(F[7], F[8]);
+  const parts = [[0.497, along(hip, sh, 0.5)], [0.081, head],
+    [0.028, along(F[11], F[13], 0.436)], [0.028, along(F[12], F[14], 0.436)], [0.016, along(F[13], F[15], 0.43)], [0.016, along(F[14], F[16], 0.43)],
+    [0.006, along(F[15], F[19], 0.5)], [0.006, along(F[16], F[20], 0.5)],
+    [0.100, along(F[23], F[25], 0.433)], [0.100, along(F[24], F[26], 0.433)], [0.0465, along(F[25], F[27], 0.433)], [0.0465, along(F[26], F[28], 0.433)],
+    [0.0145, mid3(F[29], F[31])], [0.0145, mid3(F[30], F[32])]];
+  const W = parts.reduce((a, p) => a + p[0], 0), c = [0, 0, 0];
+  parts.forEach(([m, q]) => { for (let d = 0; d < 3; d++) c[d] += m * q[d] / W });
+  return c;
+}
+function gsmooth(arr, sig) {
+  if (sig < 0.5) return arr.map(v => v.slice());
+  const r = Math.ceil(3 * sig), w = []; for (let k = -r; k <= r; k++) w.push(Math.exp(-0.5 * (k / sig) ** 2));
+  return arr.map((_, t) => { const o = [0, 0, 0]; let ws = 0; for (let k = -r; k <= r; k++) { const q = arr[Math.max(0, Math.min(T - 1, t + k))], wk = w[k + r]; for (let d = 0; d < 3; d++) o[d] += wk * q[d]; ws += wk } return o.map(v => v / ws) });
+}
+const COM = gsmooth(DATA.pose.map(comOf), Math.max(0.6, 0.012 * FPS));
+const COMa = gsmooth(COM, Math.max(1, 0.03 * FPS));                     // acceleration needs a little more smoothing
+const vel = COM.map((_, t) => { const a = COM[Math.max(0, t - 1)], b = COM[Math.min(T - 1, t + 1)], n = (Math.min(T - 1, t + 1) - Math.max(0, t - 1)) || 1; return [0, 1, 2].map(d => (b[d] - a[d]) * FPS / n) });
+const speedMph = vel.map(v => Math.hypot(v[0], v[1], v[2]) * 2.23694);
+let peakAt = 0; speedMph.forEach((v, t) => { if (v > speedMph[peakAt]) peakAt = t });
+const GRF = COMa.map((_, t) => {                                         // newtons, our axes (x toward home, y up, z side)
+  const a = COMa[Math.max(0, t - 1)], b = COMa[t], c = COMa[Math.min(T - 1, t + 1)];
+  const acc = t === 0 || t === T - 1 ? [0, 0, 0] : [0, 1, 2].map(d => (a[d] - 2 * b[d] + c[d]) * FPS * FPS);
+  return [BODY_KG * acc[0], BODY_KG * (acc[1] + 9.81), BODY_KG * acc[2]];
+});
+const LB = 1 / 4.448;
+const FZ = GRF.map(f => Math.max(0, f[1]) * LB), FY = GRF.map(f => f[0] * LB), FX = GRF.map(f => f[2] * LB * (DATA.throwHand === "L" ? -1 : 1));
+const footStrikeF = (PH.find(p => p.name === "Foot strike") || {}).frame;
+// where the force acts: the planted foot (or between both while both are down)
+function contactPoint(P) {
+  const feet = [[27, 29, 31], [28, 30, 32]].map(js => { const y = Math.min(...js.map(j => P.j[j].y)); const c = new V3(); js.forEach(j => c.add(P.j[j])); c.multiplyScalar(1 / 3); c.y = y; return { y, c } });
+  // the planted foot: the lower one (both down: the back foot until foot strike, then the lead foot)
+  const ft = state.f, both = Math.abs(feet[0].y - feet[1].y) < 0.02;
+  const lead = both ? (footStrikeF != null && ft >= footStrikeF) : feet[0].y < feet[1].y;
+  return (lead ? feet[0] : feet[1]).c;
+}
+function drawForceAndCOM(P, ft) {
+  const dpr = skel.width / Math.max(1, panel.clientWidth), i = Math.max(0, Math.min(T - 1, Math.round(ft)));
+  const cv = valAt(COM.map(c => c[0]), ft), cy = valAt(COM.map(c => c[1]), ft), cz = valAt(COM.map(c => c[2]), ft);
+  // the skeleton is drawn smoothed between frames; place the centre of mass relative to its hips
+  const raw = DATA.pose[i], hipRaw = mid3(raw[23], raw[24]);
+  const com = new V3(cv - hipRaw[0], cy - hipRaw[1], cz - hipRaw[2]).add(P.hip);
+  const C = toScreen(com);
+  const f = GRF[i], tot = Math.hypot(f[0], f[1], f[2]) * LB;
+  if (f[1] * LB > 0.15 * BODY_LB) {                                      // feet pushing on the ground
+    const base = contactPoint(P), k = 0.0004;                            // metres of arrow per newton (body weight ≈ a third of a metre)
+    const tip = base.clone().add(new V3(f[0] * k, f[1] * k, f[2] * k));
+    const A = toScreen(base), B = toScreen(tip);
+    sg.globalAlpha = 1; sg.strokeStyle = "#22c55e"; sg.fillStyle = "#22c55e"; sg.lineWidth = 3.2 * dpr;
+    sg.beginPath(); sg.moveTo(A[0], A[1]); sg.lineTo(B[0], B[1]); sg.stroke();
+    const ang = Math.atan2(B[1] - A[1], B[0] - A[0]), h = 9 * dpr;
+    sg.beginPath(); sg.moveTo(B[0] + Math.cos(ang) * 2 * dpr, B[1] + Math.sin(ang) * 2 * dpr);
+    sg.lineTo(B[0] - Math.cos(ang - 0.5) * h, B[1] - Math.sin(ang - 0.5) * h); sg.lineTo(B[0] - Math.cos(ang + 0.5) * h, B[1] - Math.sin(ang + 0.5) * h); sg.fill();
+    sg.font = `${11 * dpr}px "IBM Plex Mono", monospace`; sg.fillText(`${Math.round(tot)}lb`, B[0] + 4 * dpr, B[1]);
+  }
+  sg.fillStyle = "#e6e600"; sg.globalAlpha = 1; sg.beginPath(); sg.arc(C[0], C[1], 5.5 * dpr, 0, 7); sg.fill();
+  sg.font = `${11 * dpr}px "IBM Plex Mono", monospace`; sg.fillText("COM", C[0] + 9 * dpr, C[1] + 4 * dpr);
+}
+// readouts on the 3D panel: peak body speed (top right) and the ground-force chart (bottom)
+const velBox = document.createElement("div");
+velBox.style.cssText = "position:absolute;right:12px;top:96px;z-index:3;background:rgba(30,30,30,.92);border-left:3px solid #8a8a8a;padding:7px 12px 8px;min-width:170px;font-family:var(--mono,monospace);color:#eee;pointer-events:none";
+velBox.innerHTML = `<div style="font-size:10px;letter-spacing:.06em;color:#bbb">PEAK PLAYER VELO</div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px"><span style="font-size:17px">${speedMph[peakAt].toFixed(2)} mph</span><span style="font-size:11px;color:#bbb">@ ${(peakAt / FPS).toFixed(3)}s</span></div>`;
+panel.append(velBox);
+const fc = document.createElement("canvas"); fc.style.cssText = "position:absolute;left:0;right:0;bottom:0;width:100%;height:150px;z-index:2;background:#111;border-top:1px solid #262626";
+panel.append(fc);
+const fcg = fc.getContext("2d");
+document.querySelector("#threePanel .readout").style.bottom = "162px";
+const lg = document.querySelector("#threePanel .legend3d"); if (lg) lg.style.bottom = "162px";
+const FCOL = { z: "#b98cff", y: "#22e06e", x: "#4aa3ff" };
+const fMax = Math.max(400, Math.ceil(Math.max(...FZ, ...FY.map(Math.abs), ...FX.map(Math.abs)) / 100) * 100), fMin = Math.min(-200, Math.floor(Math.min(...FY, ...FX) / 100) * 100);
+function drawForceChart(ft) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = fc.clientWidth, h = fc.clientHeight;
+  if (fc.width !== Math.round(w * dpr) || fc.height !== Math.round(h * dpr)) { fc.width = Math.round(w * dpr); fc.height = Math.round(h * dpr) }
+  const g = fcg; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const L = 40, R = 14, Tp = 14, B = 30, dur = (T - 1) / FPS || 1;
+  const X = t => L + (w - L - R) * t / dur, Y = v => Tp + (h - Tp - B) * (fMax - v) / (fMax - fMin);
+  g.font = "10px 'IBM Plex Mono', monospace"; g.fillStyle = "#8a8a8a"; g.strokeStyle = "#262626"; g.lineWidth = 1;
+  for (let v = Math.ceil(fMin / 200) * 200; v <= fMax; v += 200) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(w - R, Y(v)); g.stroke(); g.textAlign = "right"; g.fillText(String(v), L - 6, Y(v) + 3) }
+  const step = dur > 3 ? 0.5 : dur > 1.2 ? 0.25 : 0.1;
+  g.textAlign = "center"; for (let t = 0; t <= dur + 1e-6; t += step) g.fillText(t.toFixed(step < 0.25 ? 1 : 2).replace(/0$/, ""), X(t), h - 16);
+  g.fillText("Time (s)", L + (w - L - R) / 2, h - 4);
+  g.save(); g.translate(10, Tp + (h - Tp - B) / 2); g.rotate(-Math.PI / 2); g.fillText("lb", 0, 0); g.restore();
+  if (footStrikeF != null) { g.strokeStyle = "#38c6d9"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(X(footStrikeF / FPS), Tp); g.lineTo(X(footStrikeF / FPS), h - B); g.stroke() }
+  for (const [arr, col] of [[FX, FCOL.x], [FY, FCOL.y], [FZ, FCOL.z]]) { g.strokeStyle = col; g.lineWidth = 1.6; g.beginPath(); arr.forEach((v, t) => { const px = X(t / FPS), py = Y(v); t ? g.lineTo(px, py) : g.moveTo(px, py) }); g.stroke() }
+  // legend and the weight it assumes
+  g.textAlign = "right"; let lx = w - R;
+  for (const [lab, col] of [["Fx lat", FCOL.x], ["Fy A-P", FCOL.y], ["Fz vert", FCOL.z]]) { g.fillStyle = "#cfcfcf"; g.fillText(lab, lx, Tp + 4); const tw = g.measureText(lab).width; g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(lx - tw - 18, Tp + 1); g.lineTo(lx - tw - 5, Tp + 1); g.stroke(); lx -= tw + 30 }
+  g.textAlign = "left"; g.fillStyle = "#6f6f6f"; g.fillText(`estimated from body motion · ${BODY_LB} lb${WEIGHT_EST ? " (assumed)" : ""}`, L + 4, h - B - 5);
+  // cursor
+  const i = Math.max(0, Math.min(T - 1, Math.round(ft))), cx = X(ft / FPS);
+  g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, Tp - 6); g.lineTo(cx, h - B); g.stroke();
+  g.fillStyle = "#fff"; g.beginPath(); g.arc(cx, Tp - 6, 3.5, 0, 7); g.fill();
+  g.textAlign = cx > w - 180 ? "right" : "left"; const tx = cx + (g.textAlign === "right" ? -6 : 6);
+  g.font = "bold 11px 'IBM Plex Mono', monospace"; g.fillText(`${(ft / FPS).toFixed(2)}s`, tx, Tp + 20);
+  g.font = "10px 'IBM Plex Mono', monospace"; g.fillStyle = "#cfcfcf";
+  g.fillText(`Fz ${Math.round(FZ[i])}   Fy ${Math.round(FY[i])}   Fx ${Math.round(FX[i])}`, tx, Tp + 33);
+}
+
 // ---------- main loop ----------
 function resize() {
   const w = panel.clientWidth, h = panel.clientHeight;
@@ -687,7 +792,7 @@ function tick(now) {
   drawFigure(P); drawAnnotations(P, ft);
   { const end = Math.floor(ft * 4) + 1, start = Math.max(0, end - 32); pathNow.geometry.setDrawRange(start, end - start) }
   controls.update(); plateLbl.visible = false;
-  renderer.render(scene, camera); drawSkeleton2D(P); placeLabels();
+  renderer.render(scene, camera); drawSkeleton2D(P); drawForceAndCOM(P, ft); drawForceChart(ft); placeLabels();
 
   if (Math.abs(ft - lastShown) > 0.01) {
     lastShown = ft; const fr = Math.round(ft), pct = ft / (T - 1) * 100;
