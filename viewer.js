@@ -52,7 +52,7 @@ function valAt(arr, ft) {
 const fmt = (v, u) => v == null ? "—" : (u === "°/s" ? Math.round(v).toLocaleString("en-US") : (Math.round(v * 10) / 10).toFixed(0)) + u;
 
 // ---------- state & video ----------
-const state = { f: 0, playing: true, rate: 0.5, overlay: true, path: true, ghosts: false, angleMode: "key", follow: false, ovAngles: true, style: "mocap", clock: 0, videoOK: true, vFrame: null };
+const state = { f: 0, playing: true, rate: 0.5, overlay: true, path: false, ghosts: false, angleMode: "off", follow: false, ovAngles: true, style: "mocap", clock: 0, videoOK: true, vFrame: null };
 const video = document.getElementById("video");
 video.loop = false; video.src = videoSrc; video.currentTime = T0 + 0.5 / VFPS;
 video.playbackRate = state.rate;
@@ -91,13 +91,13 @@ function computePose(ft) {
 const panel = document.getElementById("threePanel");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if ("outputEncoding" in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
 panel.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
-scene.fog = new THREE.Fog(0x000000, 7, 15);
+scene.fog = null;                                   // plain black: just the skeleton
 const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.1; controls.minDistance = 1.2; controls.maxDistance = 12;
@@ -131,17 +131,17 @@ const moundGeo = new (THREE.PlaneBufferGeometry || THREE.PlaneGeometry)(6.4, 6.4
 moundGeo.rotateX(-Math.PI / 2);
 { const pos = moundGeo.attributes.position; for (let i = 0; i < pos.count; i++) pos.setY(i, groundAt(pos.getX(i) + MCX)); moundGeo.computeVertexNormals() }
 const mound = new THREE.Mesh(moundGeo, new THREE.MeshStandardMaterial({ map: radialTex(), roughness: 1 }));
-mound.position.set(MCX, 0, 0); mound.receiveShadow = true; scene.add(mound);
+mound.position.set(MCX, 0, 0); mound.receiveShadow = true; mound.visible = false; scene.add(mound);
 const rubberTop = DATA.rubberTop;
 const rubber = new THREE.Mesh(new THREE.BoxGeometry(0.152, rubberTop + 0.01, 0.61), new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: .6 }));
-rubber.position.set(DATA.rubber[0], DROP + (rubberTop - 0.01) / 2, DATA.rubber[1]); rubber.castShadow = rubber.receiveShadow = true; scene.add(rubber);
+rubber.position.set(DATA.rubber[0], DROP + (rubberTop - 0.01) / 2, DATA.rubber[1]); rubber.castShadow = rubber.receiveShadow = true; rubber.visible = false; scene.add(rubber);
 // direction to home plate
 const arrowMat = new THREE.MeshBasicMaterial({ color: 0x5a5a5a });
 const arrow = new THREE.Group();
 const shaft = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.02), arrowMat); shaft.position.x = 0.35; arrow.add(shaft);
 const headG = new THREE.BufferGeometry(); headG.setAttribute("position", new THREE.Float32BufferAttribute([0.7, 0.05, 0, 0.7, -0.05, 0, 0.82, 0, 0], 3));
 arrow.add(new THREE.Mesh(headG, arrowMat));
-arrow.rotation.x = -Math.PI / 2; arrow.position.set(travel + 0.9, 0.004, -1.0); scene.add(arrow);
+arrow.rotation.x = -Math.PI / 2; arrow.position.set(travel + 0.9, 0.004, -1.0); arrow.visible = false; scene.add(arrow);
 const plateLbl = (() => {
   const c = document.createElement("canvas"); c.width = 512; c.height = 96; const g = c.getContext("2d");
   g.fillStyle = "#7a7a7a"; g.font = "500 46px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("TO HOME PLATE", 256, 48);
@@ -190,7 +190,7 @@ function bez(p0, p1, p2, p3, u) { const v = 1 - u; return p0.clone().multiplySca
 function drawMocap(P) {
   const dpr = skel.width / Math.max(1, panel.clientWidth);
   sg.clearRect(0, 0, skel.width, skel.height);
-  const J = P.j, W = 2.2 * dpr, FA = 0.5;
+  const J = P.j, W = 2.2 * dpr, FA = 1;
   const camDist = v => camera.position.distanceTo(v);
   const leftFar = camDist(J[11]) + camDist(J[23]) > camDist(J[12]) + camDist(J[24]);
   const far = j => j !== 0 && j <= 32 && ((j % 2 === 1) === leftFar);
@@ -239,7 +239,7 @@ function drawSkeleton2D(P) {
   function line(a, b, alpha, w = W) { const A = S(a), B = S(b); sg.globalAlpha = alpha; sg.lineWidth = w; sg.beginPath(); sg.moveTo(A[0], A[1]); sg.lineTo(B[0], B[1]); sg.stroke() }
   function poly(pts, alpha, w = W) { sg.globalAlpha = alpha; sg.lineWidth = w; sg.beginPath(); pts.forEach((p, i) => { const q = S(p); i ? sg.lineTo(q[0], q[1]) : sg.moveTo(q[0], q[1]) }); sg.stroke() }
   function dot(v, r, alpha) { const q = S(v); sg.globalAlpha = alpha; sg.beginPath(); sg.arc(q[0], q[1], r, 0, Math.PI * 2); sg.fill() }
-  const FA = 0.45;
+  const FA = 1;
   // far-side limbs first so the near side reads on top
   const limbs = side => side === "L"
     ? [[11, 13], [13, 15], [15, 17, .7], [15, 19, .7], [15, 21, .7], [23, 25], [25, 27], [27, 29], [29, 31], [27, 31]]
@@ -515,6 +515,10 @@ if (video.requestVideoFrameCallback) {
 function toggle(id, key, after) { const b = document.getElementById(id); b.onclick = () => { state[key] = !state[key]; b.setAttribute("aria-pressed", state[key]); after && after(); lastShown = -1 } }
 toggle("ovBtn", "overlay", () => drawOverlay(state.f));
 toggle("pathBtn", "path", () => { pathNow.visible = state.path });
+pathNow.visible = state.path; document.getElementById("pathBtn").setAttribute("aria-pressed", state.path);
+document.querySelectorAll("#angModes button").forEach(x => x.setAttribute("aria-pressed", x.dataset.m === state.angleMode));
+const legend3d = () => { const l = document.querySelector(".legend3d"); if (l) l.hidden = state.angleMode === "off" }; legend3d();
+document.querySelectorAll("#angModes button").forEach(x => x.addEventListener("click", () => setTimeout(legend3d, 0)));
 toggle("followBtn", "follow", () => { if (camIdx != null) setCam(camIdx, true) });
 toggle("ovAngBtn", "ovAngles", () => drawOverlay(state.vFrame ?? state.f));
 toggle("ghostBtn", "ghosts", () => { ghostGroup.visible = state.ghosts });
@@ -682,7 +686,7 @@ function tick(now) {
   }
   drawFigure(P); drawAnnotations(P, ft);
   { const end = Math.floor(ft * 4) + 1, start = Math.max(0, end - 32); pathNow.geometry.setDrawRange(start, end - start) }
-  controls.update(); plateLbl.visible = camera.position.x < travel + 0.8;
+  controls.update(); plateLbl.visible = false;
   renderer.render(scene, camera); drawSkeleton2D(P); placeLabels();
 
   if (Math.abs(ft - lastShown) > 0.01) {
