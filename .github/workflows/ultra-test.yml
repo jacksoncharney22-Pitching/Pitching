@@ -36,3 +36,6 @@ jobs:
               print(f"::error::analyze failed http {code}: {str(r.get('error'))[:900]}")
           PY
           echo "::notice::took $(( $(date +%s) - START )) s"
+          timeout 40 modal app logs feole-ultra > applogs.txt 2>&1 || true
+          echo "::notice::app logs: $(grep -iE 'error|exception|traceback|killed|memory|assert|raise|fail' applogs.txt | tail -n 15 | cut -c1-250 | tr '\n' ' ')"
+          echo "::notice::log tail: $(tail -c 1200 applogs.txt | tr '\n' ' ')"
