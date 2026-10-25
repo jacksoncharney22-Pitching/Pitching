@@ -14,8 +14,11 @@ ALLOWED = ["https://sunny-marshmallow-78536f.netlify.app", "http://127.0.0.1:876
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", add_python="3.11")
-    .apt_install("ffmpeg", "git", "libgl1", "libglib2.0-0", "libegl1")
+    .apt_install("ffmpeg", "git", "libgl1", "libglib2.0-0", "libegl1", "build-essential")
     .pip_install("torch==2.6.0", "torchvision==0.21.0", index_url="https://download.pytorch.org/whl/cu124")
+    # two dependencies are old-style source packages that need numpy/cython present while they build
+    .pip_install("numpy<2", "cython", "setuptools<70", "wheel")
+    .run_commands("python -m pip install --no-build-isolation chumpy cython-bbox")
     .pip_install("gvhmr[preproc]==1.6.1", "fastapi[standard]", "python-multipart")
     .env({"HF_HOME": f"{CACHE}/hf", "GVHMR_HOME": f"{CACHE}/gvhmr", "XDG_CACHE_HOME": f"{CACHE}/xdg", "TORCH_HOME": f"{CACHE}/torch"})
 )

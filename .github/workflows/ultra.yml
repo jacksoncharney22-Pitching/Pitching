@@ -29,7 +29,8 @@ jobs:
           case "$MODAL_TOKEN_ID$MODAL_TOKEN_SECRET" in *" "*|*$'\n'*|*$'\r'*) echo "::warning::a token has a space or line break in it";; esac
           set -o pipefail
           if ! modal deploy ultra/app.py 2>&1 | tee deploy.log; then
-            echo "::error::modal deploy failed: $(tail -c 900 deploy.log | tr '\n' ' ')"
+            echo "::error::modal deploy failed: $(grep -iE 'error|failed|could not|no matching' deploy.log | grep -v '^\s*$' | tail -n 12 | cut -c1-220 | tr '\n' ' ')"
+            echo "::error::last lines: $(tail -c 700 deploy.log | tr '\n' ' ')"
             exit 1
           fi
       - name: Warm up (downloads the models once into the cache)
