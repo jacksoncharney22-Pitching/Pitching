@@ -261,6 +261,20 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .theater:fullscreen .phase-row { display: none }
 .theater:-webkit-full-screen { padding: 12px; display: flex; flex-direction: column; gap: 10px; background: #000; width: 100%; height: 100% }
 .theater:-webkit-full-screen .stage { flex: 1 1 auto; height: auto !important; min-height: 0 }
+.stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 270px !important }
+.sheet.side { height: 100%; box-sizing: border-box; overflow-y: auto; grid-template-columns: 1fr; gap: 14px; padding: 14px 16px; align-content: start }
+.sheet.side h3 { font-size: 15px; letter-spacing: .08em; color: var(--muted) }
+.sheet.side .row { font-size: 13px; padding: 3px 0 }
+.sheet.side, .sheet.side .grp { align-items: start; align-content: start }
+#viewerMount .three .cams button { padding: 4px 8px; font-size: 12px }
+.three .cams { gap: 4px }
+.sheet.side .row .v { font-size: 13.5px }
+@media (max-width: 1150px) {
+  .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; height: auto !important }
+  .vid, .three { height: clamp(420px, 62vh, 900px) !important }
+  .sheet.side { grid-column: 1 / -1; height: auto; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) }
+  .sheet.side h3 { grid-column: 1 / -1 }
+}
 @media (max-width: 760px) {
   .stage { grid-template-columns: minmax(0, 1fr) !important; height: auto !important }
   .vid, .three { height: 62vh !important; min-height: 360px }
@@ -537,6 +551,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       <div class="readout"><span class="ph" id="phName">—</span><span class="fr" id="phFrame">frame 0</span></div>
       <div class="legend3d"><span>Pelvis line · rotation<i style="background:#ff6fae"></i></span><span>Shoulder line · trunk rotation<i style="background:#62d0ff"></i></span><span>Joint angle<i style="background:#ffb347"></i></span></div>
     </div>
+    <aside class="panel sheet side" id="sheet" aria-label="Live angles"><h3>Angles</h3></aside>
   </section>
 
   <section class="rail" aria-label="Playback">
@@ -559,9 +574,6 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <div class="results-folds">
   <details class="fold report" open><summary>Report: what to work on</summary>
   <div id="report"></div>
-  </details>
-  <details class="fold"><summary>Live angles</summary>
-  <aside class="panel sheet" id="sheet" aria-label="Live angles"></aside>
   </details>
   <details class="fold"><summary>Angles at each phase</summary>
     <p class="sub">Degrees at the four key moments of the delivery. Click a column heading to jump there. Rotation is measured from the stretch position: 0° faces the third-base side and 90° faces home plate.</p>
