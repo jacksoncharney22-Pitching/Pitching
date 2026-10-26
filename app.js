@@ -650,14 +650,17 @@ async function makeVideo(kind) {
     const blob = await viewer.exportVideo(kind, pct => { vidSum.textContent = `Making video… ${pct}%` });
     if (!blob) return;
     const name = (lastResult.data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
-    const url = URL.createObjectURL(blob);
-    const el = document.createElement("a"); el.href = url; el.download = `${name}_${kind === "skeleton" ? "skeleton" : "overlay"}.mp4`;
-    document.body.append(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    const url = URL.createObjectURL(blob), file = `${name}_${kind === "skeleton" ? "skeleton" : "overlay"}.mp4`;
+    // a "Save video" button too: some browsers block a download that doesn't come straight from a click
+    const sv = $("vidSave"); if (sv.href) URL.revokeObjectURL(sv.href);
+    sv.href = url; sv.download = file; sv.textContent = `Save ${kind === "skeleton" ? "skeleton" : "overlay"} video`; sv.hidden = false;
+    try { const el = document.createElement("a"); el.href = url; el.download = file; document.body.append(el); el.click(); el.remove() } catch (e) {}
   } catch (e) { console.warn(e); alert("Couldn't make the video: " + (e.message || e)) }
   finally { vidMenu.classList.remove("busy"); vidSum.textContent = label }
 }
 $("vidSkel").onclick = () => makeVideo("skeleton");
 $("vidOv").onclick = () => makeVideo("overlay");
+$("newBtn").addEventListener("click", () => { $("vidSave").hidden = true });
 document.addEventListener("click", e => { if (vidMenu.open && !vidMenu.contains(e.target)) vidMenu.open = false });
 $("newBtn").onclick = () => { if (viewer) { viewer.stop(); viewer = null } show("home"); renderHistory() };
 $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
