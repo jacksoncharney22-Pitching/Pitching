@@ -643,10 +643,9 @@ function drawCharts() {
   });
 }
 
-// ---------- centre of mass, body speed and ground force (estimated from the motion, like a force-plate readout) ----------
+// ---------- centre of mass ----------
 // Segment masses and centre positions: Dempster's body-segment table (Winter, Biomechanics of Human Movement).
 // Ground force = body mass x (centre-of-mass acceleration + gravity): the total push the feet make on the ground.
-const BODY_LB = DATA.weightLb || 190, BODY_KG = BODY_LB * 0.4536, WEIGHT_EST = !DATA.weightLb;
 const mid3 = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
 const along = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 function comOf(F) {
@@ -666,26 +665,6 @@ function gsmooth(arr, sig) {
   return arr.map((_, t) => { const o = [0, 0, 0]; let ws = 0; for (let k = -r; k <= r; k++) { const q = arr[Math.max(0, Math.min(T - 1, t + k))], wk = w[k + r]; for (let d = 0; d < 3; d++) o[d] += wk * q[d]; ws += wk } return o.map(v => v / ws) });
 }
 const COM = gsmooth(DATA.pose.map(comOf), Math.max(0.6, 0.012 * FPS));
-const COMa = gsmooth(COM, Math.max(1, 0.03 * FPS));                     // acceleration needs a little more smoothing
-const vel = COM.map((_, t) => { const a = COM[Math.max(0, t - 1)], b = COM[Math.min(T - 1, t + 1)], n = (Math.min(T - 1, t + 1) - Math.max(0, t - 1)) || 1; return [0, 1, 2].map(d => (b[d] - a[d]) * FPS / n) });
-const speedMph = vel.map(v => Math.hypot(v[0], v[1], v[2]) * 2.23694);
-let peakAt = 0; speedMph.forEach((v, t) => { if (v > speedMph[peakAt]) peakAt = t });
-const GRF = COMa.map((_, t) => {                                         // newtons, our axes (x toward home, y up, z side)
-  const a = COMa[Math.max(0, t - 1)], b = COMa[t], c = COMa[Math.min(T - 1, t + 1)];
-  const acc = t === 0 || t === T - 1 ? [0, 0, 0] : [0, 1, 2].map(d => (a[d] - 2 * b[d] + c[d]) * FPS * FPS);
-  return [BODY_KG * acc[0], BODY_KG * (acc[1] + 9.81), BODY_KG * acc[2]];
-});
-const LB = 1 / 4.448;
-const FZ = GRF.map(f => Math.max(0, f[1]) * LB), FY = GRF.map(f => f[0] * LB), FX = GRF.map(f => f[2] * LB * (DATA.throwHand === "L" ? -1 : 1));
-const footStrikeF = (PH.find(p => p.name === "Foot strike") || {}).frame;
-// where the force acts: the planted foot (or between both while both are down)
-function contactPoint(P) {
-  const feet = [[27, 29, 31], [28, 30, 32]].map(js => { const y = Math.min(...js.map(j => P.j[j].y)); const c = new V3(); js.forEach(j => c.add(P.j[j])); c.multiplyScalar(1 / 3); c.y = y; return { y, c } });
-  // the planted foot: the lower one (both down: the back foot until foot strike, then the lead foot)
-  const ft = state.f, both = Math.abs(feet[0].y - feet[1].y) < 0.02;
-  const lead = both ? (footStrikeF != null && ft >= footStrikeF) : feet[0].y < feet[1].y;
-  return (lead ? feet[0] : feet[1]).c;
-}
 function drawForceAndCOM(P, ft) {
   const dpr = skel.width / Math.max(1, panel.clientWidth), i = Math.max(0, Math.min(T - 1, Math.round(ft)));
   const cv = valAt(COM.map(c => c[0]), ft), cy = valAt(COM.map(c => c[1]), ft), cz = valAt(COM.map(c => c[2]), ft);
@@ -696,11 +675,6 @@ function drawForceAndCOM(P, ft) {
   sg.fillStyle = "#e6e600"; sg.globalAlpha = 1; sg.beginPath(); sg.arc(C[0], C[1], 5.5 * dpr, 0, 7); sg.fill();
   sg.font = `${11 * dpr}px "IBM Plex Mono", monospace`; sg.fillText("COM", C[0] + 9 * dpr, C[1] + 4 * dpr);
 }
-// readouts on the 3D panel: peak body speed (top right) and the ground-force chart (bottom)
-const velBox = document.createElement("div");
-velBox.style.cssText = "position:absolute;right:12px;top:96px;z-index:3;background:rgba(30,30,30,.92);border-left:3px solid #8a8a8a;padding:7px 12px 8px;min-width:170px;font-family:var(--mono,monospace);color:#eee;pointer-events:none";
-velBox.innerHTML = `<div style="font-size:10px;letter-spacing:.06em;color:#bbb">PEAK PLAYER VELO</div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px"><span style="font-size:17px">${speedMph[peakAt].toFixed(2)} mph</span><span style="font-size:11px;color:#bbb">@ ${(peakAt / FPS).toFixed(3)}s</span></div>`;
-panel.append(velBox);
 
 
 // ---------- main loop ----------

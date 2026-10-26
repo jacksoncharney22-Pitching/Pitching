@@ -378,6 +378,26 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .ed-keys kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; background: var(--panel) }
 @media (max-width: 640px) { .ed-sp { margin-left: 0 } .ed-keys { display: none } .ed-tl { height: 72px } }
 .ocline{margin:10px 2px 0;color:var(--muted,#a6a6a6);font-size:14px}.ocline a{color:inherit}.linkbtn{background:none;border:0;padding:0;color:var(--fg,#fff);font:inherit;text-decoration:underline;cursor:pointer}.ocline small{display:block;margin-top:2px}
+
+/* v17: cleaner, simpler */
+.htitle { font-size: clamp(26px, 4vw, 36px) }
+.home .lede { margin-bottom: 18px }
+.fold.more summary small { color: var(--muted); font-weight: 400; margin: 0 auto 0 10px; font-size: 12.5px }
+.fold.more .selrow { padding: 4px 14px 14px }
+.ocline { font-size: 13px; margin: 14px 2px 0 }
+.selrow:not(.sel2) { grid-template-columns: 1fr 1fr }
+.ed-keys { display: none }
+.anglerow .linkbtn { font-size: 13px; color: var(--muted) }
+.three .cams .opt3d { position: relative }
+.opt3d > summary { list-style: none; cursor: pointer; font-size: 13px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line); background: rgba(20,20,20,.9); color: var(--fg) }
+.opt3d > summary::-webkit-details-marker { display: none }
+.opt3d[open] > summary { background: var(--fg); color: #000 }
+.opt3d > div { position: absolute; right: 0; top: 34px; z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 8px; background: rgba(10,10,10,.96); border: 1px solid var(--line); border-radius: 10px }
+.rcard .rmore { margin-top: 6px }
+.rcard .rmore > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); list-style: none }
+.rcard .rmore > summary::before { content: "+ " } .rcard .rmore[open] > summary::before { content: "− " }
+.rcard .rmore > summary::-webkit-details-marker { display: none }
+.rsources { margin-top: 14px }
 </style>
 
 <header class="topbar"><div class="in">
@@ -392,25 +412,27 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <!-- HOME -->
   <section id="home" class="view">
     <div class="home">
-      <h1 class="htitle">3D pitching analysis</h1>
-      <p class="lede">Upload a pitch. Get the skeleton, the phases and every angle.</p>
+      <h1 class="htitle">Pitching analysis</h1>
+      <p class="lede">Upload a pitch video. Get a 3D skeleton and a report.</p>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a pitching video" onclick="document.getElementById('fileIn').click()">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="11" width="28" height="26" rx="4"/><path d="M34 20l9-5v18l-9-5"/><path d="M20 30V18m-5 5 5-5 5 5"/></svg>
         <strong>Drop a pitching video here</strong>
         <small>or click to choose · MP4, MOV or WebM</small>
         <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm,.trc" multiple hidden>
       </div>
-      <p class="ocline">Filmed with two phones in <a href="https://www.opencap.ai" target="_blank" rel="noopener">OpenCap</a>? <button type="button" class="linkbtn" id="ocBtn">Import the OpenCap recording</button> <small>(its MarkerData .trc file, plus one of its videos if you like)</small><input type="file" id="ocIn" accept=".trc,video/*,.mov,.mp4" multiple hidden></p>
       <div class="selrow">
         <label class="sel"><span>Throwing hand</span><select id="handSel"><option value="auto" selected>Detect</option><option value="R">Right</option><option value="L">Left</option></select></label>
         <label class="sel"><span>Analysis</span><select id="qualSel"><option value="ultra" disabled>Ultra (cloud 3D) · coming soon</option><option value="max" selected>Max accuracy</option><option value="high">High</option><option value="fast">Fast</option></select></label>
-        <label class="sel"><span>Slow-motion clip</span><select id="slowSel"><option value="auto" selected>Auto-detect</option><option value="1">Normal speed</option><option value="2">2× slow</option><option value="4">4× slow</option><option value="8">8× slow</option></select></label>
       </div>
+      <details class="fold more">
+        <summary>More options <small>level, velocity, height, slow-mo</small></summary>
       <div class="selrow sel2">
+        <label class="sel"><span>Slow-motion clip</span><select id="slowSel"><option value="auto" selected>Auto-detect</option><option value="1">Normal speed</option><option value="2">2× slow</option><option value="4">4× slow</option><option value="8">8× slow</option></select></label>
         <label class="sel"><span>Pitcher level</span><select id="levelSel"><option value="ms">Middle school</option><option value="hs" selected>High school</option><option value="col">College</option><option value="pro">Professional</option></select></label>
         <label class="sel"><span>Fastball velocity (optional)</span><input id="veloIn" class="numin" type="number" min="30" max="110" step="0.5" inputmode="decimal" placeholder="mph"></label>
         <div class="sel"><span id="heightLbl">Pitcher height</span><div class="hrow" role="group" aria-labelledby="heightLbl"><select id="heightFt" aria-label="Feet"><option value="">Not set</option><option value="4">4 ft</option><option value="5">5 ft</option><option value="6" selected>6 ft</option><option value="7">7 ft</option></select><select id="heightIn" aria-label="Inches"><option value="0">0 in</option><option value="1">1 in</option><option value="2">2 in</option><option value="3">3 in</option><option value="4">4 in</option><option value="5">5 in</option><option value="6">6 in</option><option value="7">7 in</option><option value="8">8 in</option><option value="9">9 in</option><option value="10">10 in</option><option value="11">11 in</option></select></div></div>
       </div>
+      </details>
       <p class="hint" id="qualHint">Max accuracy takes a few minutes. Keep this tab open.</p>
       <details class="fold">
         <summary>How to film for the best skeleton</summary>
@@ -421,6 +443,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
           <li><span class="n">04</span><span><b>One pitch per clip.</b> Start before the leg lift, end after the follow-through. You can trim after uploading.</span></li>
         </ul>
       </details>
+      <p class="ocline">Have an <a href="https://www.opencap.ai" target="_blank" rel="noopener">OpenCap</a> recording? <button type="button" class="linkbtn" id="ocBtn">Import its .trc file</button><input type="file" id="ocIn" accept=".trc,video/*,.mov,.mp4" multiple hidden></p>
       <details class="fold" id="recentWrap" hidden>
         <summary>Recent pitches</summary>
         <p class="hint">Saved in this browser only.</p>
@@ -440,12 +463,12 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
         <div class="pfind" id="pitchFind" hidden><span id="pitchFindMsg"></span><div class="pchips" id="pitchChips"></div></div>
         <p class="warn" id="trimWarn" hidden>This covers more than 8 seconds of real time. That works, but it takes longer and very long clips are read less densely. Trimming to one pitch gives the most exact skeleton.</p>
         <ul class="angles" id="angleList"></ul>
-        <div class="anglerow"><span id="angleNote" class="hint"></span><button id="addAngle" class="ghost">+ Add a second angle (optional)</button>
+        <div class="anglerow"><span id="angleNote" class="hint"></span><button id="addAngle" class="linkbtn">+ Add a second camera angle</button>
           <input type="file" id="fileIn2" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden></div>
       </div>
       <div class="card">
         <div class="field"><label for="pitchName">Name this pitch</label><input type="text" id="pitchName" placeholder="e.g. Bullpen fastball #3"></div>
-        <p class="hint">The app finds the pitch for you. To fine-tune, drag the white handles on the strip under the video: start just before the leg lift, end after the follow-through. Step frame by frame with the arrow keys, then <b>Cut clip to selection</b> to shorten it.</p>
+        <p class="hint">The pitch is found for you. To adjust, drag the white handles: start before the leg lift, end after the follow-through.</p>
         <p class="err" id="prepErr" hidden></p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="analyze">Build skeleton</button><button class="ghost" id="backHome">Back</button></div>
       </div>
@@ -492,13 +515,11 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       <div class="labels" id="labels"></div>
       <div class="cams">
         <div id="cams" role="group" aria-label="Camera angle"></div>
-        <div>
+        <details class="opt3d"><summary>View options</summary><div>
           <div class="seg dark" id="styleModes" role="group" aria-label="Skeleton style"><button data-s="mocap" aria-pressed="true">Mocap</button><button data-s="anatomical" aria-pressed="false">Anatomical</button></div>
           <div class="seg dark" id="angModes" role="group" aria-label="Angles shown"><button data-m="key" aria-pressed="true">Key angles</button><button data-m="all" aria-pressed="false">All</button><button data-m="off" aria-pressed="false">Off</button></div>
-          <button id="followBtn" aria-pressed="false">Follow</button>
-          <button id="pathBtn" aria-pressed="true">Hand trail</button>
-          <button id="ghostBtn" aria-pressed="false">Key poses</button>
-        </div>
+          <div style="display:flex;gap:6px"><button id="followBtn" aria-pressed="false">Follow</button><button id="pathBtn" aria-pressed="true">Hand trail</button><button id="ghostBtn" aria-pressed="false">Key poses</button></div>
+        </div></details>
       </div>
       <div class="readout"><span class="ph" id="phName">—</span><span class="fr" id="phFrame">frame 0</span></div>
       <div class="legend3d"><span>Pelvis line · rotation<i style="background:#ff6fae"></i></span><span>Shoulder line · trunk rotation<i style="background:#62d0ff"></i></span><span>Joint angle<i style="background:#ffb347"></i></span></div>

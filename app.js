@@ -134,7 +134,7 @@ function renderAngles() {
   $("analyze").disabled = !angles.length; $("addAngle").hidden = angles.length >= 3;
   $("angleList").hidden = angles.length < 2;
   $("angleNote").textContent = angles.length > 1 ? `${angles.length} angles of the same pitch. Trim the main angle; the others are lined up automatically.`
-    : "Optional: if a second camera filmed this same pitch at the same time, add it for measured 3D.";
+    : "";
   $("angleNote").classList.remove("warn");
 }
 function updateTrim() {

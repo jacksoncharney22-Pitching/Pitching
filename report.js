@@ -242,9 +242,10 @@ export function reportHTML(rep) {
     <div class="rnums"><span><b>${esc(i.value)}</b></span><span>${esc(i.target)}</span><span class="rconf">${CONF[i.conf]}</span></div>
     ${i.level ? `<p>${esc(i.fix)}</p>` : ""}
     ${i.note ? `<p class="rnote2">${esc(i.note)}</p>` : ""}
-    ${i.why ? `<p class="${i.level ? "rwhy" : ""}">${esc(i.why)}</p>` : ""}
+    ${i.why || (i.level && i.drill) || i.src ? `<details class="rmore"><summary>${i.level && i.drill ? "Why it matters &amp; drill" : "Why it matters"}</summary>
+    ${i.why ? `<p class="rwhy">${esc(i.why)}</p>` : ""}
     ${i.level && i.drill ? `<p class="rdrill"><b>Drill:</b> ${esc(i.drill)}</p>` : ""}
-    ${i.src ? `<p class="rsrc">Source: ${esc(SRC[i.src])}</p>` : ""}
+    ${i.src ? `<p class="rsrc">Source: ${esc(SRC[i.src])}</p>` : ""}</details>` : ""}
   </article>`;
   const grp = (g, title, note) => { const list = rep.items.filter(i => i.group === g).sort((a, b) => (b.level ?? -1) - (a.level ?? -1) || (b.weight || 0) - (a.weight || 0)); return list.length ? `<h3 class="rsec">${title}</h3>${note ? `<p class="rnote">${note}</p>` : ""}<div class="rgrid">${list.map(card).join("")}</div>` : "" };
   const summary = rep.priorities.length
@@ -256,10 +257,10 @@ export function reportHTML(rep) {
       <div class="rrings">${ring(rep.healthScore, "Arm health")}${ring(rep.perfScore, "Performance")}</div>
       <div><p class="rlead">${summary}</p>
       <div class="rctl"><label>Compared with <select id="repLevel">${opts}</select></label><label>Velocity <input id="repVelo" type="number" min="30" max="110" step="0.5" inputmode="decimal" placeholder="mph" value="${rep.velo ?? ""}"> mph</label>${rep.heightIn ? `<span>Height ${ftin(rep.heightIn)}</span>` : `<span>Height not entered</span>`}</div>
-      <p class="rnote">${esc(veloLine(rep))} Arm health is never excused by velocity. Style is described, not graded. <b>Solid</b> = measured directly from a side-on video; <b>estimated</b> = needs depth one camera can't see well, so never graded worse than "Check".</p></div>
+      <p class="rnote">${esc(veloLine(rep))}</p></div>
     </div>
     ${grp("health", "Arm health", "Linked to stress on the elbow and shoulder.")}
-    ${grp("perf", "Performance", "Linked to velocity in the research, weighted by how strong that link is.")}
-    ${grp("style", "Style profile", "How this delivery is put together, compared with " + esc(rep.levelName.toLowerCase()) + " pitchers. Not graded: many great pitchers are outside these.")}
-    <p class="rnote rsources"><b>Sources:</b> ${rep.sources.map(esc).join(" · ")}.</p>`;
+    ${grp("perf", "Performance", "Linked to velocity.")}
+    ${grp("style", "Style profile", "Described, not graded.")}
+    <details class="fold rsources"><summary>How it's graded &amp; sources</summary><p class="rnote">Arm health is never excused by velocity. Style is described, not graded. <b>Solid</b> = measured directly from a side-on video; <b>estimated</b> = needs depth one camera can't see well, so never graded worse than "Check".</p><p class="rnote"><b>Sources:</b> ${rep.sources.map(esc).join(" · ")}.</p></details>`;
 }
