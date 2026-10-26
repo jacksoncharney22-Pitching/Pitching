@@ -398,7 +398,18 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .rcard .rmore > summary::before { content: "+ " } .rcard .rmore[open] > summary::before { content: "− " }
 .rcard .rmore > summary::-webkit-details-marker { display: none }
 .rsources { margin-top: 14px }
+
+/* v18: upload button instead of the dashed box */
+.home .drop { min-height: 0 }
+.upl { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 6px 0 26px }
+.upl small { color: var(--muted); font-size: 13.5px }
+.drop { display: inline-flex !important; align-items: center; gap: 10px; border: 0 !important; border-radius: 999px !important; padding: 15px 28px !important; background: #fff !important; color: #000; font-weight: 600; font-size: 16.5px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease }
+.drop svg { width: 20px !important; height: 20px !important; color: #000 !important }
+.drop:hover, .drop.over { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(255,255,255,.18) }
+#home { min-height: calc(100vh - 80px) }
+#home.over::after { content: "Drop the video to upload"; position: fixed; inset: 14px; border: 2px dashed #fff; border-radius: 18px; background: rgba(0,0,0,.82); display: grid; place-items: center; font-size: 22px; font-weight: 600; color: #fff; z-index: 50; pointer-events: none }
 </style>
+
 
 <header class="topbar"><div class="in">
   <a class="brand" id="brand" href="#" aria-label="Feole Pitching home">
@@ -414,11 +425,13 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
     <div class="home">
       <h1 class="htitle">Pitching analysis</h1>
       <p class="lede">Upload a pitch video. Get a 3D skeleton and a report.</p>
-      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a pitching video" onclick="document.getElementById('fileIn').click()">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="11" width="28" height="26" rx="4"/><path d="M34 20l9-5v18l-9-5"/><path d="M20 30V18m-5 5 5-5 5 5"/></svg>
-        <strong>Drop a pitching video here</strong>
-        <small>or click to choose · MP4, MOV or WebM</small>
-        <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm,.trc" multiple hidden>
+      <div class="upl">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a pitching video" onclick="document.getElementById('fileIn').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span>Upload a pitching video</span>
+          <input type="file" id="fileIn" accept="video/*,.mov,.mp4,.m4v,.webm,.trc" multiple hidden>
+        </div>
+        <small>or drag it onto this page · MP4, MOV or WebM</small>
       </div>
       <div class="selrow">
         <label class="sel"><span>Throwing hand</span><select id="handSel"><option value="auto" selected>Detect</option><option value="R">Right</option><option value="L">Left</option></select></label>

@@ -86,9 +86,13 @@ $("ocBtn").onclick = () => $("ocIn").click();
 $("ocIn").onchange = () => { const fs = [...$("ocIn").files]; $("ocIn").value = ""; if (fs.length) importOpenCap(fs) };
 $("fileIn2").onchange = () => { const fs = [...$("fileIn2").files]; $("fileIn2").value = ""; if (fs.length) addAngles(fs) };
 $("addAngle").onclick = () => $("fileIn2").click();
-["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("over") }));
-["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("over") }));
-drop.addEventListener("drop", ev => { const all = [...(ev.dataTransfer?.files || [])]; if (all.some(isTRC)) return importOpenCap(all); const fs = all.filter(isVideo); if (fs.length) addAngles(fs) });
+const dropZone = $("home");                                               // the whole upload page takes a dropped file
+let dragDepth = 0;
+dropZone.addEventListener("dragenter", ev => { ev.preventDefault(); dragDepth++; dropZone.classList.add("over") });
+dropZone.addEventListener("dragover", ev => ev.preventDefault());
+dropZone.addEventListener("dragleave", ev => { ev.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; dropZone.classList.remove("over") } });
+dropZone.addEventListener("drop", ev => { ev.preventDefault(); dragDepth = 0; dropZone.classList.remove("over") });
+dropZone.addEventListener("drop", ev => { const all = [...(ev.dataTransfer?.files || [])]; if (all.some(isTRC)) return importOpenCap(all); const fs = all.filter(isVideo); if (fs.length) addAngles(fs) });
 drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileIn.click() } });
 
 function addAngles(files) {
