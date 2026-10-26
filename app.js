@@ -644,8 +644,8 @@ $("pdfBtn").onclick = async () => {
 const vidMenu = $("vidMenu"), vidSum = $("vidSum");
 async function makeVideo(kind) {
   if (!viewer || !lastResult || !viewer.exportVideo) return;
-  vidMenu.open = false; vidMenu.classList.add("busy");
-  const label = "Download video";
+  vidMenu.open = false; vidMenu.classList.add("busy"); vidSum.textContent = "Making video…";
+  const label = "Download video"; let ok = false;
   try {
     const blob = await viewer.exportVideo(kind, pct => { vidSum.textContent = `Making video… ${pct}%` });
     if (!blob) return;
@@ -653,10 +653,14 @@ async function makeVideo(kind) {
     const url = URL.createObjectURL(blob), file = `${name}_${kind === "skeleton" ? "skeleton" : "overlay"}.mp4`;
     // a "Save video" button too: some browsers block a download that doesn't come straight from a click
     const sv = $("vidSave"); if (sv.href) URL.revokeObjectURL(sv.href);
-    sv.href = url; sv.download = file; sv.textContent = `Save ${kind === "skeleton" ? "skeleton" : "overlay"} video`; sv.hidden = false;
+    sv.href = url; sv.download = file; sv.textContent = `⬇ Save ${kind === "skeleton" ? "skeleton" : "overlay"} video`; sv.hidden = false;
     try { const el = document.createElement("a"); el.href = url; el.download = file; document.body.append(el); el.click(); el.remove() } catch (e) {}
+    ok = true;
   } catch (e) { console.warn(e); alert("Couldn't make the video: " + (e.message || e)) }
-  finally { vidMenu.classList.remove("busy"); vidSum.textContent = label }
+  finally {
+    if (ok) { vidSum.textContent = "✓ Video ready"; await new Promise(r => setTimeout(r, 2500)) }
+    vidMenu.classList.remove("busy"); vidSum.textContent = label;
+  }
 }
 $("vidSkel").onclick = () => makeVideo("skeleton");
 $("vidOv").onclick = () => makeVideo("overlay");

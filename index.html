@@ -435,6 +435,8 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .dlmenu > div small { color: var(--muted); font-size: 12px }
 .vidsave { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; background: #fff; color: #000 !important; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap }
 .vidsave[hidden] { display: none }
+.vidsave:not([hidden]) { animation: vsPulse 1.2s ease 2 }
+@keyframes vsPulse { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.25) } }
 .dlmenu > div p { margin: 2px 4px 0; color: var(--muted); font-size: 11.5px }
 </style>
 
@@ -536,7 +538,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <section id="results" class="view" hidden>
     <div class="reshead">
       <div><span class="eyebrow">Feole Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
-      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>Save video</a><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
+      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
     <div id="viewerMount" style="display:grid;gap:20px"></div>
@@ -610,7 +612,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="viewer.js" charset="utf-8"></script>
-<script type="module" src="app.js"></script>
+<script src="viewer.js?v=1793034792" charset="utf-8"></script>
+<script type="module" src="app.js?v=1793034792"></script>
 </body>
 </html>
