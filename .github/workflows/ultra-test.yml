@@ -10,6 +10,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install modal==1.6.2
+      - name: Fetch the test pitch (not stored in the repo)
+        run: curl -sL -o ultra/test_pitch.webm "${{ vars.ULTRA_TEST_VIDEO_URL }}" || true
       - name: Send a test pitch
         env:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}

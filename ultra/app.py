@@ -10,7 +10,7 @@ import modal
 app = modal.App("feole-ultra")
 cache = modal.Volume.from_name("feole-ultra-cache", create_if_missing=True)
 CACHE = "/cache"
-ALLOWED = ["https://sunny-marshmallow-78536f.netlify.app", "http://127.0.0.1:8766", "http://localhost:8766"]
+ALLOWED = ["https://jacksoncharney22-pitching.github.io", "https://sunny-marshmallow-78536f.netlify.app", "http://127.0.0.1:8766", "http://localhost:8766"]
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", add_python="3.11")
