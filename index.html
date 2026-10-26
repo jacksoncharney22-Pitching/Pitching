@@ -422,7 +422,20 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .drop:hover, .drop.over { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(255,255,255,.18) }
 #home { min-height: calc(100vh - 80px) }
 #home.over::after { content: "Drop the video to upload"; position: fixed; inset: 14px; border: 2px dashed #fff; border-radius: 18px; background: rgba(0,0,0,.82); display: grid; place-items: center; font-size: 22px; font-weight: 600; color: #fff; z-index: 50; pointer-events: none }
+
+/* v19: video downloads */
+.dlmenu { position: relative }
+.dlmenu > summary { list-style: none; cursor: pointer; font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); white-space: nowrap }
+.dlmenu > summary::-webkit-details-marker { display: none }
+.dlmenu > summary::after { content: " ▾"; color: var(--muted) }
+.dlmenu.busy > summary { pointer-events: none; opacity: .8 } .dlmenu.busy > summary::after { content: "" }
+.dlmenu > div { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 300px; display: grid; gap: 6px; padding: 8px; background: #0d0d0d; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.6) }
+.dlmenu > div button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); cursor: pointer }
+.dlmenu > div button:hover { border-color: #fff }
+.dlmenu > div small { color: var(--muted); font-size: 12px }
+.dlmenu > div p { margin: 2px 4px 0; color: var(--muted); font-size: 11.5px }
 </style>
+
 
 
 <header class="topbar"><div class="in">
@@ -521,7 +534,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <section id="results" class="view" hidden>
     <div class="reshead">
       <div><span class="eyebrow">Feole Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
-      <div class="resbtns"><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
+      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
     <div id="viewerMount" style="display:grid;gap:20px"></div>

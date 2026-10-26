@@ -431,7 +431,7 @@ setCam(0, false);
 controls.addEventListener("start", () => { camAnim = null; camIdx = null; camWrap.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", false)) });
 
 // ---------- video overlay ----------
-const ov = document.getElementById("ov"), og = ov.getContext("2d");
+let ov = document.getElementById("ov"), og = ov.getContext("2d");
 const OBONES = [[11,13],[13,15],[15,19],[12,14],[14,16],[16,20],[11,12],[23,24],[11,23],[12,24],[23,25],[25,27],[27,29],[29,31],[27,31],[24,26],[26,28],[28,30],[30,32],[28,32]];
 const OJOINTS = [11,12,13,14,15,16,23,24,25,26,27,28];
 const THROW_ARM = [12, 14, 16, 20].map(m);
@@ -490,7 +490,7 @@ function drawOverlayAngles(f, X, Y, Pp, sh, hp, lw) {
   og.strokeStyle = "#62d0ff"; og.lineWidth = lw; og.beginPath(); og.arc(hx, hy, L * 0.3, Math.min(a0, a1), Math.max(a0, a1)); og.stroke();
   og.globalAlpha = 1;
   // corner panel (top right), sized in CSS pixels
-  const sc = ov.width / Math.max(1, ov.clientWidth), fs = 12 * sc, pad = 9 * sc, rowH = 19 * sc;
+  const sc = ov._sc || ov.width / Math.max(1, ov.clientWidth), fs = 12 * sc, pad = 9 * sc, rowH = 19 * sc;
   const rows = [["#ff6fae", "Pelvis rotation", deg("pelvisRot")], ["#62d0ff", "Spine tilt", deg("trunkFwd")],
                 ["#62d0ff", "Spine rotation", deg("trunkRot")], ["#ffffff", "Hip–shoulder sep.", deg("separation")]];
   og.font = `500 ${fs}px "IBM Plex Mono", ui-monospace, monospace`; og.textBaseline = "middle";
@@ -690,6 +690,7 @@ function resize() {
 }
 let last = performance.now(), lastShown = -1;
 function tick(now) {
+  if (state.exporting) { last = now; if (alive) requestAnimationFrame(tick); return }   // a video is being made: hold still
   const dt = (now - last) / 1000; last = now;
   if (state.playing) {
     // The skeleton runs on its own continuous clock. The video's currentTime only advances once per
@@ -769,7 +770,141 @@ if (phaseSel && phaseSet && opts.onPhases) phaseSet.onclick = () => {
   opts.onPhases(cur, Math.round(state.f));
 };
 if (opts.startFrame != null) seek(opts.startFrame);
+
+// ---------- video export (MP4, made frame by frame so it's smooth at any speed) ----------
+// "skeleton": the 3D skeleton with the phase and every angle beside it. "overlay": the source video with the
+// skeleton drawn on it and the pelvis/spine angles. Plays at the speed chosen in the player (½× by default).
+const cssVar = n => (getComputedStyle(panel).getPropertyValue(n) || "").trim() || "#ffffff";
+const colorOf = g => cssVar(GCOL[g].slice(4, -1));
+function loadMuxer() {
+  if (window.Mp4Muxer) return Promise.resolve();
+  return new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "lib/mp4-muxer.min.js"; sc.onload = res; sc.onerror = () => rej(new Error("couldn't load the video writer")); document.head.append(sc) });
+}
+async function encodeMP4(W, H, N, drawFrame, onStatus) {
+  if (!window.VideoEncoder || !window.VideoFrame) throw new Error("This browser can't make videos. Use the latest Chrome, Edge or Safari.");
+  await loadMuxer();
+  const bitrate = Math.round(Math.min(16e6, Math.max(4e6, W * H * 30 * 0.12)));
+  let cfg = null;
+  let mcodec = "avc";                                 // H.264 plays everywhere; VP9 only if this browser can't write H.264
+  for (const [codec, mc] of [["avc1.640028", "avc"], ["avc1.4d0028", "avc"], ["avc1.42e028", "avc"], ["avc1.640033", "avc"], ["vp09.00.40.08", "vp9"], ["vp09.00.10.08", "vp9"]]) {
+    const c = { codec, width: W, height: H, bitrate, framerate: 30 };
+    try { if ((await VideoEncoder.isConfigSupported(c)).supported) { cfg = c; mcodec = mc; break } } catch (e) {}
+  }
+  if (!cfg) throw new Error("This browser can't write MP4 video at this size.");
+  const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: mcodec, width: W, height: H, frameRate: 30 }, fastStart: "in-memory" });
+  let err = null;
+  const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { err = e } });
+  enc.configure(cfg);
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  for (let i = 0; i < N; i++) {
+    if (err) throw err;
+    await drawFrame(ctx, i);
+    const fr = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / 30), duration: Math.round(1e6 / 30) });
+    enc.encode(fr, { keyFrame: i % 60 === 0 }); fr.close();
+    while (enc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 5));
+    if (i % 3 === 0) { onStatus(Math.round(100 * i / N)); await new Promise(r => setTimeout(r, 0)) }
+  }
+  await enc.flush(); enc.close(); muxer.finalize();
+  if (err) throw err;
+  return new Blob([muxer.target.buffer], { type: "video/mp4" });
+}
+const even = v => Math.max(2, Math.round(v / 2) * 2);
+const phaseLabel = ft => { const ph = currentPhase(ft); return ph.name === "Start" ? "Set position" : ph.name === "Finish" ? "Follow-through" : ph.name };
+function drawTimeBar(ctx, x, y, w, ft, sc) {
+  ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(x, y, w, 4 * sc);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(x, y, w * ft / Math.max(1, T - 1), 4 * sc);
+  ctx.font = `500 ${11 * sc}px "IBM Plex Mono", ui-monospace, monospace`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  KEYPH.forEach(p => { const px = x + w * p.frame / Math.max(1, T - 1); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fillRect(px - 1, y - 6 * sc, 2, 10 * sc); ctx.fillText(AB[p.name], px, y - 8 * sc) });
+  ctx.textAlign = "left";
+}
+async function exportVideo(kind, onStatus = () => {}) {
+  if (state.exporting) return null;
+  const keep = { f: state.f, playing: state.playing, overlay: state.overlay, ovAngles: state.ovAngles };
+  setPlaying(false); state.exporting = true;
+  const rate = state.rate || 0.5, dur = T / VFPS;
+  const N = Math.ceil(dur / rate * 30) + 1, HOLD = 20;          // then hold the last frame for 2/3 s
+  const ftOf = i => Math.max(0, Math.min(T - 1, Math.min(dur, Math.min(i, N - 1) / 30 * rate) * VFPS - 0.5));
+  try {
+    if (kind === "skeleton") {
+      const H = 1080, pw = Math.max(1, panel.clientWidth), ph = Math.max(1, panel.clientHeight);
+      const RW = even(Math.min(1440, Math.max(640, H * pw / ph))), SW = 480, W = even(RW + SW), sc = H / 720;
+      const rows = [];
+      GROUPS.forEach(g => { rows.push({ g }); Object.entries(MET).filter(([, m]) => m[2] === g).forEach(([k, m]) => rows.push({ k, m })) });
+      const unit = (H - 140) / rows.reduce((a, r) => a + (r.g ? 1.5 : 1), 0);
+      return await encodeMP4(W, H, N + HOLD, (ctx, i) => {
+        const ft = ftOf(i), P = computePose(ft);
+        drawFigure(P); drawAnnotations(P, ft);
+        { const end = Math.floor(ft * 4) + 1, start = Math.max(0, end - 32); pathNow.geometry.setDrawRange(start, end - start) }
+        renderer.render(scene, camera); drawSkeleton2D(P); drawForceAndCOM(P, ft);
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+        ctx.drawImage(renderer.domElement, 0, 0, RW, H); ctx.drawImage(skel, 0, 0, RW, H);
+        // phase + time, bottom left; brand top left
+        ctx.fillStyle = "#fff"; ctx.textBaseline = "alphabetic";
+        ctx.font = `600 ${13 * sc}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle = "rgba(255,255,255,.75)";
+        ctx.fillText("FEOLE PITCHING" + (DATA.name ? "  ·  " + DATA.name : ""), 22 * sc, 34 * sc);
+        ctx.fillStyle = "#fff"; ctx.font = `700 ${40 * sc}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+        ctx.fillText(phaseLabel(ft).toUpperCase(), 22 * sc, H - 56 * sc);
+        ctx.font = `500 ${13 * sc}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle = "rgba(255,255,255,.7)";
+        ctx.fillText(`frame ${Math.round(ft)} · ${(ft / FPS).toFixed(2)} s`, 22 * sc, H - 36 * sc);
+        drawTimeBar(ctx, 22 * sc, H - 18 * sc, RW - 44 * sc, ft, sc);
+        // angle column
+        ctx.fillStyle = "#0d0d0d"; ctx.fillRect(RW, 0, W - RW, H);
+        ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(RW, 0, 1, H);
+        const x0 = RW + 30, x1 = W - 30; let y = 70;
+        ctx.font = `700 ${30}px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = "#9a9a9a"; ctx.fillText("ANGLES", x0, y - 12);
+        y += 14;
+        rows.forEach(r => {
+          if (r.g) {
+            y += unit * 0.5; ctx.fillStyle = colorOf(r.g); ctx.fillRect(x0, y + unit * 0.5 - 8, 14, 14);
+            ctx.fillStyle = "#9a9a9a"; ctx.font = `500 ${17}px "IBM Plex Mono", ui-monospace, monospace`; ctx.textBaseline = "middle";
+            ctx.fillText(r.g.toUpperCase(), x0 + 24, y + unit * 0.5 - 1); y += unit; return;
+          }
+          const v = valAt(M[r.k], ft);
+          ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.fillStyle = "#bdbdbd"; ctx.font = `400 ${21}px "IBM Plex Sans", system-ui, sans-serif`;
+          ctx.fillText(r.m[0], x0, y + unit / 2);
+          ctx.textAlign = "right"; ctx.fillStyle = v == null ? "#777" : "#fff"; ctx.font = `500 ${22}px "IBM Plex Mono", ui-monospace, monospace`;
+          ctx.fillText(fmt(v, r.m[1]), x1, y + unit / 2); ctx.textAlign = "left";
+          ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fillRect(x0, y + unit - 1, x1 - x0, 1);
+          y += unit;
+        });
+        ctx.textBaseline = "alphabetic";
+      }, onStatus);
+    }
+    // source video with the overlay
+    if (!state.videoOK) throw new Error("The source video isn't available for this pitch.");
+    const vw = video.videoWidth || DATA.width, vh = video.videoHeight || DATA.height, k = Math.min(1, 1920 / Math.max(vw, vh), 1080 / Math.min(vw, vh));
+    const W = even(vw * k), H = even(vh * k), sc = Math.min(W, H) / 540;
+    const layer = document.createElement("canvas"); layer.width = W; layer.height = H; layer._sc = sc * 1.2;
+    const keepOv = [ov, og]; ov = layer; og = layer.getContext("2d");
+    state.overlay = true; state.ovAngles = true;
+    let lastFr = -1;
+    const seekTo = fr => new Promise(res => {
+      const tt = T0 + (fr + 0.5) / VFPS; if (Math.abs(video.currentTime - tt) < 1e-4 && video.readyState >= 2) return res();
+      const done = () => { clearTimeout(to); video.removeEventListener("seeked", done); res() };
+      const to = setTimeout(done, 3000); video.addEventListener("seeked", done); video.currentTime = tt;
+    });
+    try {
+      return await encodeMP4(W, H, N + HOLD, async (ctx, i) => {
+        const ft = ftOf(i), fr = Math.round(ft);
+        if (fr !== lastFr) { await seekTo(fr); lastFr = fr }
+        ctx.drawImage(video, 0, 0, W, H);
+        drawOverlay(ft); ctx.drawImage(layer, 0, 0);
+        // phase tag, bottom left
+        const label = phaseLabel(ft).toUpperCase(), fsz = 22 * sc;
+        ctx.font = `700 ${fsz}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = "rgba(0,0,0,.66)"; ctx.fillRect(12 * sc, H - 12 * sc - fsz * 1.5, tw + 20 * sc, fsz * 1.5);
+        ctx.fillStyle = "#fff"; ctx.textBaseline = "middle"; ctx.fillText(label, 22 * sc, H - 12 * sc - fsz * 0.75); ctx.textBaseline = "alphabetic";
+      }, onStatus);
+    } finally { [ov, og] = keepOv }
+  } finally {
+    state.exporting = false; state.overlay = keep.overlay; state.ovAngles = keep.ovAngles;
+    seek(keep.f); lastShown = -1; if (keep.playing) setPlaying(true);
+  }
+}
 return {
+  exportVideo,
   seek: f => seek(f),
   frame: () => Math.round(state.f),
   csv: () => {

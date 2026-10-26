@@ -640,6 +640,25 @@ $("pdfBtn").onclick = async () => {
   catch (e) { console.warn(e); alert("Couldn't make the PDF: " + (e.message || e)) }
   finally { b.disabled = false; b.textContent = label }
 };
+// video downloads: the skeleton with its angles, or the source video with the overlay (MP4, made in the browser)
+const vidMenu = $("vidMenu"), vidSum = $("vidSum");
+async function makeVideo(kind) {
+  if (!viewer || !lastResult || !viewer.exportVideo) return;
+  vidMenu.open = false; vidMenu.classList.add("busy");
+  const label = "Download video";
+  try {
+    const blob = await viewer.exportVideo(kind, pct => { vidSum.textContent = `Making video… ${pct}%` });
+    if (!blob) return;
+    const name = (lastResult.data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement("a"); el.href = url; el.download = `${name}_${kind === "skeleton" ? "skeleton" : "overlay"}.mp4`;
+    document.body.append(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) { console.warn(e); alert("Couldn't make the video: " + (e.message || e)) }
+  finally { vidMenu.classList.remove("busy"); vidSum.textContent = label }
+}
+$("vidSkel").onclick = () => makeVideo("skeleton");
+$("vidOv").onclick = () => makeVideo("overlay");
+document.addEventListener("click", e => { if (vidMenu.open && !vidMenu.contains(e.target)) vidMenu.open = false });
 $("newBtn").onclick = () => { if (viewer) { viewer.stop(); viewer = null } show("home"); renderHistory() };
 $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
 
