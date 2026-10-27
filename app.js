@@ -1,6 +1,10 @@
 // Charney Pitching — app shell: upload, trim, track, analyse, view, history.
 import { FilesetResolver, PoseLandmarker } from "./lib/vision_bundle.mjs";
-import { analyse, detectSlowFactor } from "./pipeline.js";
+import { analyse as analyseRaw, detectSlowFactor } from "./pipeline.js";
+// the lab throwing-arm library (404 motion-capture fastballs) the pipeline matches the throwing arm against
+let ARMLIB = null;
+fetch("armlib.json?v=1").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
+const analyse = (raw, o = {}) => analyseRaw(raw, ARMLIB ? { ...o, armLib: ARMLIB } : o);
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";

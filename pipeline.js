@@ -345,11 +345,77 @@ function throwPath(A0, A, B1, B2, a, b, rel, fs) {
   };
 }
 
+
+// ---------------------------------------------------------------- throwing arm matched to lab throws
+// Around release the arm moves further between two video frames than anywhere else (at 30 fps the forearm turns about
+// 90° between frames), and one camera can't tell whether it leans toward or away from the lens. So the arm seen in the
+// clear frames is compared, frame by frame as the camera sees it, with 404 fastballs measured in a motion-capture lab
+// (Driveline OpenBiomechanics; upper arm and forearm directions in the trunk's axes, 240 samples a second), allowing for
+// a slightly earlier or later release and a slightly quicker or slower arm. The closest lab throws, averaged, give the
+// arm's lean toward or away from the camera, and the arm itself in frames the camera lost to blur.
+function decodeArmLib(lib) {
+  if (lib._dec) return lib._dec;
+  const dec = typeof atob === "function" ? s => atob(s) : s => Buffer.from(s, "base64").toString("binary");
+  lib._dec = lib.pitches.filter(p => !(lib._exclude && lib._exclude.has(p.user))).map(p => {
+    const b = dec(p.d), a = new Float32Array(b.length);
+    for (let i = 0; i < b.length; i++) { const v = b.charCodeAt(i); a[i] = (v > 127 ? v - 256 : v) / 127 }
+    return { user: p.user, a };
+  });
+  return lib._dec;
+}
+function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
+  const T = P.length, LIB = decodeArmLib(lib), N = lib.n, LF = lib.fps, LT0 = lib.t0;
+  const ex = rot([1, 0, 0]), ey = [0, 1, 0], Lu = BL["12,14"], Lf = BL["14,16"];
+  const lo = Math.max(1, rel - Math.round(0.26 * fs)), hi = Math.min(T - 2, rel + Math.round(0.10 * fs));
+  const proj = v => [dot(v, ex), dot(v, ey)];
+  const fr = [];
+  for (let t = lo; t <= hi; t++) {
+    const F = P[t], up = unit(sub(mid(F[11], F[12]), mid(F[23], F[24]))); let r = sub(F[12], F[11]); r = unit(sub(r, mul(up, dot(r, up))));
+    const fw = cross(up, r), R = [r, up, fw];
+    const o = (a, b) => [(img[t][b][0] - img[t][a][0]) * scale[t], -(img[t][b][1] - img[t][a][1]) * scale[t]];
+    // rows of the projection: screen x and y of each trunk axis, so a trunk-frame direction projects with two dot products
+    const px = R.map(ax => dot(ax, ex)), py = R.map(ax => dot(ax, ey));
+    fr.push({ t, R, px, py, ou: o(12, 14), of: o(14, 16), w: bad && bad[t] ? 0.05 : 1 });
+  }
+  const sample = (a, tau, k) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return null; const i = Math.min(N - 2, Math.floor(x)), u = x - i, j = i * 6 + k; return [a[j] + (a[j + 6] - a[j]) * u, a[j + 1] + (a[j + 7] - a[j + 1]) * u, a[j + 2] + (a[j + 8] - a[j + 2]) * u] };
+  const shifts = []; for (let s = -0.05; s <= 0.0501; s += 1 / 240) shifts.push(s);
+  const speeds = [0.88, 0.94, 1, 1.06, 1.13];
+  const step = Math.max(1, Math.ceil(fr.length / 30)), frS = fr.filter((_, i) => i % step === 0);   // slow-motion: score every few frames
+  const scored = LIB.map(L => {
+    let best = Infinity, bs = 0, bk = 1;
+    for (const k of speeds) for (const s of shifts) {
+      let c = 0, ws = 0;
+      for (const q of frS) {
+        const tau = ((q.t - rel) / fs + s) * k, u = sample(L.a, tau, 0), f = sample(L.a, tau, 3);
+        if (!u) { c += q.w * 2; ws += q.w; continue }
+        const ux = Lu * (q.px[0] * u[0] + q.px[1] * u[1] + q.px[2] * u[2]) - q.ou[0], uy = Lu * (q.py[0] * u[0] + q.py[1] * u[1] + q.py[2] * u[2]) - q.ou[1];
+        const fx = Lf * (q.px[0] * f[0] + q.px[1] * f[1] + q.px[2] * f[2]) - q.of[0], fy = Lf * (q.py[0] * f[0] + q.py[1] * f[1] + q.py[2] * f[2]) - q.of[1];
+        c += q.w * ((ux * ux + uy * uy) / (Lu * Lu) + (fx * fx + fy * fy) / (Lf * Lf)); ws += q.w;
+      }
+      c /= ws || 1; if (c < best) { best = c; bs = s; bk = k }
+    }
+    return { L, c: best, s: bs, k: bk };
+  }).sort((a, b) => a.c - b.c);
+  const top = scored.slice(0, opts.armMatchK ?? 6);
+  const u = new Array(T).fill(null), f = new Array(T).fill(null), wt = new Array(T).fill(0);
+  for (const q of fr) {
+    let su = [0, 0, 0], sf = [0, 0, 0], n = 0;
+    for (const m of top) { const tau = ((q.t - rel) / fs + m.s) * m.k, a = sample(m.L.a, tau, 0), b = sample(m.L.a, tau, 3); if (!a) continue; su = add(su, a); sf = add(sf, b); n++ }
+    if (!n) continue;
+    const toW = v => add(add(mul(q.R[0], v[0]), mul(q.R[1], v[1])), mul(q.R[2], v[2]));
+    u[q.t] = unit(toW(su)); f[q.t] = unit(toW(sf));
+    wt[q.t] = Math.min(1, (q.t - lo + 1) / 3, (hi - q.t + 1) / 3);           // eased in and out at the window's ends
+  }
+  if (opts._dbgMatch) opts._dbgMatch.push({ top: top.map(m => [m.L.user, +m.c.toFixed(4), m.s, m.k]), lo, hi, u, f, rel });
+  const relShift = -top.reduce((a, m) => a + m.s, 0) / Math.max(1, top.length) * fs;   // where the lab throws put release, in frames
+  return { u, f, wt, relShift };
+}
+
 // ---------------------------------------------------------------- arms locked to the video
 // For each arm bone the tracked video gives its on-screen direction and length exactly; with the bone's true length
 // that fixes how far it leans toward/away from the camera, leaving only which way (toward or away). That choice is
 // taken from the reconstruction (P), held steady by a two-state Viterbi (no flipping faster than an arm can move).
-function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}) {
+function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = null) {
   const T = P.length, ex = rot([1, 0, 0]), ey = [0, 1, 0], cz = unit(cam);
   // [parent, joint, joints carried along, hand points rotated with the forearm]; shoulders first, then each arm down
   const CH = [[-1, 12, [14, 16, 18, 20, 22]], [-1, 11, [13, 15, 17, 19, 21]],
@@ -371,6 +437,9 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}) {
       if (n > 0.995 * L) v = mul(v, 0.995 * L / n);
       ip.push(v); dz.push(Math.sqrt(Math.max(0, L * L - dot(v, v)))); cur.push(dot(sub(Q[t][b], baseOf(Q[t], a, t)), cz));
     }
+    // throwing arm: which way it leans comes from the matched lab throws where they're available
+    const tv = tmpl && (b === 14 || b === 16) ? (b === 14 ? tmpl.u : tmpl.f) : null;
+    if (tv) for (let t = 0; t < T; t++) if (tv[t]) { const w = tmpl.wt[t] * (opts._tmplSign ?? 1); cur[t] = (1 - w) * cur[t] + w * L * dot(tv[t], cz) }
     // toward/away: agree with the reconstruction, change only as fast as the bone end can travel
     const su = 0.35 * L, step = (b === 16 || b === 15 ? 14 : a === -1 ? 3 : 8) / fs;
     const un = (t, s) => Math.min(9, ((s ? -dz[t] : dz[t]) - cur[t]) ** 2 / (su * su));
@@ -387,10 +456,20 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}) {
     // the tracker's own frame-to-frame wobble is evened out (shoulders more: they're often half hidden), lengths kept exact
     const sgm = (a === -1 ? 1.5 : opts._armSig ?? 0.6) * K;
     const VS = gauss(ip.map((v, t) => add(v, mul(cz, st[t] ? -dz[t] : dz[t]))), sgm);
+    // frames the camera lost to blur: the matched lab arm itself
+    const tw = new Array(T).fill(0);
+    if (tv) for (let t = 0; t < T; t++) if (tv[t]) {
+      const lost = unseen[12] && unseen[12][t], w = tmpl.wt[t] * (lost ? (opts._tmplFill ?? 1) : (opts._tmplAll ?? 0.5));
+      tw[t] = tmpl.wt[t] * (opts._tmplFill ?? 1);
+      if (w > 0) VS[t] = add(mul(unit(VS[t]), L * (1 - w)), mul(tv[t], L * w));
+    }
     for (let t = 0; t < T; t++) {
       const F = Q[t], base = baseOf(F, a, t);
       let vec = mul(unit(VS[t]), L);
-      if (wt[t] < 0.999) vec = mul(unit(add(mul(vec, wt[t]), mul(unit(sub(F[b], base)), L * (1 - wt[t])))), L);
+      if (wt[t] < 0.999) {                 // arm lost in the blur: the matched lab arm if there is one, else the bridged arm
+        const fb = tw[t] > 0 ? unit(add(mul(unit(sub(F[b], base)), 1 - tw[t]), mul(tv[t], tw[t]))) : unit(sub(F[b], base));
+        vec = mul(unit(add(mul(vec, wt[t]), mul(fb, L * (1 - wt[t])))), L);
+      }
       const oldEnd = F[b], dl = sub(add(base, vec), oldEnd);
       F[b] = add(base, vec); carry.forEach(k => F[k] = add(F[k], dl));
       if (hand) {
@@ -1028,7 +1107,12 @@ function analyseOnce(raw, opts = {}) {
   // ---- arms locked to the video. Seen from the camera, each arm bone points exactly where the tracked arm does
   // (upper arm from the shoulder, forearm from the elbow); only the part the camera can't see, how far each bone
   // leans toward or away from it, comes from the 3D reconstruction above. Bone lengths stay exact.
-  if (opts.armLock !== false && !measured) P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, opts);
+  if (opts.armLock !== false && !measured) {
+    const tmpl = opts.armLib && opts.armMatch !== false ? armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, opts) : null;
+    P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, opts, tmpl);
+    // release: where the matched lab throws release the ball (unless it was set by hand)
+    if (tmpl && opts.matchRel !== false && !(opts.phases && opts.phases.release != null)) rel = clamp(rel + Math.round(tmpl.relShift), fs_ + 1, T - 2);
+  }
 
   // ---- final glitch guard, on every skeleton whatever the video: the zero-phase low-pass filter biomechanics labs run
   // on motion-capture data (about 12 Hz for the body, 20 Hz for the throwing arm, which really does move that fast).
