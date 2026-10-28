@@ -471,11 +471,9 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
         <label class="sel"><span>Analysis</span><select id="qualSel"><option value="ultra" disabled>Ultra (cloud 3D) · coming soon</option><option value="max" selected>Max accuracy</option><option value="high">High</option><option value="fast">Fast</option></select></label>
       </div>
       <details class="fold more">
-        <summary>More options <small>level, velocity, height, slow-mo</small></summary>
+        <summary>More options <small>height, slow-mo</small></summary>
       <div class="selrow sel2">
         <label class="sel"><span>Slow-motion clip</span><select id="slowSel"><option value="auto" selected>Auto-detect</option><option value="1">Normal speed</option><option value="2">2× slow</option><option value="4">4× slow</option><option value="8">8× slow</option></select></label>
-        <label class="sel"><span>Pitcher level</span><select id="levelSel"><option value="ms">Middle school</option><option value="hs" selected>High school</option><option value="col">College</option><option value="pro">Professional</option></select></label>
-        <label class="sel"><span>Fastball velocity (optional)</span><input id="veloIn" class="numin" type="number" min="30" max="110" step="0.5" inputmode="decimal" placeholder="mph"></label>
         <div class="sel"><span id="heightLbl">Pitcher height</span><div class="hrow" role="group" aria-labelledby="heightLbl"><select id="heightFt" aria-label="Feet"><option value="">Not set</option><option value="4">4 ft</option><option value="5">5 ft</option><option value="6" selected>6 ft</option><option value="7">7 ft</option></select><select id="heightIn" aria-label="Inches"><option value="0">0 in</option><option value="1">1 in</option><option value="2">2 in</option><option value="3">3 in</option><option value="4">4 in</option><option value="5">5 in</option><option value="6">6 in</option><option value="7">7 in</option><option value="8">8 in</option><option value="9">9 in</option><option value="10">10 in</option><option value="11">11 in</option></select></div></div>
       </div>
       </details>
@@ -532,7 +530,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <section id="results" class="view" hidden>
     <div class="reshead">
       <div><span class="eyebrow">Feole Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
-      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF report</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
+      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
     <div id="viewerMount" style="display:grid;gap:20px"></div>
@@ -583,9 +581,6 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   </div>
 
   <div class="results-folds">
-  <details class="fold report" open><summary>Report: what to work on</summary>
-  <div id="report"></div>
-  </details>
   <details class="fold"><summary>Angles at each phase</summary>
     <p class="sub">Degrees at the four key moments of the delivery. Click a column heading to jump there. Rotation is measured from the stretch position: 0° faces the third-base side and 90° faces home plate.</p>
     <div class="tablewrap"><table id="ptable"></table></div>
@@ -606,7 +601,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="viewer.js?v=1793199758" charset="utf-8"></script>
-<script type="module" src="app.js?v=1793199758"></script>
+<script src="viewer.js?v=1793200893" charset="utf-8"></script>
+<script type="module" src="app.js?v=1793200893"></script>
 </body>
 </html>

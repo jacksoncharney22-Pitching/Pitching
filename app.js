@@ -8,7 +8,6 @@ const analyse = (raw, o = {}) => analyseRaw(raw, ARMLIB ? { ...o, armLib: ARMLIB
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
-import { buildReport, reportHTML } from "./report.js";
 import { downloadPDF } from "./pdf.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
@@ -50,11 +49,11 @@ function resolveSlow(raw) {
   return { factor: chosen, note: "" };
 }
 $("qualSel").onchange = e => { opts.quality = e.target.value; $("qualHint").textContent = QUAL_HINT[e.target.value] };
-$("levelSel").value = opts.level;
+if ($("levelSel")) $("levelSel").value = opts.level;
 if (opts.heightIn) { $("heightFt").value = String(Math.floor(opts.heightIn / 12)); $("heightIn").value = String(opts.heightIn % 12) } else $("heightFt").value = "";
-$("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
+if ($("levelSel")) $("levelSel").onchange = e => { opts.level = e.target.value; keepPitcher() };
 const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
-$("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
+if ($("veloIn")) $("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
 $("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
@@ -630,20 +629,6 @@ function openResults(data, url, meta = {}) {
   } : null;
   $("phaseEditNote").hidden = !!onPhases;
   viewer = window.startViewer(data, url, { onPhases, startFrame: meta.startFrame });
-  try {
-    const box = $("report");
-    if (box) {
-      const draw = () => {
-        box.innerHTML = reportHTML(buildReport(data));
-        box.querySelectorAll(".rshow").forEach(b => b.onclick = () => { if (viewer && viewer.seek) { viewer.seek(+b.dataset.f); $("viewerMount").scrollIntoView({ behavior: "smooth", block: "start" }) } });
-        const ls = box.querySelector("#repLevel");
-        if (ls) ls.onchange = () => { data.level = ls.value; if (meta.id != null) updateHistory(meta.id, data); draw() };
-        const vi = box.querySelector("#repVelo");
-        if (vi) vi.onchange = () => { const v = parseFloat(vi.value); data.velo = v >= 30 && v <= 110 ? v : null; if (meta.id != null) updateHistory(meta.id, data); draw() };
-      };
-      draw();
-    }
-  } catch (e) { console.warn("report failed", e) }
 }
 $("pdfBtn").onclick = async () => {
   if (!lastResult) return;
