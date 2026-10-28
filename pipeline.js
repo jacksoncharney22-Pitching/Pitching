@@ -358,7 +358,7 @@ function decodeArmLib(lib) {
   const dec = typeof atob === "function" ? s => atob(s) : s => Buffer.from(s, "base64").toString("binary");
   lib._dec = lib.pitches.filter(p => !(lib._exclude && lib._exclude.has(p.user))).map(p => {
     const b = dec(p.d), a = new Float32Array(b.length);
-    for (let i = 0; i < b.length; i++) { const v = b.charCodeAt(i); a[i] = (v > 127 ? v - 256 : v) / 127 }
+    for (let i = 0; i < b.length; i++) { const v = b.charCodeAt(i); a[i] = v === 128 ? NaN : (v > 127 ? v - 256 : v) / 127 }   // -128: not recorded
     return { user: p.user, a };
   });
   return lib._dec;
@@ -366,7 +366,7 @@ function decodeArmLib(lib) {
 function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
   const T = P.length, LIB = decodeArmLib(lib), N = lib.n, LF = lib.fps, LT0 = lib.t0;
   const ex = rot([1, 0, 0]), ey = [0, 1, 0], Lu = BL["12,14"], Lf = BL["14,16"];
-  const lo = Math.max(1, rel - Math.round(0.26 * fs)), hi = Math.min(T - 2, rel + Math.round(0.10 * fs));
+  const lo = Math.max(1, rel - Math.round((opts._mPre ?? 0.26) * fs)), hi = Math.min(T - 2, rel + Math.round((opts._mPost ?? 0.10) * fs));
   const proj = v => [dot(v, ex), dot(v, ey)];
   const fr = [];
   for (let t = lo; t <= hi; t++) {
@@ -377,22 +377,25 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
     const px = R.map(ax => dot(ax, ex)), py = R.map(ax => dot(ax, ey));
     fr.push({ t, R, px, py, ou: o(12, 14), of: o(14, 16), w: bad && bad[t] ? 0.05 : 1 });
   }
-  const sample = (a, tau, k) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return null; const i = Math.min(N - 2, Math.floor(x)), u = x - i, j = i * 6 + k; return [a[j] + (a[j + 6] - a[j]) * u, a[j + 1] + (a[j + 7] - a[j + 1]) * u, a[j + 2] + (a[j + 8] - a[j + 2]) * u] };
+  const sample = (a, tau, k) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return null; const i = Math.min(N - 2, Math.floor(x)), u = x - i, j = i * 6 + k;
+    if (a[j] !== a[j] || a[j + 6] !== a[j + 6]) return null;                                 // outside what the lab recorded
+    return [a[j] + (a[j + 6] - a[j]) * u, a[j + 1] + (a[j + 7] - a[j + 1]) * u, a[j + 2] + (a[j + 8] - a[j + 2]) * u] };
   const shifts = []; for (let s = -0.05; s <= 0.0501; s += 1 / 240) shifts.push(s);
   const speeds = [0.88, 0.94, 1, 1.06, 1.13];
   const step = Math.max(1, Math.ceil(fr.length / 30)), frS = fr.filter((_, i) => i % step === 0);   // slow-motion: score every few frames
   const scored = LIB.map(L => {
     let best = Infinity, bs = 0, bk = 1;
     for (const k of speeds) for (const s of shifts) {
-      let c = 0, ws = 0;
+      let c = 0, ws = 0, miss = 0;
       for (const q of frS) {
         const tau = ((q.t - rel) / fs + s) * k, u = sample(L.a, tau, 0), f = sample(L.a, tau, 3);
-        if (!u) { c += q.w * 2; ws += q.w; continue }
+        if (!u) { miss += q.w; continue }
         const ux = Lu * (q.px[0] * u[0] + q.px[1] * u[1] + q.px[2] * u[2]) - q.ou[0], uy = Lu * (q.py[0] * u[0] + q.py[1] * u[1] + q.py[2] * u[2]) - q.ou[1];
         const fx = Lf * (q.px[0] * f[0] + q.px[1] * f[1] + q.px[2] * f[2]) - q.of[0], fy = Lf * (q.py[0] * f[0] + q.py[1] * f[1] + q.py[2] * f[2]) - q.of[1];
         c += q.w * ((ux * ux + uy * uy) / (Lu * Lu) + (fx * fx + fy * fy) / (Lf * Lf)); ws += q.w;
       }
-      c /= ws || 1; if (c < best) { best = c; bs = s; bk = k }
+      if (ws < 2 * miss || !ws) continue;                   // must cover at least two thirds of the window
+      c = c / ws + 0.15 * miss / (ws + miss); if (c < best) { best = c; bs = s; bk = k }
     }
     return { L, c: best, s: bs, k: bk };
   }).sort((a, b) => a.c - b.c);
@@ -420,15 +423,17 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
   // [parent, joint, joints carried along, hand points rotated with the forearm]; shoulders first, then each arm down
   const CH = [[-1, 12, [14, 16, 18, 20, 22]], [-1, 11, [13, 15, 17, 19, 21]],
               [12, 14, [16, 18, 20, 22]], [14, 16, [], [18, 20, 22]], [11, 13, [15, 17, 19, 21]], [13, 15, [], [17, 19, 21]]];
-  const scr = (t, j, k) => { const A = j === -1 ? [(img[t][11][0] + img[t][12][0]) / 2, (img[t][11][1] + img[t][12][1]) / 2] : img[t][j];
+  // the hip line too (each hip about the hips' midpoint); the legs follow when the bone lengths are locked again
+  if (opts.lockHips) CH.unshift([-2, 24, []], [-2, 23, []]);
+  const scr = (t, j, k) => { const A = j === -1 ? [(img[t][11][0] + img[t][12][0]) / 2, (img[t][11][1] + img[t][12][1]) / 2] : j === -2 ? [(img[t][23][0] + img[t][24][0]) / 2, (img[t][23][1] + img[t][24][1]) / 2] : img[t][j];
     const dx = (img[t][k][0] - A[0]) * scale[t], dy = -(img[t][k][1] - A[1]) * scale[t]; return add(mul(ex, dx), mul(ey, dy)) };
   const Q = P.map(F => F.map(p => p.slice()));
-  const BLk = (a, b) => a === -1 ? BL["-1," + b] : BL[a + "," + b];
-  const M0 = P.map(F => nodeOf(F, -1)), baseOf = (F, a, t) => a === -1 ? M0[t] : F[a];
+  const BLk = (a, b) => a < 0 ? BL[a + "," + b] : BL[a + "," + b];
+  const M0 = P.map(F => nodeOf(F, -1)), H0 = P.map(F => nodeOf(F, -2)), baseOf = (F, a, t) => a === -1 ? M0[t] : a === -2 ? H0[t] : F[a];
   const trust = {};
   for (const sh of [11, 12]) { const u = unseen[sh]; trust[sh] = u ? gauss(u.map(v => v ? 0 : 1), Math.max(0.7, 0.7 * K)).map((w, t) => u[t] ? Math.min(w, 0.15) : w) : P.map(() => 1) }
   for (const [a, b, carry, hand] of CH) {
-    const wt = a === -1 ? P.map(() => 1) : trust[[12, 14, 16].includes(b) ? 12 : 11];
+    const wt = a < 0 ? P.map(() => 1) : trust[[12, 14, 16].includes(b) ? 12 : 11];
     if (opts.lockThrowOnly && ![12, 14, 16].includes(b)) continue;
     if (a === -1 && opts.lockShoulders === false) continue;
     const L = BLk(a, b), ip = [], dz = [], cur = [];
@@ -441,7 +446,7 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     const tv = tmpl && (b === 14 || b === 16) ? (b === 14 ? tmpl.u : tmpl.f) : null;
     if (tv) for (let t = 0; t < T; t++) if (tv[t]) { const w = tmpl.wt[t] * (opts._tmplSign ?? 1); cur[t] = (1 - w) * cur[t] + w * L * dot(tv[t], cz) }
     // toward/away: agree with the reconstruction, change only as fast as the bone end can travel
-    const su = 0.35 * L, step = (b === 16 || b === 15 ? 14 : a === -1 ? 3 : 8) / fs;
+    const su = 0.35 * L, step = (b === 16 || b === 15 ? 14 : a < 0 ? 3 : 8) / fs;
     const un = (t, s) => Math.min(9, ((s ? -dz[t] : dz[t]) - cur[t]) ** 2 / (su * su));
     const tr = (t, s, u) => Math.min(400, ((s ? -dz[t] : dz[t]) - (u ? -dz[t - 1] : dz[t - 1])) ** 2 / (step * step));
     let D = [un(0, 0), un(0, 1)]; const bk = [];
@@ -454,7 +459,7 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     for (let t = T - 1; t > 0; t--) st[t - 1] = bk[t - 1][st[t]];
     if (opts._dbgLock) opts._dbgLock.push({ a, b, L, ip: ip.map(v => norm(v)), dz, cur, st, wt });
     // the tracker's own frame-to-frame wobble is evened out (shoulders more: they're often half hidden), lengths kept exact
-    const sgm = (a === -1 ? 1.5 : opts._armSig ?? 0.6) * K;
+    const sgm = (a < 0 ? (a === -2 ? opts._hipSig ?? 1.5 : 1.5) : opts._armSig ?? 0.6) * K;
     const VS = gauss(ip.map((v, t) => add(v, mul(cz, st[t] ? -dz[t] : dz[t]))), sgm);
     // frames the camera lost to blur: the matched lab arm itself
     const tw = new Array(T).fill(0);
@@ -1108,7 +1113,24 @@ function analyseOnce(raw, opts = {}) {
   // (upper arm from the shoulder, forearm from the elbow); only the part the camera can't see, how far each bone
   // leans toward or away from it, comes from the 3D reconstruction above. Bone lengths stay exact.
   if (opts.armLock !== false && !measured) {
-    const tmpl = opts.armLib && opts.armMatch !== false ? armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, opts) : null;
+    // two matches: a tight one round release (where timing matters most) and a long one for the stride and
+    // follow-through; the tight one wins where they overlap
+    let tmpl = null;
+    if (opts.armLib && opts.armMatch !== false) {
+      const S = armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, opts);
+      tmpl = S;
+      if (opts.armMatchLong !== false) {
+        const Lg = armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, { ...opts, _mPre: opts._lPre ?? 0.55, _mPost: opts._lPost ?? 0.22, _dbgMatch: null });
+        const u = [], f = [], wt = [];
+        for (let t = 0; t < T; t++) {
+          const ws = S.u[t] ? S.wt[t] : 0, wl = Lg.u[t] ? Lg.wt[t] : 0;
+          if (!ws && !wl) { u.push(null); f.push(null); wt.push(0); continue }
+          const mix = (a, b) => ws && wl ? unit(add(mul(a, ws), mul(b, 1 - ws))) : ws ? a : b;
+          u.push(mix(S.u[t], Lg.u[t])); f.push(mix(S.f[t], Lg.f[t])); wt.push(Math.max(ws, wl));
+        }
+        tmpl = { u, f, wt, relShift: S.relShift };
+      }
+    }
     P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, opts, tmpl);
     // release: where the matched lab throws release the ball (unless it was set by hand)
     if (tmpl && opts.matchRel !== false && !(opts.phases && opts.phases.release != null)) rel = clamp(rel + Math.round(tmpl.relShift), fs_ + 1, T - 2);
