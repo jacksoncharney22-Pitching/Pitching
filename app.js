@@ -119,6 +119,7 @@ function setMain(i, keepTrim) {
     const d = v.duration || 0;
     $("trimStart").max = $("trimEnd").max = d.toFixed(2);
     $("trimStart").value = 0; $("trimEnd").value = d.toFixed(2);         // the whole clip by default: any length works
+    userTrimmed = false;
     editor.load(current.url, d);
     updateTrim();
     scanPitches(current);                                                  // then narrow it to one pitch, automatically
@@ -148,11 +149,15 @@ function renderAngles() {
 function updateTrim() {
   const S = +$("trimStart").value, E = +$("trimEnd").value;
   $("trimLabel").textContent = `${fmtTime(S)} → ${fmtTime(E)} · ${(E - S).toFixed(1)} s analysed`;
+  const si = $("selInfo"); if (si) si.innerHTML = `The skeleton is built from <b>${clk2(S)} → ${clk2(E)}</b> (${(E - S).toFixed(2)} s) of this video.`;
   // real time covered (a slowed clip covers less real time than it plays for)
   const real = (E - S) / (typeof opts.slow === "number" ? opts.slow : 1);
   $("trimWarn").hidden = real <= 8;
 }
-const editor = createEditor({ root: $("clipEditor"), video: $("prepVideo"), startInput: $("trimStart"), endInput: $("trimEnd"), onChange: () => updateTrim() });
+// once you move the trim yourself (drag, set start/end, cut), the automatic pitch finder never changes it again
+let userTrimmed = false;
+const editor = createEditor({ root: $("clipEditor"), video: $("prepVideo"), startInput: $("trimStart"), endInput: $("trimEnd"),
+  onChange: from => { if (from && from !== "pick") { userTrimmed = true; if (scan) { scan.sel = null; showPitches() } } updateTrim() } });
 $("backHome").onclick = () => show("home");
 
 // ---------------------------------------------------------------- pose tracking in the browser
@@ -209,7 +214,7 @@ async function run() {
   ["stModel", "stTrack", "stBuild"].forEach(s => step(s, "todo", ""));
   try {
     if (!angles.length) throw new Error("Choose a pitching video first.");
-    if (scan && scan.state === "busy" && scan.promise) { step("stModel", "doing", "Finding the pitch in this clip"); await scan.promise.catch(() => {}) }
+    if (!userTrimmed && scan && scan.state === "busy" && scan.promise) { step("stModel", "doing", "Finding the pitch in this clip"); await scan.promise.catch(() => {}) }
     const q = opts.quality, K = angles.length, S = +$("trimStart").value, E = Math.max(S + 0.4, +$("trimEnd").value);
     if (q === "ultra") return await runUltraPitch(S, E);
     await holdWake();
@@ -379,6 +384,7 @@ async function trackSimple(q, src) {
 // Built as one skeleton, that jumps at every cut and every reset. A quick scan (about 8 looks a second) finds each
 // delivery (a leg lift followed by a long stride) and every camera cut, and trims to one pitch inside one shot.
 let scan = null;                                                           // { forUrl, promise, pitches, cuts }
+function clk2(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, "0")}` }
 function fmtClock(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(1).padStart(4, "0")}` }
 async function findPitches(url, onProgress) {
   const v = await openVideo(url), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
@@ -447,7 +453,8 @@ function showPitches() {
   if (scan.state === "busy") { msg.innerHTML = `Finding the pitch in this clip… <small>${Math.round(100 * (scan.prog || 0))}%</small>`; return }
   const P = scan.pitches || [], nc = (scan.cuts || []).length;
   if (!P.length) { msg.innerHTML = `Couldn't spot a single pitch automatically${nc ? ` (the camera cuts ${nc} time${nc > 1 ? "s" : ""})` : ""}, so the whole clip will be analysed. For the smoothest skeleton, drag the trim to just one pitch.`; return }
-  msg.innerHTML = P.length === 1 ? `<b>Found the pitch</b> and trimmed to it${nc ? `, inside one camera shot` : ""}.` : `<b>Found ${P.length} pitches</b>${nc ? ` and ${nc} camera cut${nc > 1 ? "s" : ""}` : ""}. Analysing one at a time keeps the skeleton smooth: pick which one.`;
+  if (scan.sel == null && P.length) msg.innerHTML = `<b>Using your trim.</b> The pitch finder also spotted ${P.length === 1 ? "a pitch" : P.length + " pitches"}; tap one to use it instead.`;
+  else msg.innerHTML = P.length === 1 ? `<b>Found the pitch</b> and trimmed to it${nc ? `, inside one camera shot` : ""}.` : `<b>Found ${P.length} pitches</b>${nc ? ` and ${nc} camera cut${nc > 1 ? "s" : ""}` : ""}. Analysing one at a time keeps the skeleton smooth: pick which one.`;
   P.forEach((p, k) => {
     const b = document.createElement("button"); b.type = "button"; b.textContent = `Pitch ${k + 1} · ${fmtClock(p.start)}`;
     b.setAttribute("aria-pressed", String(k === scan.sel)); b.onclick = () => pickPitch(k); chips.append(b);
@@ -466,7 +473,8 @@ function scanPitches(item) {
   scan = { forUrl: item.url, state: "busy", prog: 0, sel: 0 };
   const mine = scan; showPitches();
   mine.promise = findPitches(item.url, f => { if (scan === mine) { mine.prog = f; showPitches() } })
-    .then(r => { if (scan !== mine) return; Object.assign(mine, r, { state: "done" }); editor.markers(r.pitches, r.cuts); if (r.pitches.length) pickPitch(0); else showPitches() })
+    .then(r => { if (scan !== mine) return; Object.assign(mine, r, { state: "done" }); editor.markers(r.pitches, r.cuts);
+      if (r.pitches.length && !userTrimmed) pickPitch(0); else { if (userTrimmed) mine.sel = null; showPitches() } })
     .catch(e => { console.warn("pitch finder", e); if (scan === mine) { mine.state = "done"; mine.pitches = []; showPitches() } });
 }
 
