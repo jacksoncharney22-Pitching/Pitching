@@ -422,27 +422,35 @@ async function findPitches(url, onProgress) {
   const segOf = t => { let a = 0, b = dur; for (const c of cuts) { if (c <= t) a = Math.max(a, c); else { b = Math.min(b, c); break } } return [a, b] };
   // deliveries: a stride peak clearly wider than how he stands in that shot, after a real leg lift, 1.5 s+ apart
   const baseOf = (a, b) => { const v = []; S.forEach((x, i) => { if (x.t >= a && x.t < b && stride[i] != null) v.push(stride[i]) }); v.sort((p, q) => p - q); return v.length ? v[Math.floor(v.length * 0.3)] : 0.2 };
-  const cand = [];
+  const cand = []; let lastPeak = -Infinity;
   for (let i = 1; i < S.length - 1; i++) {
     const v0 = stride[i]; if (v0 == null || v0 < 0.7) continue;
     if ((stride[i - 1] ?? 0) > v0 || (stride[i + 1] ?? 0) > v0) continue;
-    const [segA, segB] = segOf(S[i].t); if (v0 - baseOf(segA, segB) < 0.3) continue;
-    // the leg lift: highest knee in the 4 s before, in the same shot, up near hip height
+    const [segA, segB] = segOf(S[i].t), base = baseOf(segA, segB); if (v0 - base < 0.3) continue;
+    // where this delivery starts: the stride starting to open (works for any leg kick, slide steps included), or the
+    // leg lift if a clear one comes earlier. Slow motion stretches the delivery (8x slow: 5-7 s of video from leg lift
+    // to foot strike), so look back up to 16 s, but never past the previous pitch's stride
+    const back = Math.max(segA, S[i].t - 16, lastPeak + 1);
+    let on = i; for (let j = i; j >= 0 && S[j].t >= back; j--) { if (stride[j] == null) continue; if (stride[j] > base + 0.2 * (v0 - base)) on = j; else break }
     let ll = null;
-    for (let j = i; j >= 0 && S[j].t >= Math.max(segA, S[i].t - 4); j--) if (lift[j] != null && (ll == null || lift[j] > lift[ll])) ll = j;
-    if (ll == null || lift[ll] < -0.08 || S[i].t - S[ll].t < 0.15) continue;
-    cand.push({ i, t: S[i].t, s: v0, ll, seg: [segA, segB] });
+    for (let j = i; j >= 0 && S[j].t >= back; j--) if (lift[j] != null && (ll == null || lift[j] > lift[ll])) ll = j;
+    lastPeak = Math.max(lastPeak, S[i].t);
+    if (S[i].t - S[on].t < 0.1) continue;                                    // a stride needs to open, not appear
+    const startT = ll != null && lift[ll] >= -0.08 && S[ll].t < S[on].t ? S[ll].t : S[on].t;
+    cand.push({ i, t: S[i].t, s: v0, startT, seg: [segA, segB] });
   }
   const wins = [];
   for (const pk of cand) {
-    const llT = S[pk.ll].t, span = Math.max(0.25, pk.t - llT);
-    const a = Math.max(pk.seg[0], llT - Math.max(0.35, 0.6 * span)), b = Math.min(pk.seg[1], pk.t + Math.max(0.8, 1.6 * span));
+    const span = Math.max(0.25, pk.t - pk.startT);
+    const a = Math.max(pk.seg[0], pk.startT - Math.max(0.35, 1.0 * span)), b = Math.min(pk.seg[1], pk.t + Math.max(0.8, 2.2 * span));
     if (b - a >= 0.6) wins.push({ start: +a.toFixed(2), end: +b.toFixed(2), t: pk.t, s: pk.s });
   }
   // strongest first: a detection inside a pitch already kept is that same pitch (slow motion holds the stride for seconds)
   const kept = [];
-  for (const w of wins.sort((x, y) => y.s - x.s)) if (!kept.some(o => (o.start <= w.t && w.t <= o.end) || (w.start <= o.t && o.t <= w.end))) kept.push(w);
+  const ovl = (o, w) => Math.max(0, Math.min(o.end, w.end) - Math.max(o.start, w.start)) / Math.max(1e-6, Math.min(o.end - o.start, w.end - w.start));
+  for (const w of wins.sort((x, y) => y.s - x.s)) if (!kept.some(o => (o.start <= w.t && w.t <= o.end) || (w.start <= o.t && o.t <= w.end) || ovl(o, w) > 0.4)) kept.push(w);
   const pitches = kept.sort((x, y) => x.start - y.start).map(w => ({ start: w.start, end: w.end }));
+  try { window.__finderDbg = { t: S.map(x => +x.t.toFixed(2)), stride: stride.map(v => v == null ? null : +v.toFixed(3)), lift: lift.map(v => v == null ? null : +v.toFixed(3)), cand, cuts } } catch (e) {}
   return { pitches, cuts };
 }
 function showPitches() {

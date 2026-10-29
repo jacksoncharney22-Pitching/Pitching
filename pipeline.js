@@ -156,9 +156,14 @@ function despike(frames, K) {
 // left/right swaps: from the side the tracker often trades the two legs (or arms) for a few frames,
 // which makes the skeleton's legs scissor through each other. A two-state Viterbi pass per limb group keeps
 // each label on the limb it was following, switching only when that is clearly more continuous.
-const SWAP_GROUPS = [[[25,26],[27,28],[29,30],[31,32]], [[13,14],[15,16],[17,18],[19,20],[21,22]]];
-function fixSwaps(frames, W, H) {
-  const T = frames.length; if (T < 3) return frames;
+// First the whole body: as a pitcher turns, the tracker can lose which way he faces and trade every left/right label at
+// once (shoulders, hips, arms and legs together) for a stretch of frames; then each limb group on its own.
+const WHOLE_BODY = [[11,12],[23,24],[13,14],[15,16],[25,26],[27,28],[29,30],[31,32],[17,18],[19,20],[21,22],[1,4],[2,5],[3,6],[7,8],[9,10]];
+const SWAP_GROUPS = [WHOLE_BODY, [[25,26],[27,28],[29,30],[31,32]], [[13,14],[15,16],[17,18],[19,20],[21,22]]];
+function fixSwaps(allFrames, W, H) {
+  // only the frames the tracker actually saw (a frame skipped as a repeat would be a blend of its neighbours)
+  const idx = allFrames.map((f, t) => f ? t : -1).filter(t => t >= 0), frames = idx.map(t => allFrames[t]);
+  const T = frames.length; allFrames.swapLog = []; if (T < 3) return allFrames;
   const hgt = median(frames.map(f => { const ys = f.img.map(p => p[1] * H); return Math.max(...ys) - Math.min(...ys) })) || H / 2;
   let swapped = 0;
   for (const pairs of SWAP_GROUPS) {
@@ -181,12 +186,12 @@ function fixSwaps(frames, W, H) {
     for (let t = T - 1; t > 0; t--) st[t - 1] = back[t][st[t]];
     const flipAll = st.filter(Boolean).length > T / 2;      // keep the tracker's majority labelling
     for (let t = 0; t < T; t++) if (st[t] ^ flipAll) {
-      swapped++;
-      for (const [a, b] of pairs) for (const key of ["img", "world"]) { const x = frames[t][key][a]; frames[t][key][a] = frames[t][key][b]; frames[t][key][b] = x }
+      swapped++; allFrames.swapLog.push([idx[t], pairs]);
+      for (const [a, b] of pairs) for (const key of ["img", "world", "spread"]) { const A = frames[t][key]; if (!A) continue; const x = A[a]; A[a] = A[b]; A[b] = x }
     }
   }
-  frames.swapped = swapped;
-  return frames;
+  allFrames.swapped = swapped;
+  return allFrames;
 }
 function detectThrowingHand(frames, W, H) {
   // 1. the leg that lifts highest at leg lift is the glove-side leg (true for every pitcher, seen from any angle)
@@ -420,11 +425,15 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
     if (!n) continue;
     const toW = v => add(add(mul(q.R[0], v[0]), mul(q.R[1], v[1])), mul(q.R[2], v[2]));
     u[q.t] = unit(toW(su)); f[q.t] = unit(toW(sf));
-    wt[q.t] = Math.min(1, (q.t - lo + 1) / 3, (hi - q.t + 1) / 3);           // eased in and out at the window's ends
+    const ez = Math.max(3, Math.round(0.05 * fs)); wt[q.t] = sstep(Math.min(q.t - lo + 1, hi - q.t + 1), 0, ez);   // eased in and out over 50 ms at the window's ends
   }
   if (opts._dbgMatch) opts._dbgMatch.push({ top: top.map(m => [m.L.user, +m.c.toFixed(4), m.s, m.k]), lo, hi, u, f, rel });
-  const relShift = -top.reduce((a, m) => a + m.s, 0) / Math.max(1, top.length) * fs;   // where the lab throws put release, in frames
-  return { u, f, wt, relShift };
+  let relShift = -top.reduce((a, m) => a + m.s, 0) / Math.max(1, top.length) * fs;   // where the lab throws put release, in frames
+  // matches pinned at the edge of the allowed timing (a much slower or faster arm than any lab throw: usually a
+  // slow-motion clip whose speed changes partway) aren't trusted for timing, and steer the arm only half as much
+  const edge = top.filter(m => Math.abs(m.s) > 0.045 && (m.k <= speeds[0] || m.k >= speeds[speeds.length - 1])).length / Math.max(1, top.length);
+  if (edge > 0.5) { relShift = 0; for (let t = 0; t < T; t++) wt[t] *= 0.5 }
+  return { u, f, wt, relShift, edge };
 }
 
 // ---------------------------------------------------------------- arms locked to the video
@@ -609,6 +618,15 @@ function analyseOnce(raw, opts = {}) {
   // a frame with any broken number is treated as not tracked (filled from its neighbours)
   raw = { ...raw, frames: raw.frames.map(f => f && f.img && f.world && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) && f.world.every(p => p.every(Number.isFinite)) ? f : null) };
   const fs = raw.fps, W = raw.width, H = raw.height, K = fs / 30;   // K scales frame-count constants to the sampling rate
+  // left/right labels first, on the frames the tracker actually saw, before anything blends neighbouring frames (a
+  // traded limb blended with its twin can't be untangled afterwards). The learned 3D motion is relabelled to match.
+  let tracked = raw.frames.map(f => f ? { img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread ? f.spread.slice() : null } : null);
+  let swaps = 0, l3 = raw.l3;
+  if (opts.swapFix !== false) {
+    tracked = fixSwaps(tracked, raw.width, raw.height); swaps = tracked.swapped || 0;
+    if (l3 && tracked.swapLog.length) { l3 = l3.map(L => L && L.map(p => p.slice())); for (const [t, pairs] of tracked.swapLog) if (l3[t]) for (const [a, b] of pairs) { const x = l3[t][a]; l3[t][a] = l3[t][b]; l3[t][b] = x } }
+  }
+  raw = { ...raw, frames: tracked, l3 };
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
   const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null), opts.learnedParts === "all" ? null : new Set(opts.learnedParts || [11, 12, 13, 14, 15, 16])) : 0;
   // slow-motion clip: s video frames per step of a real-speed clip. The tracker's frame-to-frame wobble is the same as
@@ -623,8 +641,6 @@ function analyseOnce(raw, opts = {}) {
   }
   const faithful = opts.faithful !== false;            // follow the video; no modelled motion
   const measured = !!raw.measured;                    // several camera angles: depth is measured, not guessed
-  let swaps = 0;
-  if (opts.swapFix !== false) { frames = fixSwaps(frames, raw.width, raw.height); swaps = frames.swapped || 0 }
   if (opts.despike !== false) frames = despike(frames, K);
   const T = frames.length;
   if (T < 6) throw new Error("This clip is too short to analyse: it needs at least a few frames of the pitcher throwing.");
@@ -665,14 +681,26 @@ function analyseOnce(raw, opts = {}) {
   // wrist travel over three frames, so a repeated frame followed by a catch-up jump (screen recordings) can't look like release
   const k3 = Math.max(1, Math.round(1.5 * K)), wsp = imgSmooth.map((F, t) => { const a = imgSmooth[Math.max(0, t - k3)], b = imgSmooth[Math.min(T - 1, t + k3)]; return Math.hypot(b[W_][0] - a[W_][0], b[W_][1] - a[W_][1]) });
   let rel = fs_ + 1; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) if (wsp[t] > wsp[rel]) rel = t;
+  // the ball can only leave the hand after the arm is cocked (hand at its highest above the shoulder). If the fastest
+  // hand motion comes before that (a tracking glitch, or the arm swinging up in a speed-ramped slow-motion video),
+  // release is the fastest motion after the cocked point instead
+  let relFrom = fs_ + 1;                                   // release can't come before this (set below: the cocked point)
+  if (opts.relTop !== false) {
+    const wEnd = Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs));
+    let top = fs_ + 1; for (let t = fs_ + 1; t <= wEnd; t++) if (imgSmooth[t][W_][1] - imgSmooth[t][S_][1] < imgSmooth[top][W_][1] - imgSmooth[top][S_][1]) top = t;
+    relFrom = Math.max(relFrom, top - Math.round(0.03 * fs));
+    if (rel < top) { let r2 = top; for (let t = top; t < Math.min(T - 1, top + Math.round(0.35 * fs)); t++) if (wsp[t] > wsp[r2]) r2 = t; rel = r2 }
+    if (opts._dbgRel) opts._dbgRel.push({ step: "top", top, rel, fs_, wEnd, K })
+  }
   // with the learned 3D model: release is just after the hand's fastest moment in 3D (lab: 8 ms after, spread 6 ms).
   // Speed on screen alone peaks early or late depending on where the camera is (up to 3 frames off at 60 fps;
   // tested on 60 lab pitches seen from 5 camera angles: within 1 frame went from 19 to 31 of 60).
   if (raw.l3 && opts.rel3d !== false) {
     const wj = hand === "L" ? 13 : 16, L3 = raw.l3, ok = t => L3[t - 1] && L3[t + 1];
     const sp3 = t => ok(t) ? Math.hypot(...[0, 1, 2].map(d => L3[t + 1][wj][d] - L3[t - 1][wj][d])) : -1;
-    let best = -1, at = rel; for (let t = fs_ + 1; t < Math.min(T - 1, fs_ + Math.round((opts.relWindow || 0.5) * fs)); t++) { const v = sp3(t); if (v > best) { best = v; at = t } }
+    let best = -1, at = rel; for (let t = relFrom; t < Math.min(T - 1, Math.max(relFrom + Math.round(0.35 * fs), fs_ + Math.round((opts.relWindow || 0.5) * fs))); t++) { const v = sp3(t); if (v > best) { best = v; at = t } }
     // the 3D model is better on average but can run late on a blurred real arm: take the midpoint of the two
+    if (opts._dbgRel) opts._dbgRel.push({ step: "l3", at, rel });
     if (best > 0) rel = clamp(Math.round((at - 0.012 * fs + rel) / 2), fs_ + 1, T - 2);
   }
   // measured 3D (several cameras, OpenCap): release from the hand's real 3D speed (lab: 8 ms after its peak)
