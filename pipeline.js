@@ -18,6 +18,19 @@ const DEG = 180 / Math.PI;
 const median = arr => { const s = [...arr].filter(Number.isFinite).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0 };
 const percentile = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[clamp(Math.round((p / 100) * (s.length - 1)), 0, s.length - 1)] };
 const sstep = (t, t0, t1) => { const x = clamp((t - t0) / Math.max(t1 - t0, 1e-6), 0, 1); return x * x * (3 - 2 * x) };
+
+// zero-phase 2nd-order Butterworth low-pass (filtfilt), the filter biomechanics labs run on motion-capture data
+function lowpass(x, fc, fs) {
+  fc = Math.min(fc, 0.42 * fs); if (x.length < 6) return x.slice();
+  const w = Math.tan(Math.PI * fc / fs), k1 = Math.SQRT2 * w, k2 = w * w, a0 = 1 + k1 + k2;
+  const c = { b0: k2 / a0, b1: 2 * k2 / a0, b2: k2 / a0, a1: 2 * (k2 - 1) / a0, a2: (1 - k1 + k2) / a0 };
+  const run = v => { const y = new Array(v.length); let x1 = v[0], x2 = v[0], y1 = v[0], y2 = v[0];
+    for (let i = 0; i < v.length; i++) { const o = c.b0 * v[i] + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2; x2 = x1; x1 = v[i]; y2 = y1; y1 = o; y[i] = o } return y };
+  const pad = Math.max(1, Math.min(x.length - 2, Math.round(fs / 3)));
+  const head = x.slice(1, pad + 1).reverse().map(v => 2 * x[0] - v), tail = x.slice(x.length - pad - 1, x.length - 1).reverse().map(v => 2 * x[x.length - 1] - v);
+  let y = run([...head, ...x, ...tail]); y = run(y.reverse()).reverse();
+  return y.slice(pad, pad + x.length);
+}
 function hermite(p0, v0, p1, v1, n, i) {
   const u = i / n, h00 = 2*u**3 - 3*u**2 + 1, h10 = u**3 - 2*u**2 + u, h01 = -2*u**3 + 3*u**2, h11 = u**3 - u**2;
   return [0, 1, 2].map(k => h00 * p0[k] + h10 * n * v0[k] + h01 * p1[k] + h11 * n * v1[k]);
@@ -1152,12 +1165,21 @@ function analyseOnce(raw, opts = {}) {
       let y = run([...head, ...x, ...tail], c); y = run(y.reverse(), c).reverse();
       return y.slice(pad, pad + x.length);
     };
-    const ARM_T = new Set([12, 14, 16, 18, 20, 22]);                    // throwing arm (right after mirroring)
-    const fcBody = Math.min(12, 0.42 * fs), fcArm = Math.min(20, 0.42 * fs);
-    const cB = bw(fcBody), cA = bw(fcArm);
+    const ARM_T = new Set([14, 16, 18, 20, 22]);                        // throwing arm below the shoulder (right after mirroring)
+    const CORE = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 23, 24]);   // head, shoulders, hips: the body's core
+    const lim = f => Math.min(f, 0.42 * fs);
+    const cB = bw(lim(opts._fcLimb ?? 12)), cA = bw(lim(opts._fcArm ?? 14)), cC = bw(lim(opts._fcCore ?? 12)), cG = bw(lim(opts._fcGlove ?? 9));
+    const GLOVE = new Set([13, 15, 17, 19, 21]);
+    // the arms move fast only from just before foot strike to the follow-through; outside that (the windup, the end of
+    // the follow-through) they're held to a calmer limit, so tracker wobble on a slow arm can't show as a zig-zag
+    const cSlow = bw(lim(opts._fcSlow ?? 6)), ramp = Math.max(1, Math.round(0.06 * fs));
+    const fastW = P.map((_, t) => sstep(t, rel - Math.round(0.28 * fs) - ramp, rel - Math.round(0.28 * fs)) * (1 - sstep(t, rel + Math.round(0.22 * fs), rel + Math.round(0.22 * fs) + ramp)));
     for (let j = 0; j < 33; j++) {
-      const c = ARM_T.has(j) ? cA : cB;
-      for (let d = 0; d < 3; d++) { const y = filtfilt(P.map(F => F[j][d]), c); for (let t = 0; t < T; t++) P[t][j][d] = y[t] }
+      const c = ARM_T.has(j) ? cA : CORE.has(j) ? cC : GLOVE.has(j) ? cG : cB, arm = ARM_T.has(j) || GLOVE.has(j);
+      for (let d = 0; d < 3; d++) {
+        const x = P.map(F => F[j][d]), y = filtfilt(x, c), ys = arm && opts.slowArms !== false ? filtfilt(x, cSlow) : null;
+        for (let t = 0; t < T; t++) P[t][j][d] = ys ? fastW[t] * y[t] + (1 - fastW[t]) * ys[t] : y[t];
+      }
     }
     // bone lengths back to exact, down the tree; head follows the neck; nothing below the ground
     P = P.map(F => {
@@ -1166,10 +1188,15 @@ function analyseOnce(raw, opts = {}) {
       for (const k in n) if (+k >= 0) G[+k] = n[k];
       const off = sub(n[-1], nodeOf(F, -1));
       for (let k = 0; k <= 10; k++) G[k] = add(F[k], off);
-      const low = Math.min(...[27, 28, 29, 30, 31, 32].map(k => G[k][1]));
-      if (low < 0) G.forEach(p => { p[1] -= low });
       return G;
     });
+    // nothing below the ground: the lift needed is smoothed over time, so the whole body never bobs frame to frame
+    if (opts.groundLift !== false) {
+      const need = P.map(F => Math.max(0, -Math.min(...[27, 28, 29, 30, 31, 32].map(k => F[k][1]))));
+      const r = Math.max(1, Math.round(0.06 * fs)), env = need.map((_, t) => Math.max(...need.slice(Math.max(0, t - r), t + r + 1)));
+      const lift = gauss(env, Math.max(1, 0.04 * fs));
+      P.forEach((F, t) => { const l = Math.max(lift[t], need[t]); if (l > 0) F.forEach(p => { p[1] += l }) });
+    }
     guarded = true;
   }
 
@@ -1208,7 +1235,22 @@ function analyseOnce(raw, opts = {}) {
     M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
 
   // ---- mirror left-handers back for display
-  let pose = P, img = imgSmooth.map((F, t) => F.map((p, j) => [p[0] / W, p[1] / H, frames[t].img[j][2] ?? 1]));
+  // the tracked points drawn over the video get the same treatment as the skeleton: each part held to how fast it can
+  // really move (body core 8 Hz, legs and glove arm 10 Hz, throwing arm 14 Hz around the throw and 6 Hz outside it),
+  // so the overlay follows the pitcher without the tracker's frame-to-frame shiver
+  let imgOut = imgSmooth;
+  if (opts.overlaySmooth !== false && T >= 8) {
+    imgOut = imgSmooth.map(F => F.map(p => p.slice()));
+    const ramp = Math.max(1, Math.round(0.06 * fs)), a0 = rel - Math.round(0.28 * fs), a1 = rel + Math.round(0.22 * fs);
+    const fastW = imgSmooth.map((_, t) => sstep(t, a0 - ramp, a0) * (1 - sstep(t, a1, a1 + ramp)));
+    const TA = new Set([14, 16, 18, 20, 22]), CO = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 23, 24]);
+    for (let j = 0; j < 33; j++) for (let d = 0; d < 2; d++) {
+      const x = imgSmooth.map(F => F[j][d]);
+      if (TA.has(j)) { const f = lowpass(x, 14, fs), sl = lowpass(x, 6, fs); for (let t = 0; t < T; t++) imgOut[t][j][d] = fastW[t] * f[t] + (1 - fastW[t]) * sl[t] }
+      else { const y = lowpass(x, CO.has(j) ? 8 : 10, fs); for (let t = 0; t < T; t++) imgOut[t][j][d] = y[t] }
+    }
+  }
+  let pose = P, img = imgOut.map((F, t) => F.map((p, j) => [p[0] / W, p[1] / H, frames[t].img[j][2] ?? 1]));
   let cam = camDir, rub = rubber;
   if (hand === "L") {
     pose = P.map(F => F.map((_, j) => { const p = F[mir(j)]; return [p[0], p[1], -p[2]] }));
