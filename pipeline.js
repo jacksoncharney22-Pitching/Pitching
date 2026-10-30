@@ -656,7 +656,9 @@ function analyseOnce(raw, opts = {}) {
   // rotate so the stride (back ankle -> lead ankle) points +x
   let fmax = 0, smax = -1;
   P.forEach((F, t) => { const d = sub(F[27], F[28]), l = Math.hypot(d[0], d[2]); if (l > smax) { smax = l; fmax = t } });
-  const sd = sub(P[fmax][27], P[fmax][28]), ang = Math.atan2(sd[2], sd[0]), c = Math.cos(ang), s = Math.sin(ang);
+  // pitchers don't stride straight at the plate: in 404 lab fastballs the stride points 7.4° off the line to home on
+  // average (spread 6.6°), so home is taken as the stride direction turned back by that much
+  const sd = sub(P[fmax][27], P[fmax][28]), ang = Math.atan2(sd[2], sd[0]) - (opts.strideOff ?? 7.4) * Math.PI / 180, c = Math.cos(ang), s = Math.sin(ang);
   const rot = p => [c * p[0] + s * p[2], p[1], -s * p[0] + c * p[2]];
   const unrot = p => [c * p[0] - s * p[2], p[1], s * p[0] + c * p[2]];
   P = P.map(F => F.map(rot));
@@ -1153,6 +1155,37 @@ function analyseOnce(raw, opts = {}) {
   // ---- arms locked to the video. Seen from the camera, each arm bone points exactly where the tracked arm does
   // (upper arm from the shoulder, forearm from the elbow); only the part the camera can't see, how far each bone
   // leans toward or away from it, comes from the 3D reconstruction above. Bone lengths stay exact.
+  // ---- shoulders the right way round. One camera can't tell whether the shoulder line leans toward or away from it,
+  // and filmed from the back the tracker often picks the wrong one. Around foot strike every pitcher's hips are ahead
+  // of his shoulders (404 lab fastballs: hip-shoulder separation never below about -5° from 0.2 s before foot strike to
+  // foot strike, typically +20° to +50°). Where the shoulders read far more open than the hips there, and the shoulder
+  // line leaned the other way fits, it's flipped (the arms move with their shoulders).
+  if (opts.shoulderCheck !== false && !measured) {
+    const cz = unit(camDir), lo = Math.max(0, fs_ - Math.round(0.3 * fs)), hi = Math.min(T - 1, fs_ + Math.round((opts._shPost ?? 0.1) * fs));
+    const head = v => { const h = unit([v[0], 0, v[2]]), f = cross([0, 1, 0], h); return Math.atan2(f[0], f[2]) * DEG };
+    const wrapD = d => ((d + 180) % 360 + 360) % 360 - 180;
+    const mirr = F => { const M = mid(F[11], F[12]); return [11, 12].map(j => { const v = sub(F[j], M); return add(M, sub(v, mul(cz, 2 * dot(v, cz)))) }) };
+    const flag = new Array(T).fill(false);
+    for (let t = lo; t <= hi; t++) {
+      const LIM = t >= fs_ - Math.round(0.12 * fs) ? (opts._sepNear ?? 0) : (opts._sepMin ?? -12);   // stricter in the last 0.1 s before foot strike
+      const F = P[t], pel = head(sub(F[24], F[23])), sep = wrapD(pel - head(sub(F[12], F[11])));
+      if (sep >= LIM) continue;
+      const [m11, m12] = mirr(F), sep2 = wrapD(pel - head(sub(m12, m11)));
+      if (opts._dbgShF) opts._dbgShF.push([t, Math.round(pel), Math.round(sep), Math.round(sep2)]);
+      if (sep2 <= (opts._sepMax ?? 85) && ((sep2 >= LIM && sep2 > sep) || sep2 - sep > (opts._sepGain ?? 30))) flag[t] = true;   // the flipped reading must itself be realistic
+    }
+    for (let t = 1; t < T - 1; t++) if (!flag[t] && flag[t - 1] && flag[t + 1]) flag[t] = true;      // no single-frame holes
+    // eased in and out over ~40 ms: the shoulder line turns through square-on to the camera instead of snapping
+    let flipped = flag.filter(Boolean).length;
+    const wF = flipped ? gauss(flag.map(v => [v ? 1 : 0, 0, 0]), Math.max(0.8, 0.02 * fs)).map(v => Math.min(1, v[0] * 1.15)) : null;
+    if (wF) for (let t = 0; t < T; t++) if (wF[t] > 0.02) {
+      const F = P[t], M = mid(F[11], F[12]), [m11, m12] = mirr(F), w = wF[t];
+      const blend = (o, m) => { const a = sub(o, M), b = sub(m, M), L = norm(a), c = add(mul(a, 1 - w), mul(b, w)), n = norm(c); return add(M, n > 1e-6 ? mul(c, L / n) : a) };
+      const n11 = blend(F[11], m11), n12 = blend(F[12], m12), d11 = sub(n11, F[11]), d12 = sub(n12, F[12]);
+      F[11] = n11; F[12] = n12; [13, 15, 17, 19, 21].forEach(j => F[j] = add(F[j], d11)); [14, 16, 18, 20, 22].forEach(j => F[j] = add(F[j], d12));
+    }
+    if (opts._dbgSh) opts._dbgSh.push(flipped);
+  }
   if (opts.armLock !== false && !measured) {
     // two matches: a tight one round release (where timing matters most) and a long one for the stride and
     // follow-through; the tight one wins where they overlap
