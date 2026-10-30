@@ -559,9 +559,16 @@ export function computeMetrics(P) {
 // Returns the nearest common slow-motion factor (1, 2, 4, 8 or 16).
 export function detectSlowFactor(raw) {
   const vf = raw.videoFps || raw.fps;
-  let d;
-  try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: 60, armBridge: false, depop: false }) } catch (e) { return { factor: 1, basis: "none" } }
-  const ph = Object.fromEntries(d.phases.map(p => [p.name, p.frame]));
+  // look for release just after foot strike first, then further out. Searching the whole rest of the clip at once
+  // can land on the follow-through (the arm swinging back up as he fields his position, or a camera zoom) and make
+  // a normal-speed clip look slowed down. A release found well inside a short window is the real one; if the
+  // fastest hand is at the end of the window the arm is still speeding up (slow motion), so look further.
+  let d, ph;
+  for (const w of [0.5, 1, 2, 4, 60]) {
+    try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: w, armBridge: false, depop: false }) } catch (e) { return { factor: 1, basis: "none" } }
+    ph = Object.fromEntries(d.phases.map(p => [p.name, p.frame]));
+    if ((ph["Release"] - ph["Foot strike"]) / vf < 0.75 * w) break;
+  }
   const LL = ph["Peak leg lift"], FS = ph["Foot strike"], R = ph["Release"], T = d.pose.length;
   let est, basis;
   if (LL >= 3 && R > LL + 2) { est = (R - LL) / vf / 0.8; basis = "leg lift to release" }

@@ -12,6 +12,7 @@ import { downloadPDF } from "./pdf.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
+import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
 
@@ -308,6 +309,15 @@ async function runUltraPitch(S, E) {
   const id = await saveHistory(data, current.blob);
   return openResults(data, current.url, { id, raw });
 }
+// filmed through a net? check three moments of the window; the trackers then read cleaned frames
+async function netFor(v, W, H, start, end, say) {
+  const nc = new NetCleaner(W, H);
+  try { await nc.check(v, [start + 0.1 * (end - start), start + 0.5 * (end - start), start + 0.9 * (end - start)], async t => { v.currentTime = t; await once(v, "seeked") }) }
+  catch (e) { console.warn("net check skipped", e); nc.on = false }
+  window.__net = { on: nc.on, k: nc.k, scores: nc.scores };
+  if (nc.on && say) say("Filmed through a net: cleaning the net out of each frame before tracking", 0);
+  return nc;
+}
 async function trackOne(q, src) { return q === "max" ? trackMax(src) : trackSimple(q, src) }
 async function openVideo(url) {
   const v = document.createElement("video");
@@ -326,16 +336,19 @@ async function trackSimple(q, src) {
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
   v.currentTime = start; await once(v, "seeked");
   const native = await estimateFps(v);
+  const nc = await netFor(v, W, H, start, end, say); let S = v;
   // cover the WHOLE chosen window: if it's long, sample a little less densely rather than cutting the end off
   const capF = src.maxFrames || (high ? 900 : 600), want = Math.min(native, src.fpsCap || (high ? 120 : 60));
   const sampleFps = Math.max(1, Math.min(want, capF / Math.max(0.05, end - start))), N = Math.max(1, Math.min(capF, Math.floor((end - start) * sampleFps)));
   const frames = [], passes = high ? 2 : 1, diffs = []; let prevSig = null;
-  const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked") };
+  const seekTo = async (i, box) => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked"); S = nc.frame(v, box) };
+  let lastBox = null;
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
-    await seekTo(i);
+    await seekTo(i, lastBox);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
-    const r = lmA.detectForVideo(v, Math.round(i * 1000 / sampleFps) + 1);
+    const r = lmA.detectForVideo(S, Math.round(i * 1000 / sampleFps) + 1);
+    lastBox = r.landmarks && r.landmarks[0] ? poseBox({ img: r.landmarks[0].map(p => [p.x, p.y]) }, W, H) : null;
     frames.push(r.landmarks && r.landmarks[0] ? { img: r.landmarks[0].map(p => [p.x, p.y, p.visibility ?? 1]), world: r.worldLandmarks[0].map(p => [p.x, p.y, p.z]) } : null);
     if (i % 3 === 0 || i === N - 1) say(`pass 1 of ${passes}: frame ${i + 1} of ${N}`, (i + 1) / N * (high ? 0.33 : 1));
   }
@@ -354,12 +367,12 @@ async function trackSimple(q, src) {
     for (let i = 0; i < N; i++) {
       if (cancelled) throw new Error("cancelled");
       if (!ok[i]) continue;
-      await seekTo(i);
+      await seekTo(i, boxes[i]);
       const ts = Math.round(i * 1000 / sampleFps) + 1, [cx, cy, side] = boxes[i], sx = cx - side / 2, sy = cy - side / 2, sc = CS / side;
       ga.setTransform(1, 0, 0, 1, 0, 0); ga.fillStyle = "#000"; ga.fillRect(0, 0, CS, CS);
-      ga.setTransform(sc, 0, 0, sc, -sx * sc, -sy * sc); ga.drawImage(v, 0, 0, W, H);
+      ga.setTransform(sc, 0, 0, sc, -sx * sc, -sy * sc); ga.drawImage(S, 0, 0, W, H);
       gb.setTransform(1, 0, 0, 1, 0, 0); gb.fillStyle = "#000"; gb.fillRect(0, 0, CS, CS);
-      gb.setTransform(-sc, 0, 0, sc, CS + sx * sc, -sy * sc); gb.drawImage(v, 0, 0, W, H);
+      gb.setTransform(-sc, 0, 0, sc, CS + sx * sc, -sy * sc); gb.drawImage(S, 0, 0, W, H);
       const rb = lmB.detectForVideo(cropA, ts), rc = lmC.detectForVideo(cropB, ts);
       const pb = rb.landmarks && rb.landmarks[0], pc = rc.landmarks && rc.landmarks[0];
       if (pb || pc) frames[i].img = frames[i].img.map((p0, j) => {
@@ -549,7 +562,8 @@ async function trackMax(src) {
   v.currentTime = start; await once(v, "seeked");
   const native = await estimateFps(v);
   const sampleFps = Math.max(1, Math.min(native, 240, 1500 / Math.max(0.05, end - start))), N = Math.max(1, Math.min(1500, Math.floor((end - start) * sampleFps)));
-  const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked") };
+  const nc = await netFor(v, W, H, start, end, say); let S = v, boxOf = () => null;
+  const seekTo = async i => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked"); S = nc.frame(v, boxOf(i)) };
   const ts = k => Math.round(k * 1000 / sampleFps) + 1;
   // progress with a time estimate: pass 1 = 1 unit per frame, zoomed passes 3, backward passes 2
   const units = N * 6; let doneU = 0;
@@ -559,10 +573,11 @@ async function trackMax(src) {
   let ref = null; const diffs = []; let prevSig = null;
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
+    boxOf = () => ref ? poseBox(ref, W, H) : null;
     await seekTo(i);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
-    const who = pickPitcher(finder.detect(v), null, W, H, ref);         // the pitcher among everyone in view
-    const f = pickPitcher(full.detectForVideo(v, ts(i)), null, W, H, who || ref);
+    const who = pickPitcher(finder.detect(S), null, W, H, ref);         // the pitcher among everyone in view
+    const f = pickPitcher(full.detectForVideo(S, ts(i)), null, W, H, who || ref);
     if (f) { f.src = "full"; looks[i].push(f) }
     const id = who || f;
     if (id) { first[i] = id; ref = id }
@@ -575,10 +590,11 @@ async function trackMax(src) {
   const raw = Array.from({ length: N }, (_, i) => poseBox(near(i), W, H));
   const sig = 2 * sampleFps / 30, r = Math.ceil(sig * 3);
   const boxes = raw.map((_, i) => { const acc = [0, 0, 0]; let ws = 0; for (let k = -r; k <= r; k++) { const j = Math.min(N - 1, Math.max(0, i + k)), w = Math.exp(-0.5 * (k / sig) ** 2); for (let d = 0; d < 3; d++) acc[d] += raw[j][d] * w; ws += w } return acc.map(x => x / ws) });
+  boxOf = i => boxes[i];
   const cropAt = (i, scale, mirror) => { const [cx, cy, s0] = boxes[i], side = s0 * scale; return { sx: cx - side / 2, sy: cy - side / 2, side, mirror } };
   const CS = 512, cv = document.createElement("canvas"); cv.width = cv.height = CS; const g = cv.getContext("2d", { willReadFrequently: false });
   const look = (tracker, i, k, crop, video, src) => {
-    drawCrop(g, v, CS, W, H, crop);
+    drawCrop(g, S, CS, W, H, crop);
     const res = video ? tracker.detectForVideo(cv, ts(k)) : tracker.detect(cv);
     const f = pickPitcher(res, crop, W, H, near(i)); if (f) { f.src = src; looks[i].push(f) }
   };
@@ -595,7 +611,7 @@ async function trackMax(src) {
       // the stronger tracker, normal and mirrored, on the pitcher's box (its own padding adds room for the arm)
       const [cx, cy, s0] = boxes[i], box = [cx - s0 / 2, cy - s0 / 2, cx + s0 / 2, cy + s0 / 2];
       for (const m of [false, true]) {
-        const h = await rtmLook(v, W, H, box, m), f = toLook(h, W, H, m ? "rtmMirror" : "rtm");
+        const h = await rtmLook(S, W, H, box, m), f = toLook(h, W, H, m ? "rtmMirror" : "rtm");
         const ref = near(i); if (!ref || poseDistLook(f, ref, W, H) < 0.6 * poseBox(ref, W, H)[2]) looks[i].push(f);
       }
       tick("Pass 2 of 3 · stronger tracker", i);
@@ -616,7 +632,7 @@ async function trackMax(src) {
   await new Promise(r => setTimeout(r, 20));
   window.__lastLooks = { W, H, fps: sampleFps, looks };
   const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
-  if (rtm && opts.armZoom !== false) { try { await armZoom(v, frames, W, H, sampleFps, seekTo, say, () => cancelled) } catch (e) { console.warn("arm close-up skipped", e) } }
+  if (rtm && opts.armZoom !== false) { try { await armZoom(nc.on ? nc.cv : v, frames, W, H, sampleFps, seekTo, say, () => cancelled) } catch (e) { console.warn("arm close-up skipped", e) } }
   return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs };
 }
 
