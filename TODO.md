@@ -55,9 +55,12 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
   clips keep the net check off (Sale, Ohtani, Flaherty, McKenzie, Joyce). (Needs clips.)
 - Regression tests: add a fixture for a crowd-background clip so the net check is guarded too (left-handed part done
   2026-11-05). (Needs a clip.)
-- Slow-motion reading: test the speed detector on every benchmark pitch at 1×, 2×, 4×, 8× (by resampling) and fix
-  any misreads.
-- Run the scorecard and regression in GitHub Actions on every push so a bad change is caught before Jackson sees it.
+- Slow-motion reading on clips that start AFTER peak leg lift (phone video started late): still wrong on about 1 in 3
+  benchmark views (`node tools/test/slowmo.mjs --late 20` and `--late 30`: 18 of 60 views have at least one wrong
+  speed). Without the leg lift the only timing left is foot strike to release, which is too short to read reliably
+  (0.12-0.30 s across views). Needs a second clue that doesn't depend on the leg lift (e.g. how long the stride or the
+  arm path takes). Full clips are all right (240 of 240).
+- Add the accuracy scorecard (Monday item, once built) to the GitHub Actions tests.
 
 ## Friday: coaching report and finish
 - Report quality: check every statement the coaching report makes against the measurements it's based on;
@@ -72,6 +75,11 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 
 ## Done
 - 2026-11-05: Accuracy benchmark data added (tools/test/bench).
+- 2026-11-05: Slow-motion check: all 60 benchmark views read right at 1×, 2×, 4× and 8× (`tools/test/slowmo.mjs`).
+  Clips that start after peak leg lift no longer pass a "leg lift" from the way down: wrong readings at 1/3 s before
+  foot strike dropped from 29 to 18 views, and a speed Jackson picks by hand is kept for those clips.
+- 2026-11-05: GitHub Actions run the regression (with lefty copies) and the slow-motion check on every push
+  (`.github/workflows/tests.yml`).
 - 2026-11-05: Learned 3D depth now follows the tracker's left/right fixes correctly (it was trading a shoulder's depth
   with an elbow's on those frames). Changes the arm on Staumont (incl. his release frame) and Hackimer; Maher unchanged.
 - 2026-11-05: Left-handed guard: every test clip is also run as a mirror-image lefty and must read left-handed with the

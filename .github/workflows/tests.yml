@@ -1,0 +1,29 @@
+name: Tests (saved clips and slow-motion reading)
+# Runs on every push to main and on pull requests: re-analyses the saved tracker output of the reference clips
+# (Maher, Hackimer, Staumont, each also as a mirror-image lefty) and checks the slow-motion reading on the
+# motion-capture benchmark pitches. A red X on a commit means a change moved an event time, the throwing hand, a
+# joint angle on the lefty copy, or a speed reading. No videos and no secrets are used.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Reference clips (event times, speed, throwing hand, lefty copies)
+        run: node tools/test/regress.mjs
+  slow-motion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Slow-motion reading on the benchmark pitches (1x, 2x, 4x, 8x)
+        run: node tools/test/slowmo.mjs
