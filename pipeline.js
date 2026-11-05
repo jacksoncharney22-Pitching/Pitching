@@ -631,7 +631,10 @@ function analyseOnce(raw, opts = {}) {
   let swaps = 0, l3 = raw.l3;
   if (opts.swapFix !== false) {
     tracked = fixSwaps(tracked, raw.width, raw.height); swaps = tracked.swapped || 0;
-    if (l3 && tracked.swapLog.length) { l3 = l3.map(L => L && L.map(p => p.slice())); for (const [t, pairs] of tracked.swapLog) if (l3[t]) for (const [a, b] of pairs) { const x = l3[t][a]; l3[t][a] = l3[t][b]; l3[t][b] = x } }
+    // the learned model numbers its 17 joints differently from the tracker's 33 (H36 below), so each traded pair is
+    // translated first. Swapping by the tracker's numbers traded the wrong joints (a shoulder with its own elbow, a
+    // wrist with the other shoulder), scrambling the arm's depth on exactly the frames where the body was turned.
+    if (l3 && tracked.swapLog.length) { l3 = l3.map(L => L && L.map(p => p.slice())); for (const [t, pairs] of tracked.swapLog) if (l3[t]) for (const [a, b] of pairs) { if (!(a in H36) || !(b in H36)) continue; const A = H36[a], B = H36[b], x = l3[t][A]; l3[t][A] = l3[t][B]; l3[t][B] = x } }
   }
   raw = { ...raw, frames: tracked, l3 };
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
