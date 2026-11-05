@@ -78,3 +78,10 @@ detected as a net.
 - Keep backups or small focused commits; commit messages describe the effect for the pitcher/clip, e.g.
   "Clips filmed through a net: …".
 - Don't change the look of the app without telling the owner first.
+
+## Daily work sessions
+
+A scheduled session runs each weekday morning. It reads `TODO.md`, posts a short plan to Jackson, then works through
+it: test with `tools/test` before every push, keep `TODO.md` up to date (move finished items to Done with the date),
+and end with a summary in pitching terms. Items under "Ideas" or anything changing the look of the app need
+Jackson's go-ahead first.
