@@ -44,7 +44,7 @@ Data flow: video → tracker per frame → `raw` (`{fps, videoFps, width, height
 
 1. **Fast check, no browser:** `node tools/test/regress.mjs` re-analyses the saved tracker output in
    `tools/test/fixtures/` and compares event times (±0.05 s), speed reading and throwing hand with
-   `tools/test/baseline.json`. Any FAIL is a behaviour change: either fix it, or, if the new result is
+   `tools/test/baseline.json`; each clip is also run mirrored as a left-hander (same events and angles, other hand). Any FAIL is a behaviour change: either fix it, or, if the new result is
    genuinely better (check the video), re-record with `--update` and say so in the commit.
 2. **Full check in the real app:** `python3 tools/test/serve.py . 8766 &` then
    `python3 tools/test/clip_run.py <fast|high|max> <clip.webm> <outdir> strip`. It prints the trim, events, net

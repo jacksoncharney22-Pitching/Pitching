@@ -11,6 +11,9 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
+- Clips needed for the items marked "(Needs clip…)": the Cooper Maher video, a few net / batting-cage / chain-link
+  clips, one crowd-background clip (Sale, Ohtani, Flaherty, McKenzie or Joyce) and, ideally, a real left-hander. The
+  cloud sessions have no videos and can't download them: drop them in the chat or the project.
 
 ## Monday: accuracy of the skeleton
 - Accuracy scorecard: build `tools/test/bench.mjs` that runs `analyse()` on every benchmark view and reports, per
@@ -21,7 +24,12 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 - Throwing arm at release: the fastest part of the delivery and the most often blurred. Improve layback and
   elbow readings around max layback and release (arm-zoom, smoothing that keeps the peak).
 - Maher clip: follow-through gets less steady after the camera zooms in after release. Re-find the pitcher's box
-  when the picture scale jumps. (Needs the clip from Jackson.)
+  when the picture scale jumps. (Needs the clip from Jackson.) 2026-11-05 finding: the saved tracker data shows no
+  picture-scale jump (body ~580 px tall at the start and at the finish), so the zoom can't be seen without the video.
+  The data does show Fast mode flipping the whole body left/right for 5 frames just after release (1.78-1.85 s); it's
+  corrected, but that's where the finish wobbles.
+- Layback reads over 180° at foot strike on Maher (219° in fast and max). Real layback there is well under 180°, so
+  the angle is probably wrapping round; check against the benchmark truth and fix the reading.
 
 ## Tuesday: speed and reliability
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
@@ -45,8 +53,8 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 ## Thursday: testing and validation
 - Net cleaning: test on more net/fence clips (chain-link, batting cage, diagonal nets) and confirm crowd/fence
   clips keep the net check off (Sale, Ohtani, Flaherty, McKenzie, Joyce). (Needs clips.)
-- Regression tests: add fixtures for a crowd-background clip and a left-handed pitcher (the benchmark can be
-  mirrored to make a left-hander) so the net check and hand detection are guarded too.
+- Regression tests: add a fixture for a crowd-background clip so the net check is guarded too (left-handed part done
+  2026-11-05). (Needs a clip.)
 - Slow-motion reading: test the speed detector on every benchmark pitch at 1×, 2×, 4×, 8× (by resampling) and fix
   any misreads.
 - Run the scorecard and regression in GitHub Actions on every push so a bad change is caught before Jackson sees it.
@@ -64,5 +72,9 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 
 ## Done
 - 2026-11-05: Accuracy benchmark data added (tools/test/bench).
+- 2026-11-05: Learned 3D depth now follows the tracker's left/right fixes correctly (it was trading a shoulder's depth
+  with an elbow's on those frames). Changes the arm on Staumont (incl. his release frame) and Hackimer; Maher unchanged.
+- 2026-11-05: Left-handed guard: every test clip is also run as a mirror-image lefty and must read left-handed with the
+  same event times and the same joint angles (within 3°).
 - 2026-11-05: CLAUDE.md project guide and tools/test (regression + headless clip runs).
 - 2026-10-30: Net cleaning for clips filmed through a net; Maher no longer misread as 2x slow motion.
