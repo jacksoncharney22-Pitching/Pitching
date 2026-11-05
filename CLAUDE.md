@@ -81,7 +81,8 @@ detected as a net.
 
 ## Daily work sessions
 
-A scheduled session runs each weekday morning. It reads `TODO.md`, posts a short plan to Jackson, then works through
-it: test with `tools/test` before every push, keep `TODO.md` up to date (move finished items to Done with the date),
-and end with a summary in pitching terms. Items under "Ideas" or anything changing the look of the app need
-Jackson's go-ahead first.
+A scheduled session runs each weekday morning. It reads `TODO.md`, picks one big project from that weekday's theme
+(Mon accuracy, Tue speed and reliability, Wed pitching measurements, Thu testing, Fri coaching report), posts a short
+plan to Jackson, then works through it: measure before and after (accuracy benchmark in `tools/test/bench`,
+`tools/test/regress.mjs`), ship, keep `TODO.md` up to date, and end with a summary in pitching terms. Items under
+"Ideas" or anything changing the look of the app need Jackson's go-ahead first.
