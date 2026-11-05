@@ -570,8 +570,15 @@ export function detectSlowFactor(raw) {
     if ((ph["Release"] - ph["Foot strike"]) / vf < 0.75 * w) break;
   }
   const LL = ph["Peak leg lift"], FS = ph["Foot strike"], R = ph["Release"], T = d.pose.length;
+  // the leg lift only counts if the clip shows it: the lead knee rising clearly above where it starts and where it
+  // lands. A clip that starts after the peak (a phone video started late) only shows the knee coming down, and the
+  // "peak" found there is somewhere on the way down, which makes the delivery look too short (reads as normal speed)
+  const P = d.pose, K = d.throwHand === "L" ? 26 : 25;
+  const kneeUp = t => P[t][K][1] - Math.min(...[27, 28, 29, 30, 31, 32].map(j => P[t][j][1]));
+  let low = Infinity; for (let t = 0; t <= LL; t++) low = Math.min(low, kneeUp(t));
+  const shown = LL >= 3 && kneeUp(LL) - Math.max(low, kneeUp(FS)) > 0.15;
   let est, basis;
-  if (LL >= 3 && R > LL + 2) { est = (R - LL) / vf / 0.8; basis = "leg lift to release" }
+  if (shown && R > LL + 2) { est = (R - LL) / vf / 0.8; basis = "leg lift to release" }
   else if (R > FS) { est = (R - FS) / vf / 0.2; basis = "foot strike to release" }
   else return { factor: 1, basis: "none" };
   const opts = [1, 2, 4, 8, 16];
