@@ -1,0 +1,54 @@
+{
+ "hackimer_fast.json": {
+  "slow": 16,
+  "hand": "R",
+  "frames": 365,
+  "events": {
+   "Start": 0,
+   "Peak leg lift": 0,
+   "Foot strike": 0.392,
+   "Arm cocked": 0.494,
+   "Release": 0.602,
+   "Finish": 0.758
+  }
+ },
+ "maher_fast.json": {
+  "slow": 1,
+  "hand": "R",
+  "frames": 220,
+  "events": {
+   "Start": 0,
+   "Peak leg lift": 0.95,
+   "Foot strike": 1.55,
+   "Arm cocked": 1.683,
+   "Release": 1.767,
+   "Finish": 3.65
+  }
+ },
+ "maher_max.json": {
+  "slow": 1,
+  "hand": "R",
+  "frames": 220,
+  "events": {
+   "Start": 0,
+   "Peak leg lift": 0.95,
+   "Foot strike": 1.567,
+   "Arm cocked": 1.683,
+   "Release": 1.75,
+   "Finish": 3.65
+  }
+ },
+ "staumont_fast.json": {
+  "slow": 1,
+  "hand": "R",
+  "frames": 78,
+  "events": {
+   "Start": 0,
+   "Peak leg lift": 0.6,
+   "Foot strike": 1.2,
+   "Arm cocked": 1.4,
+   "Release": 1.433,
+   "Finish": 2.567
+  }
+ }
+}
