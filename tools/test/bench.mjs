@@ -36,7 +36,7 @@ const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz") && f.start
 const rows = [];
 for (const v of views) {
   const raw = load(v + ".raw.json.gz"), tr = load(v + ".truth.json.gz"), TD = truthD(tr);
-  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, noLib ? {} : { armLib: armLibFor(tr.sp) });
+  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { ...(noLib ? {} : { armLib: armLibFor(tr.sp) }), ...(process.env.OPTS ? JSON.parse(process.env.OPTS) : {}) });
   const T = Math.min(D.pose.length, tr.P.length), fps = D.fps;
   // the app's left-hander output is mirrored back for display; the truth is compared in the same orientation
   const hip = F => [0, 1, 2].map(k => (F[23][k] + F[24][k]) / 2);

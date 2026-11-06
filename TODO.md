@@ -23,20 +23,28 @@ up to date for the next.
   3. Add it to `.github/workflows/tests.yml` as a report (fail only if something gets clearly worse).
 - Follow-on: saved history (re-open an old analysis after an app update gives the same results); the PDF `*` for
   blurred throwing-arm values like the screen.
-- Scorecard steps 1-3 DONE (`node tools/test/bench.mjs`; baseline saved; runs on GitHub on every push). Starting
-  numbers: joints 10.5 cm from motion capture, throwing arm 14.9 cm, angles 14.4° average; foot strike 34 ms early on
-  average; worst readings: layback (57° off at foot strike and release), throwing elbow (35° off at release), trunk
-  rotation from behind-3B (22°).
-- Next session: use the scorecard on the worst reading. Layback first (the 9:40 session, unless already started):
-  find why it is ~57° off at foot strike and release (wrap-round past 180°? the "modelled" layback shape?), fix, show
-  the scorecard before/after, and check Maher's 219° at foot strike drops below 180.
-  First look (14:15 UTC): not mainly a wrap-round. (a) At foot strike the "modelled" layback shape (pipeline.js,
-  `opts.layback` keyframes: 60° at foot strike, 110° two frames later) rises far too early: motion capture is about
-  0-65° at foot contact and climbs over ~8 frames (60 fps) to max layback; the app shows ~150° at contact on
-  1612_side_open. Build the keyframes from the average motion-capture curve (foot strike -> max layback -> release,
-  in normalised time) instead. (b) At release the layback falls ~60°/frame, so the release error is mostly the app's
-  release frame being 1-2 frames late (+18 ms on average); judge release layback within ±1 frame too. (c) One frame
-  before the layback window starts it can read 320° (= -40°): the window edge, harmless but tidy it.
+- Scorecard steps 1-3 DONE (`node tools/test/bench.mjs`; baseline saved; runs on GitHub on every push).
+- 9:40 session: the scorecard was NOT measuring the app as it runs: it skipped the lab-throw arm match (armlib.json,
+  which app.js always loads). Fixed (each benchmark pitcher's own throws left out of the library; `--nolib` for the
+  old way); regress.mjs and reportcheck.mjs use it too. Real numbers: layback 5.6° off at foot strike, 9.7° at max
+  layback, 40° at release; throwing elbow 10/13/9°; throwing arm 12.7 cm; release timing 6 ms. So the "57° layback"
+  was a measuring mistake, not an app bug.
+  Then shipped: (1) foot strike where the front ankle stops sliding (< 0.3 m/s, never later than 0.1 s before arm
+  cocked): benchmark foot-strike timing 54 -> 34 ms (avg -35 -> -10 ms); Maher max 1.567 -> 1.583 s; Staumont
+  1.20 -> 1.30 s (re-recorded: ankle still 1.6 cm up and sliding ~1 m/s at 1.20, and 1.20 gave a 0.2 s foot strike to
+  arm cocked, longer than 95% of lab throws; check on his video when there's a chance). (2) shoulders smoothed less:
+  trunk turn error 12.7/9.9/14.8° -> 11.5/8.2/11.4° (foot strike / max layback / release), separation 12.1/5.4/9.0 ->
+  11.5/5.4/6.9.
+  Layback at release (40°) is mostly unfixable from one camera: the elbow is nearly straight there (~25°), so the
+  forearm's turn about the upper arm swings 50°+ with a 1-2° wobble; 1 frame before/after release it's 14°/22° off.
+  Bridging it from the frames either side only got 40 -> 35° and made the next frame worse: dropped.
+- Next session: trunk rotation is the worst reading left. At foot strike it reads ~+12° too open (behind_3b +20-33°),
+  at release ~-12° under-rotated (behind_3b -20 to -47°): the trunk's range is squashed, it doesn't follow the
+  shoulders closing further just before landing and stalls near 85-90° late (see 3228_1_behind_3b). Suspect the
+  shoulder line being clamped flat to the picture when its on-screen width >= the shoulder bone length (lockArms,
+  `n > 0.995 * L`), and/or the shoulder half-width (0.0898 x height) vs the tracker's wider shoulders. Measure per
+  frame how often the clamp hits, then try a soft clamp / a learned width. `OPTS='{"_shSig":0.6}' node
+  tools/test/bench.mjs` tries a setting without editing code (reportcheck.mjs takes OPTS too).
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
@@ -54,14 +62,11 @@ up to date for the next.
   picture-scale jump (body ~580 px tall at the start and at the finish), so the zoom can't be seen without the video.
   The data does show Fast mode flipping the whole body left/right for 5 frames just after release (1.78-1.85 s); it's
   corrected, but that's where the finish wobbles.
-- Layback reads over 180° at foot strike on Maher (219° in fast and max). Real layback there is well under 180°, so
-  the angle is probably wrapping round; check against the benchmark truth and fix the reading.
+- Layback reads over 180° at foot strike on Maher (219° in fast and max). On the benchmark (lab arm match on, as in
+  the app) layback at foot strike is only 5.6° off, so look at Maher's own arm around 1.58 s: probably the forearm
+  pointing the wrong way toward/away from the camera there.
+- Trunk rotation at foot strike and release (see Today): the worst angle reading left, 11-18° off.
 
-- Foot strike is marked about 3 frames (50 ms) before motion capture's foot contact on the benchmark (median -3 frames
-  at 60 fps; the foot is still sliding). The knee angle shown at foot strike is ~10° straighter than at real contact.
-  The point where the lead heel stops sliding (under 0.3 m/s) lands within 1 frame of contact on 34 of 60 views
-  (median 0): consider marking foot strike there, or showing both. Changes event times on every clip (Maher's foot
-  strike, regression baseline), so check the video strip first.
 - Throwing elbow at foot strike is unreliable from one camera (typical error 17°, some views 70°+, wobbling 50-100° in
   1/30 s): improve the arm while it is behind the body at landing.
 
@@ -99,6 +104,11 @@ up to date for the next.
 - PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
   PDF and CSV in the browser and compare with the screen.
 - Saved history: re-opening an old analysis should give the same results after app updates.
+- Angle panel wording (needs Jackson's OK, it's on screen): the layback graph is titled "Layback (modelled)" with
+  "Shaped to a typical pitching layback: this 30 fps single-camera video can't show the forearm laying back". That
+  describes an old version: layback now follows the video, matched to 404 lab throws, and is within ~6° at foot strike
+  and ~10° at max layback on the benchmark (unreliable right at release). Proposed: "Layback" + "Shoulder external
+  rotation, from the video matched to lab throws. Least reliable right at release, when the elbow is nearly straight."
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
 ## Ideas (ask Jackson before starting)
@@ -108,6 +118,10 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Accuracy scorecard measures the app as it runs (lab arm match on, benchmark pitcher left out): layback
+  error 57/26/56° -> 5.6/9.7/40° (it was the measurement), throwing arm 14.9 -> 12.7 cm.
+- 2026-11-06: Foot strike marked where the front foot stops sliding: 54 -> 34 ms from motion capture's foot contact.
+- 2026-11-06: Shoulders smoothed less: trunk turn at release 14.8 -> 11.4° off, separation at release 9.0 -> 6.9°.
 - 2026-11-06: Accuracy scorecard `tools/test/bench.mjs` (12 pitches x 5 angles vs motion capture: joints, arm, angles at
   foot strike / max layback / release, event timing) with a saved baseline; runs on GitHub on every push.
 - 2026-11-06: Coaching report checked against motion capture (`tools/test/reportcheck.mjs`, 12 pitches x 5 angles):

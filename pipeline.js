@@ -480,8 +480,11 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     const st = new Array(T); st[T - 1] = D[1] < D[0] ? 1 : 0;
     for (let t = T - 1; t > 0; t--) st[t - 1] = bk[t - 1][st[t]];
     if (opts._dbgLock) opts._dbgLock.push({ a, b, L, ip: ip.map(v => norm(v)), dz, cur, st, wt });
-    // the tracker's own frame-to-frame wobble is evened out (shoulders more: they're often half hidden), lengths kept exact
-    const sgm = (a < 0 ? (a === -2 ? opts._hipSig ?? 1.5 : 1.5) : opts._armSig ?? 0.6) * K;
+    // the tracker's own frame-to-frame wobble is evened out (shoulders more: they're often half hidden), lengths kept exact.
+    // The shoulders only lightly (about 25 ms at 30 fps): the trunk turns some 150° between foot strike and release, and
+    // more smoothing rounded that off (60 benchmark views: trunk turn at release 15° off -> 11°, hip-shoulder
+    // separation at release 9° -> 7°)
+    const sgm = (a < 0 ? (a === -2 ? opts._hipSig ?? 1.5 : opts._shSig ?? 0.8) : opts._armSig ?? 0.6) * K;
     const VS = gauss(ip.map((v, t) => add(v, mul(cz, st[t] ? -dz[t] : dz[t]))), sgm);
     // frames the camera lost to blur: the matched lab arm itself
     const tw = new Array(T).fill(0);
@@ -1300,6 +1303,18 @@ function analyseOnce(raw, opts = {}) {
     const settle = lf.slice(fs_, Math.min(T, fs_ + Math.max(3, Math.round(0.25 * fs)))).sort((a, b) => a - b);
     const ground = settle[Math.floor(settle.length * 0.3)];
     for (let t = fs_; t <= Math.min(T - 4, fs_ + Math.round(0.12 * fs)); t++) if (lf[t] <= ground + 0.015) { contactF = t; break }
+    // a front foot that is down can still be sliding forward on its heel; the research's foot contact is when it stops.
+    // Marked where the lead ankle slows below 0.3 m/s along the ground (60 benchmark views against motion capture:
+    // foot strike 3 frames early on a typical pitch, 54 ms off on average; with this, 34 ms)
+    if (opts.contactSlide !== false) {
+      // speed over a fixed 1/30 s, whatever the frame rate (in slow motion, frame-to-frame jitter would swamp it)
+      const h = Math.max(1, Math.round(fs / 60));
+      const sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h);
+      // never later than 0.1 s before the arm is cocked: foot strike to max layback takes 0.12 s on a typical pitch
+      // (0.09-0.17 s on 90% of 404 lab fastballs), and a filmed foot that looks planted is, near enough, planted
+      const last = Math.min(T - 1 - h, contactF + Math.round((opts._slideMax ?? 0.1) * fs), cock - Math.round((opts._slideCock ?? 0.1) * fs));
+      for (let t = Math.max(legLift + 1 + h, contactF - Math.round(0.05 * fs)); t <= last; t++) if (sp(t) < (opts._slideV ?? 0.3)) { contactF = t; break }
+    }
   }
 
   // ---- angles on the final pose
