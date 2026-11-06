@@ -30,6 +30,13 @@ up to date for the next.
 - Next session: use the scorecard on the worst reading. Layback first (the 9:40 session, unless already started):
   find why it is ~57° off at foot strike and release (wrap-round past 180°? the "modelled" layback shape?), fix, show
   the scorecard before/after, and check Maher's 219° at foot strike drops below 180.
+  First look (14:15 UTC): not mainly a wrap-round. (a) At foot strike the "modelled" layback shape (pipeline.js,
+  `opts.layback` keyframes: 60° at foot strike, 110° two frames later) rises far too early: motion capture is about
+  0-65° at foot contact and climbs over ~8 frames (60 fps) to max layback; the app shows ~150° at contact on
+  1612_side_open. Build the keyframes from the average motion-capture curve (foot strike -> max layback -> release,
+  in normalised time) instead. (b) At release the layback falls ~60°/frame, so the release error is mostly the app's
+  release frame being 1-2 frames late (+18 ms on average); judge release layback within ±1 frame too. (c) One frame
+  before the layback window starts it can read 320° (= -40°): the window edge, harmless but tidy it.
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
