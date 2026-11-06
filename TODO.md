@@ -31,6 +31,14 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 - Layback reads over 180° at foot strike on Maher (219° in fast and max). Real layback there is well under 180°, so
   the angle is probably wrapping round; check against the benchmark truth and fix the reading.
 
+- Foot strike is marked about 3 frames (50 ms) before motion capture's foot contact on the benchmark (median -3 frames
+  at 60 fps; the foot is still sliding). The knee angle shown at foot strike is ~10° straighter than at real contact.
+  The point where the lead heel stops sliding (under 0.3 m/s) lands within 1 frame of contact on 34 of 60 views
+  (median 0): consider marking foot strike there, or showing both. Changes event times on every clip (Maher's foot
+  strike, regression baseline), so check the video strip first.
+- Throwing elbow at foot strike is unreliable from one camera (typical error 17°, some views 70°+, wobbling 50-100° in
+  1/30 s): improve the arm while it is behind the body at landing.
+
 ## Tuesday: speed and reliability
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
@@ -63,9 +71,14 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 - Add the accuracy scorecard (Monday item, once built) to the GitHub Actions tests.
 
 ## Friday: coaching report and finish
-- Report quality: check every statement the coaching report makes against the measurements it's based on;
-  remove or fix anything that can be wrong for some pitchers.
-- PDF and CSV exports: open them, check every number matches the screen.
+- Graded coaching report (report.js) is NOT in the app: it was taken out on 2026-10-28 (PDF became key moments +
+  angle table). Ask Jackson whether he wants it back; it's now checked against motion capture
+  (`node tools/test/reportcheck.mjs`: 139 wrong statements of 643 at college level, down from 174).
+- Report, next fixes found by the check (only worth it if the report comes back): elbow height at release reads about
+  95° for every pitcher (truth 87-121°), so it never flags a high elbow (19 of 60 missed); side tilt reads ~10° high from
+  the side-back camera and low from the front (13 missed, 4 false alarms); forward lean misgrades near the 23° line.
+- PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
+  PDF and CSV in the browser and compare with the screen.
 - Saved history: re-opening an old analysis should give the same results after app updates.
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
@@ -74,6 +87,12 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Coaching report checked against motion capture (`tools/test/reportcheck.mjs`, 12 pitches x 5 angles):
+  front knee and arm at landing now read when the front foot is planted (false "knee collapse" warnings 20 -> 9 of 60;
+  front-knee description right 30 -> 37 of 60); "arm ready at landing" is only graded when the arm reading is steady
+  (wrong arm-health advice 35 -> 16 of 60, shown as a rough guide on the other 19). 174 -> 139 wrong statements.
+- 2026-11-06: PDF angle table rounds the same way as the screen (64 of 3072 numbers, all negative half-degrees such as
+  Maher's trunk tilt at foot strike, were 1° off).
 - 2026-11-05: Accuracy benchmark data added (tools/test/bench).
 - 2026-11-05: Slow-motion check: all 60 benchmark views read right at 1×, 2×, 4× and 8× (`tools/test/slowmo.mjs`).
   Clips that start after peak leg lift no longer pass a "leg lift" from the way down: wrong readings at 1/3 s before

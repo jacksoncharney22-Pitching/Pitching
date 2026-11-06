@@ -147,7 +147,8 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     if (r % 2) { doc.setFillColor(242); doc.rect(M, y, CW, 16, "F") }
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(30); doc.text(lbl, M + 6, y + 11);
     let x = M + colW[0];
-    PH.forEach((p, i) => { const v = M_[k] ? M_[k][p.frame] : null; doc.text(v == null ? "-" : Math.round(v) + "\xB0", x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
+    // rounded exactly like the angle table on screen (Math.round alone rounds -21.5 to -21, the screen shows -22)
+    PH.forEach((p, i) => { const v = M_[k] ? M_[k][p.frame] : null; doc.text(v == null ? "-" : (Math.round(v * 10) / 10).toFixed(0) + "\xB0", x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
     y += 16;
   });
   y += 10;
