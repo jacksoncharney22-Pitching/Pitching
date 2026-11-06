@@ -67,7 +67,20 @@ up to date for the next.
   elbow ~4° more at landing than the 403-throw library average (library 99.5°, benchmark 103.5°) and the match pulls
   toward typical. Leaning less on the lab arm where the video shows the arm (`_tmplAll` 0.5 -> 0.3) helps the elbow
   at foot strike 9.7 -> 9.1° but costs layback at foot strike 5.7 -> 6.3°: not shipped.
-- Next session (13:40): Friday theme. Do the PDF "*" for blurred throwing-arm values (like the screen; pdf.js), then
+- 13:40 session, shipped: (1) PDF marks blurred throwing-arm values at release with * like the screen. New check
+  `tools/test/export_check.py` (opens a fixture through Recent, no tracking): PDF and CSV now match the screen on all
+  4 test clips. It found two saved-history bugs, both fixed: re-opening lost events moved by hand, and re-opening
+  straight away on a slow connection rebuilt the arm without the lab-throw match (Maher elbow at foot strike 114°
+  instead of 96°). Also no more "-0°". (2) Throwing arm follows, frame by frame, the lab throws that fit the video at
+  that moment (best 30, weighted per frame; `armLocal:false` = old average of 6): elbow at max layback 12.7 -> 9.7°,
+  release 8.8 -> 7.9°; layback at max layback 9.7 -> 7.6°, at release 39.8 -> 24.7°; shoulder abduction 7.1/6.8 ->
+  5.1/5.5°; throwing arm 12.6 -> 11.9 cm; no extra wobble. Elbow at foot strike unchanged (9.7 -> 9.8).
+  Hackimer (16x slow, no truth) changed most: elbow ~115° at foot strike and ~100° at arm cocked (was 82° -> 29°
+  between them, which looked wrong), 57° on the release frame (was 19°; 15° one frame later). Check on his video.
+- Next session (15:40): elbow at foot strike is still 9.8° off (worst behind_3b): try the long match window with its
+  own per-frame weighting tuned for foot strike (`_lPre`), or more of the video's weight there. Then the end-of-day
+  summary. Tools: `node tools/test/bench.mjs`, scratch per-frame arm error script idea: error and jitter FS->R+5.
+- (old plan) Next session (13:40): Friday theme. Do the PDF "*" for blurred throwing-arm values (like the screen; pdf.js), then
   open a real PDF and CSV in headless Chromium and compare with the screen numbers. For the elbow: try weighting the
   lab matches by how well each one's elbow bend fits the video at foot strike (instead of the plain average of 6).
 
@@ -127,9 +140,11 @@ up to date for the next.
   arm path takes). Full clips are all right (240 of 240).
 
 ## Friday: coaching report and finish
-- PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
-  PDF and CSV in the browser and compare with the screen.
-- Saved history: re-opening an old analysis should give the same results after app updates.
+- Saved history across app updates: a pitch saved before an update re-opens with the new skeleton maths (by design);
+  show a small note when its numbers changed since it was saved? (Look change: screenshots to Jackson first.)
+- Run `tools/test/export_check.py` on GitHub Actions too (needs Playwright + a local three.js there).
+- PDF: the angle table has no layback row and no speeds; the screen does. Offer Jackson a screenshot of a PDF with them.
+- Video export: check the skeleton/overlay MP4 frames line up with the screen (frame count, events) with a test tool.
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
 ## Ideas (ask Jackson before starting)
@@ -139,6 +154,10 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Throwing arm follows the best-fitting lab throws frame by frame: layback at release 39.8 -> 24.7° off,
+  elbow at max layback 12.7 -> 9.7°, shoulder abduction at max layback 7.1 -> 5.1°.
+- 2026-11-06: PDF * for blurred throwing-arm values; PDF/CSV checked against the screen (`tools/test/export_check.py`);
+  saved pitches keep hand-moved events and re-open the same on a slow connection.
 - 2026-11-06: Every module the app loads (pipeline.js included) now carries the version stamp (import map in
   index.html), so analysis updates reach returning visitors on the first refresh instead of after the cache expires.
 - 2026-11-06: Shoulder line depth read against a width that narrows toward foot strike: trunk turn at foot strike
