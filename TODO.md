@@ -8,6 +8,23 @@ with the date. When a theme has fewer than 3 items left, add new ones that fit i
 Measure before and after every change. The accuracy benchmark (`tools/test/bench`, 10 real pitches with
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
+## Today (2026-11-06, Friday)
+Sessions run at 8:15, 9:40, 11:40, 13:40 and 15:40 ET on weekdays; each one picks up here and leaves this section
+up to date for the next.
+- Done: coaching report checked against motion capture (174 -> 139 wrong statements); PDF rounds like the screen.
+- Big project for the rest of today: the accuracy scorecard (Monday's top item, the base for every later
+  "more accurate" claim). Steps:
+  1. `tools/test/bench.mjs`: for every benchmark view run `analyse()`, report per camera angle the joint position
+     error (cm, hip-centred, 12 main joints), angle errors at foot strike / max layback / release (elbow, shoulder
+     abduction, layback, pelvis and trunk rotation, hip-shoulder separation, front knee, forward and side trunk
+     tilt) and event timing error (ms). Reuse the truth handling from `tools/test/reportcheck.mjs` (throwing hand from
+     the stride foot; the one lefty is stored mirrored as a righty).
+  2. Save the numbers as `tools/test/bench_baseline.json` with a `--update` flag, and print a before/after diff.
+  3. Add it to `.github/workflows/tests.yml` as a report (fail only if something gets clearly worse).
+- Follow-on: saved history (re-open an old analysis after an app update gives the same results); the PDF `*` for
+  blurred throwing-arm values like the screen.
+- Next session: start step 1.
+
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
