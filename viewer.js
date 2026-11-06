@@ -25,7 +25,7 @@ M.pelvisSpd = speedOf(M.pelvisRot); M.trunkSpd = speedOf(M.trunkRot);
 const MET = {
   throwElbow: ["Elbow flexion", "°", "Throwing arm", "0° is a straight arm."],
   throwAbd: ["Shoulder abduction", "°", "Throwing arm", "Upper arm vs the side of the trunk. 90° puts the elbow at shoulder height."],
-  throwER: ["Layback (modelled)", "°", "Throwing arm", "Shoulder external rotation. Shaped to a typical pitching layback: this 30 fps single-camera video can't show the forearm laying back."],
+  throwER: ["Layback", "°", "Throwing arm", "Shoulder external rotation, from the video matched to lab throws. Least reliable right at release, when the elbow is nearly straight."],
   throwHorz: ["Horizontal abduction", "°", "Throwing arm", "Elbow behind (+) or in front of (−) the chest line. Shown when the arm is raised."],
   gloveElbow: ["Elbow flexion", "°", "Glove arm", ""],
   gloveAbd: ["Shoulder abduction", "°", "Glove arm", ""],
@@ -599,7 +599,7 @@ const CHARTS = [
   { title: "Hip–shoulder separation", series: [["separation", "--fg"]], unit: "°", def: MET.separation[3] },
   { title: "Throwing elbow flexion", series: [["throwElbow", "--throw"]], unit: "°", def: MET.throwElbow[3], blur: true },
   { title: "Throwing shoulder abduction", series: [["throwAbd", "--throw"]], unit: "°", def: MET.throwAbd[3], blur: true },
-  { title: "Layback (modelled)", series: [["throwER", "--throw"]], unit: "°", def: MET.throwER[3], blur: true },
+  { title: "Layback", series: [["throwER", "--throw"]], unit: "°", def: MET.throwER[3], blur: true },
   { title: "Shoulder horizontal abduction", series: [["throwHorz", "--throw"]], unit: "°", def: MET.throwHorz[3], blur: true },
   { title: "Lead hip flexion", series: [["leadHip", "--glove"]], unit: "°", def: MET.leadHip[3] },
   { title: "Lead knee flexion", series: [["leadKnee", "--glove"]], unit: "°", def: MET.leadKnee[3] },

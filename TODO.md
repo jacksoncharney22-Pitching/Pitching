@@ -105,11 +105,6 @@ up to date for the next.
 - PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
   PDF and CSV in the browser and compare with the screen.
 - Saved history: re-opening an old analysis should give the same results after app updates.
-- Angle panel wording (needs Jackson's OK, it's on screen): the layback graph is titled "Layback (modelled)" with
-  "Shaped to a typical pitching layback: this 30 fps single-camera video can't show the forearm laying back". That
-  describes an old version: layback now follows the video, matched to 404 lab throws, and is within ~6° at foot strike
-  and ~10° at max layback on the benchmark (unreliable right at release). Proposed: "Layback" + "Shoulder external
-  rotation, from the video matched to lab throws. Least reliable right at release, when the elbow is nearly straight."
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
 ## Ideas (ask Jackson before starting)
@@ -119,6 +114,7 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Layback graph renamed "Layback" (was "Layback (modelled)") with an up-to-date note; Jackson approved.
 - 2026-11-06: Accuracy scorecard measures the app as it runs (lab arm match on, benchmark pitcher left out): layback
   error 57/26/56° -> 5.6/9.7/40° (it was the measurement), throwing arm 14.9 -> 12.7 cm.
 - 2026-11-06: Foot strike marked where the front foot stops sliding: 54 -> 34 ms from motion capture's foot contact.
