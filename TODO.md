@@ -85,6 +85,20 @@ up to date for the next.
   matched arm and the video disagree at foot strike (the arm is often hidden behind the body there: `unseen`
   frames get weight 0.05 in the match). Then the end-of-day summary for Jackson (live today: foot strike timing,
   trunk turn, arm match per frame, PDF *, saved history fixes; numbers in Done).
+- 15:40 session (measuring only, nothing shipped): the throwing elbow reads ~7° too STRAIGHT on average from
+  late stride through max layback (signed error -7.4° at foot strike, -7.8° mid-way, -6.0° at max layback, -2.6° at
+  release; it builds up from 0 about 7 frames before foot strike). Both halves share it: the video-only arm
+  (`_tmplAll:0`) is -7.7°, the lab-arm-only (`_tmplAll:1`) -7.6°. Not the 2D: the benchmark's 2D elbow angle matches
+  the truth within ~1° (side views 0.0-0.4°), smoothing of the 2D moves joints <0.1 px; not the bone lengths
+  (+-5%: <1° change); not a skewed camera axis. So it happens inside the 3D arm lock (lockArms) and is still
+  unexplained. Leaning less on the lab arm for the UPPER arm only (`_tmplAll` 0.5 -> 0.3 on the upper arm, forearm
+  kept) gives elbow at foot strike 9.5 -> 8.7° but layback at foot strike 5.7 -> 6.0° (arm 11.9 -> 11.8 cm): a trade,
+  not shipped. Worst single views: 3228 behind_3b (-44°), side_back/side_open (-21/-25°, 50° wobble within +-2 frames).
+- Next session (Monday, accuracy): find where lockArms loses the elbow bend. Plan: add a debug hook that records the
+  final upper-arm and forearm vectors per frame (after the lab blend and smoothing), then rebuild the elbow from
+  each stage (in-picture + depth only; + lab blend; + smoothing) on the 60 views at foot strike to see which step
+  straightens it. Scratch tools from this session (signed elbow error per frame around foot strike, per-stage error
+  via `_snap`) are quick to rewrite: `OPTS='{...}' node tools/test/bench.mjs` covers the scoring.
 - (old plan) Next session (13:40): Friday theme. Do the PDF "*" for blurred throwing-arm values (like the screen; pdf.js), then
   open a real PDF and CSV in headless Chromium and compare with the screen numbers. For the elbow: try weighting the
   lab matches by how well each one's elbow bend fits the video at foot strike (instead of the plain average of 6).
