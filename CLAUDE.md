@@ -11,8 +11,9 @@ picture or numbers from a real clip rather than describing a change.
   (except the optional "Ultra" mode, below). The repo root *is* the website.
 - **Deploy = push to `main`.** GitHub Pages (`.nojekyll`) rebuilds in about a minute. `netlify.toml` is there for
   Netlify too. Check with `gh run list -L 3` (the "pages build and deployment" run).
-- **Cache busting:** `index.html` loads `viewer.js?v=<stamp>` and `app.js?v=<stamp>`. After changing any JS, bump
-  the stamp on both lines (use `date +%s`). The other modules are imported by `app.js` without stamps.
+- **Cache busting:** `index.html` loads `viewer.js?v=<stamp>` and `app.js?v=<stamp>`, and an import map gives every
+  module app.js imports (pipeline.js, fuse.js, rtm.js, ...) the same stamp. After changing any JS, bump every stamp in
+  `index.html` at once: `sed -i -E "s/\?v=[0-9]+/?v=$(date +%s)/g" index.html`. A new module needs a line in the import map.
 - `version.txt` is a human-readable version note; update it for notable releases.
 
 ## Files

@@ -601,7 +601,25 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="viewer.js?v=1793984761" charset="utf-8"></script>
-<script type="module" src="app.js?v=1793984761"></script>
+<!-- every module app.js imports gets the same version stamp, so an update reaches a returning visitor on the first refresh
+     (browsers without import maps just load them unstamped, as before) -->
+<script type="importmap">
+{"imports": {
+  "./pipeline.js": "./pipeline.js?v=1793985416",
+  "./fuse.js": "./fuse.js?v=1793985416",
+  "./multiview.js": "./multiview.js?v=1793985416",
+  "./rtm.js": "./rtm.js?v=1793985416",
+  "./pdf.js": "./pdf.js?v=1793985416",
+  "./editor.js": "./editor.js?v=1793985416",
+  "./lifter.js": "./lifter.js?v=1793985416",
+  "./armzoom.js": "./armzoom.js?v=1793985416",
+  "./net.js": "./net.js?v=1793985416",
+  "./opencap.js": "./opencap.js?v=1793985416",
+  "./ultra.js": "./ultra.js?v=1793985416",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1793985416"
+}}
+</script>
+<script src="viewer.js?v=1793985416" charset="utf-8"></script>
+<script type="module" src="app.js?v=1793985416"></script>
 </body>
 </html>

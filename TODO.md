@@ -55,7 +55,12 @@ up to date for the next.
   one side (3228_1_behind_3b frames 69-73: truth depth angle 4, -6, -17°, app 26, 17, 14° -> trunk 24-34° behind).
   Idea: a second-order (angular velocity) track of the shoulder line's angle out of the picture so it can pass through
   0 instead of bouncing. Scratch tools to measure it: per-frame trunk error + depth angle per stage (`_snap`).
-  If that doesn't pan out, move to the throwing elbow at foot strike (9.8°, behind_3b 13.7°).
+  Tried (11:40 session, not shipped): a second-order track of that angle (dynamic programming over angle x previous
+  angle): foot strike better on 3228 behind_3b but release unchanged, and side_open got much worse (all trunk
+  12.2/10.5/12.4°). The measurement itself is the limit there: right after release the tracker's shoulders read ~11%
+  narrower than they are, so the line looks 25-30° out of the picture on either side. A faster Viterbi step for the
+  shoulders (5-8 m/s) changed nothing. So: move on to the throwing elbow at foot strike (9.8°, behind_3b 13.7°),
+  unless a new idea for the release-side shoulder width comes up.
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
@@ -88,9 +93,6 @@ up to date for the next.
   honest progress.
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
-- Cache: index.html stamps app.js and viewer.js, but pipeline.js and the other modules are imported without a stamp,
-  so after a release a returning visitor can run a new app.js with an old pipeline.js until the browser cache expires.
-  Stamp the imports (or pass the version through) so every analysis update reaches everyone on the first refresh.
 - Failure messages: every way an analysis can fail (no pitcher found, video won't play, tracker can't load)
   should tell the user what to do next in plain words.
 
@@ -127,6 +129,8 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Every module the app loads (pipeline.js included) now carries the version stamp (import map in
+  index.html), so analysis updates reach returning visitors on the first refresh instead of after the cache expires.
 - 2026-11-06: Shoulder line depth read against a width that narrows toward foot strike: trunk turn at foot strike
   11.5 -> 10.6° off, hip-shoulder separation at foot strike 11.5 -> 9.0°, from behind toward third base 17.9 -> 13.4°.
 - 2026-11-06: Layback graph renamed "Layback" (was "Layback (modelled)") with an up-to-date note; Jackson approved.
