@@ -452,6 +452,24 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
   const Q = P.map(F => F.map(p => p.slice()));
   const BLk = (a, b) => a < 0 ? BL[a + "," + b] : BL[a + "," + b];
   const M0 = P.map(F => nodeOf(F, -1)), H0 = P.map(F => nodeOf(F, -2)), baseOf = (F, a, t) => a === -1 ? M0[t] : a === -2 ? H0[t] : F[a];
+  // How wide the shoulders look when they're square to the camera. The shoulder joints aren't a fixed distance apart:
+  // the shoulder blades pinch back as the arm loads, and in the lab (12 benchmark pitches) the joint-to-joint width
+  // drops from ~9% of height to ~7.7% at foot strike, then comes back by max layback. The tracker sees that narrower
+  // width, and reading it against the full width made a square-on shoulder line look turned 25-35° toward or away
+  // from the camera (worst from behind toward third base). So the depth is read against a width 6% under
+  // the full one from 0.4 s before foot strike to just after release (a nearly square-on line then isn't over-turned
+  // by tracker wobble), 18% under right at foot strike, back to 6% by mid-way to release. 60 benchmark views: trunk
+  // turn at foot strike 11.5 -> 10.6° off, hip-shoulder separation at foot strike 11.5 -> 9.0°, from behind toward
+  // third base trunk turn 17.9 -> 13.4°.
+  const shW = t => {
+    if (opts.shoulderPinch === false || opts._fsF == null) return 1;
+    const full = opts._shFull ?? 0.94, pinch = opts._shPinch ?? 0.82, out = opts._shOut ?? 1;
+    const f0 = opts._fsF, r0 = Math.max(f0 + 1, opts._relF ?? f0 + 0.1 * fs), m0 = (f0 + r0) / 2, s = x => x * fs;
+    const knots = [[f0 - s(opts._shPre ?? 0.4), out], [f0, pinch], [m0, full], [r0 + s(0.08), full], [r0 + s(0.15), out]];
+    if (t <= knots[0][0]) return out;
+    for (let i = 1; i < knots.length; i++) if (t <= knots[i][0]) { const [x0, y0] = knots[i - 1], [x1, y1] = knots[i]; return y0 + (y1 - y0) * (t - x0) / Math.max(1e-6, x1 - x0) }
+    return out;
+  };
   const trust = {};
   for (const sh of [11, 12]) { const u = unseen[sh]; trust[sh] = u ? gauss(u.map(v => v ? 0 : 1), Math.max(0.7, 0.7 * K)).map((w, t) => u[t] ? Math.min(w, 0.15) : w) : P.map(() => 1) }
   for (const [a, b, carry, hand] of CH) {
@@ -460,9 +478,9 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     if (a === -1 && opts.lockShoulders === false) continue;
     const L = BLk(a, b), ip = [], dz = [], cur = [];
     for (let t = 0; t < T; t++) {
-      let v = scr(t, a, b); const n = norm(v);
-      if (n > 0.995 * L) v = mul(v, 0.995 * L / n);
-      ip.push(v); dz.push(Math.sqrt(Math.max(0, L * L - dot(v, v)))); cur.push(dot(sub(Q[t][b], baseOf(Q[t], a, t)), cz));
+      let v = scr(t, a, b); const n = norm(v), Lt = a === -1 ? L * shW(t) : L;
+      if (n > 0.995 * Lt) v = mul(v, 0.995 * Lt / n);
+      ip.push(v); dz.push(Math.sqrt(Math.max(0, Lt * Lt - dot(v, v)))); cur.push(dot(sub(Q[t][b], baseOf(Q[t], a, t)), cz));
     }
     // throwing arm: which way it leans comes from the matched lab throws where they're available
     const tv = tmpl && (b === 14 || b === 16) ? (b === 14 ? tmpl.u : tmpl.f) : null;
@@ -1225,7 +1243,7 @@ function analyseOnce(raw, opts = {}) {
         tmpl = { u, f, wt, relShift: S.relShift };
       }
     }
-    P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, opts, tmpl);
+    P = lockArms(P, imgSmooth, liftScale, rot, camDir, BL, unseen, K, fs, { ...opts, _fsF: fs_, _relF: tmpl && opts.matchRel !== false && !(opts.phases && opts.phases.release != null) ? clamp(rel + Math.round(tmpl.relShift), fs_ + 1, T - 2) : rel }, tmpl);
     // release: where the matched lab throws release the ball (unless it was set by hand)
     if (tmpl && opts.matchRel !== false && !(opts.phases && opts.phases.release != null)) rel = clamp(rel + Math.round(tmpl.relShift), fs_ + 1, T - 2);
   }

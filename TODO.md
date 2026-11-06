@@ -39,13 +39,23 @@ up to date for the next.
   Layback at release (40°) is mostly unfixable from one camera: the elbow is nearly straight there (~25°), so the
   forearm's turn about the upper arm swings 50°+ with a 1-2° wobble; 1 frame before/after release it's 14°/22° off.
   Bridging it from the frames either side only got 40 -> 35° and made the next frame worse: dropped.
-- Next session: trunk rotation is the worst reading left. At foot strike it reads ~+12° too open (behind_3b +20-33°),
-  at release ~-12° under-rotated (behind_3b -20 to -47°): the trunk's range is squashed, it doesn't follow the
-  shoulders closing further just before landing and stalls near 85-90° late (see 3228_1_behind_3b). Suspect the
-  shoulder line being clamped flat to the picture when its on-screen width >= the shoulder bone length (lockArms,
-  `n > 0.995 * L`), and/or the shoulder half-width (0.0898 x height) vs the tracker's wider shoulders. Measure per
-  frame how often the clamp hits, then try a soft clamp / a learned width. `OPTS='{"_shSig":0.6}' node
-  tools/test/bench.mjs` tries a setting without editing code (reportcheck.mjs takes OPTS too).
+- 11:40 session: trunk rotation. Found the cause: the clamp almost never hits (0-15% of frames); the real problem is
+  that the shoulder joints are NOT a fixed distance apart. In the lab the joint-to-joint width drops from ~9% of
+  height to ~7.7% at foot strike (shoulder blades pinching back) and comes back by max layback, so a square-on
+  shoulder line read against the full width looked turned 25-35° toward/away from the camera. Shipped: the depth of
+  the shoulder line is read against a width that narrows toward foot strike (lockArms `shW`; `shoulderPinch:false`
+  turns it off). Trunk turn 11.5/8.2/11.4 -> 10.6/7.9/11.4° off (foot strike / max layback / release), separation
+  11.5/5.4/6.9 -> 9.0/4.8/6.3°, behind_3b trunk 17.9 -> 13.4°; throwing arm +0.3 cm on behind and side_back
+  (-0.5 on behind_3b, overall 12.6 unchanged). Report check 151 -> 149 wrong ("shoulders closed at landing" typical
+  error 12.9 -> 8.5°). Maher/Staumont trunk and separation move <= 2°. Slow motion 240/240, regress all ok.
+  Tried and dropped: reading the width from the clip itself (98th percentile of on-screen width: worse everywhere);
+  a narrower shoulder bone overall (_shR 0.08: helped trunk a little but moved the arm more).
+- Next session: what's left on trunk rotation is the follow-through side of release from behind_3b: just after
+  release the true shoulder line passes through square-on to the camera (depth sign flips) but the app's stays on
+  one side (3228_1_behind_3b frames 69-73: truth depth angle 4, -6, -17°, app 26, 17, 14° -> trunk 24-34° behind).
+  Idea: a second-order (angular velocity) track of the shoulder line's angle out of the picture so it can pass through
+  0 instead of bouncing. Scratch tools to measure it: per-frame trunk error + depth angle per stage (`_snap`).
+  If that doesn't pan out, move to the throwing elbow at foot strike (9.8°, behind_3b 13.7°).
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
@@ -78,6 +88,9 @@ up to date for the next.
   honest progress.
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
+- Cache: index.html stamps app.js and viewer.js, but pipeline.js and the other modules are imported without a stamp,
+  so after a release a returning visitor can run a new app.js with an old pipeline.js until the browser cache expires.
+  Stamp the imports (or pass the version through) so every analysis update reaches everyone on the first refresh.
 - Failure messages: every way an analysis can fail (no pitcher found, video won't play, tracker can't load)
   should tell the user what to do next in plain words.
 
@@ -114,6 +127,8 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Shoulder line depth read against a width that narrows toward foot strike: trunk turn at foot strike
+  11.5 -> 10.6° off, hip-shoulder separation at foot strike 11.5 -> 9.0°, from behind toward third base 17.9 -> 13.4°.
 - 2026-11-06: Layback graph renamed "Layback" (was "Layback (modelled)") with an up-to-date note; Jackson approved.
 - 2026-11-06: Accuracy scorecard measures the app as it runs (lab arm match on, benchmark pitcher left out): layback
   error 57/26/56° -> 5.6/9.7/40° (it was the measurement), throwing arm 14.9 -> 12.7 cm.
