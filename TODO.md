@@ -59,8 +59,18 @@ up to date for the next.
   angle): foot strike better on 3228 behind_3b but release unchanged, and side_open got much worse (all trunk
   12.2/10.5/12.4°). The measurement itself is the limit there: right after release the tracker's shoulders read ~11%
   narrower than they are, so the line looks 25-30° out of the picture on either side. A faster Viterbi step for the
-  shoulders (5-8 m/s) changed nothing. So: move on to the throwing elbow at foot strike (9.8°, behind_3b 13.7°),
-  unless a new idea for the release-side shoulder width comes up.
+  shoulders (5-8 m/s) changed nothing.
+- Also 11:40: shipped an import map so pipeline.js and every module load with the version stamp (bump all stamps
+  with one sed, see CLAUDE.md). Looked at the throwing elbow: it reads 7° too straight at foot strike and 9° at max
+  layback on average. Not the bone lengths (upper arm/forearm +-7%: no change). It comes from the lab-throw match:
+  the matched lab arm itself is 7.5° straighter than truth at foot strike, because the 12 benchmark pitchers bend the
+  elbow ~4° more at landing than the 403-throw library average (library 99.5°, benchmark 103.5°) and the match pulls
+  toward typical. Leaning less on the lab arm where the video shows the arm (`_tmplAll` 0.5 -> 0.3) helps the elbow
+  at foot strike 9.7 -> 9.1° but costs layback at foot strike 5.7 -> 6.3°: not shipped.
+- Next session (13:40): Friday theme. Do the PDF "*" for blurred throwing-arm values (like the screen; pdf.js), then
+  open a real PDF and CSV in headless Chromium and compare with the screen numbers. For the elbow: try weighting the
+  lab matches by how well each one's elbow bend fits the video at foot strike (instead of the plain average of 6).
+
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
