@@ -23,7 +23,8 @@ up to date for the next.
   3. Add it to `.github/workflows/tests.yml` as a report (fail only if something gets clearly worse).
 - Follow-on: saved history (re-open an old analysis after an app update gives the same results); the PDF `*` for
   blurred throwing-arm values like the screen.
-- Next session: start step 1.
+- Next session: if `tools/test/bench.mjs` is already pushed, do steps 2-3; if not (it's being written by the session
+  that started at 8:15), take the saved-history follow-on first and don't start bench.mjs.
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
@@ -88,18 +89,14 @@ up to date for the next.
 - Add the accuracy scorecard (Monday item, once built) to the GitHub Actions tests.
 
 ## Friday: coaching report and finish
-- Graded coaching report (report.js) is NOT in the app: it was taken out on 2026-10-28 (PDF became key moments +
-  angle table). Ask Jackson whether he wants it back; it's now checked against motion capture
-  (`node tools/test/reportcheck.mjs`: 139 wrong statements of 643 at college level, down from 174).
-- Report, next fixes found by the check (only worth it if the report comes back): elbow height at release reads about
-  95° for every pitcher (truth 87-121°), so it never flags a high elbow (19 of 60 missed); side tilt reads ~10° high from
-  the side-back camera and low from the front (13 missed, 4 false alarms); forward lean misgrades near the 23° line.
 - PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
   PDF and CSV in the browser and compare with the screen.
 - Saved history: re-opening an old analysis should give the same results after app updates.
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
 ## Ideas (ask Jackson before starting)
+- Graded coaching report: Jackson said on 2026-11-06 he does NOT want it back. report.js and tools/test/reportcheck.mjs
+  stay in the repo unused; don't spend time on them.
 - Side-by-side comparison of two pitches (same pitcher, different days).
 - Any change to how the app looks.
 
