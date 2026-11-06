@@ -27,3 +27,12 @@ jobs:
           node-version: "22"
       - name: Slow-motion reading on the benchmark pitches (1x, 2x, 4x, 8x)
         run: node tools/test/slowmo.mjs
+  accuracy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Accuracy scorecard vs motion capture (fails only if a camera angle gets clearly worse)
+        run: node tools/test/bench.mjs

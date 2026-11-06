@@ -23,8 +23,13 @@ up to date for the next.
   3. Add it to `.github/workflows/tests.yml` as a report (fail only if something gets clearly worse).
 - Follow-on: saved history (re-open an old analysis after an app update gives the same results); the PDF `*` for
   blurred throwing-arm values like the screen.
-- Next session: if `tools/test/bench.mjs` is already pushed, do steps 2-3; if not (it's being written by the session
-  that started at 8:15), take the saved-history follow-on first and don't start bench.mjs.
+- Scorecard steps 1-3 DONE (`node tools/test/bench.mjs`; baseline saved; runs on GitHub on every push). Starting
+  numbers: joints 10.5 cm from motion capture, throwing arm 14.9 cm, angles 14.4° average; foot strike 34 ms early on
+  average; worst readings: layback (57° off at foot strike and release), throwing elbow (35° off at release), trunk
+  rotation from behind-3B (22°).
+- Next session: use the scorecard on the worst reading. Layback first (the 9:40 session, unless already started):
+  find why it is ~57° off at foot strike and release (wrap-round past 180°? the "modelled" layback shape?), fix, show
+  the scorecard before/after, and check Maher's 219° at foot strike drops below 180.
 
 ## Waiting on Jackson
 - Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
@@ -34,10 +39,6 @@ up to date for the next.
   cloud sessions have no videos and can't download them: drop them in the chat or the project.
 
 ## Monday: accuracy of the skeleton
-- Accuracy scorecard: build `tools/test/bench.mjs` that runs `analyse()` on every benchmark view and reports, per
-  camera angle: joint position error (cm), angle error at foot strike / max layback / release (elbow, shoulder
-  abduction, layback, pelvis and trunk rotation, hip-shoulder separation, front knee), and event timing error (ms).
-  Save the current numbers as the baseline so every later change can show a before/after. Do this first.
 - Use the scorecard to find the worst camera angle and the worst angle reading, and improve it.
 - Throwing arm at release: the fastest part of the delivery and the most often blurred. Improve layback and
   elbow readings around max layback and release (arm-zoom, smoothing that keeps the peak).
@@ -86,7 +87,6 @@ up to date for the next.
   speed). Without the leg lift the only timing left is foot strike to release, which is too short to read reliably
   (0.12-0.30 s across views). Needs a second clue that doesn't depend on the leg lift (e.g. how long the stride or the
   arm path takes). Full clips are all right (240 of 240).
-- Add the accuracy scorecard (Monday item, once built) to the GitHub Actions tests.
 
 ## Friday: coaching report and finish
 - PDF and CSV exports, rest: the PDF doesn't mark blurred throwing-arm values with * like the screen does; open a real
@@ -101,6 +101,8 @@ up to date for the next.
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-06: Accuracy scorecard `tools/test/bench.mjs` (12 pitches x 5 angles vs motion capture: joints, arm, angles at
+  foot strike / max layback / release, event timing) with a saved baseline; runs on GitHub on every push.
 - 2026-11-06: Coaching report checked against motion capture (`tools/test/reportcheck.mjs`, 12 pitches x 5 angles):
   front knee and arm at landing now read when the front foot is planted (false "knee collapse" warnings 20 -> 9 of 60;
   front-knee description right 30 -> 37 of 60); "arm ready at landing" is only graded when the arm reading is steady
