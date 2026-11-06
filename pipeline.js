@@ -1255,7 +1255,9 @@ function analyseOnce(raw, opts = {}) {
       const S = armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, opts);
       tmpl = S;
       if (opts.armMatchLong !== false) {
-        const Lg = armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, { ...opts, _mPre: opts._lPre ?? 0.55, _mPost: opts._lPost ?? 0.22, _dbgMatch: null });
+        // the long match starts 0.7 s before release (was 0.55 s; 2026-11-06: elbow at foot strike 9.8 -> 9.5° off, layback
+        // at release 24.7 -> 23.5° on the 60 benchmark views): it then sees the arm through the whole of the stride
+        const Lg = armMatch(P, imgSmooth, liftScale, rot, camDir, BL, rel, fs, unseen[12], opts.armLib, { ...opts, _mPre: opts._lPre ?? 0.7, _mPost: opts._lPost ?? 0.22, _dbgMatch: null });
         const u = [], f = [], wt = [];
         for (let t = 0; t < T; t++) {
           const ws = S.u[t] ? S.wt[t] : 0, wl = Lg.u[t] ? Lg.wt[t] : 0;

@@ -1,23 +1,23 @@
 {
  "behind": {
   "views": 12,
-  "joint": 9.01,
-  "arm": 9.91,
+  "joint": 8.99,
+  "arm": 9.76,
   "ang": {
    "throwElbow": {
-    "fs": 9.15,
-    "mer": 10.85,
-    "br": 8.3
+    "fs": 7.62,
+    "mer": 10.54,
+    "br": 6.69
    },
    "throwAbd": {
-    "fs": 5.37,
-    "mer": 3.68,
-    "br": 3.76
+    "fs": 5.14,
+    "mer": 3.65,
+    "br": 3.37
    },
    "throwER": {
-    "fs": 7.52,
-    "mer": 7.59,
-    "br": 32.64
+    "fs": 6.16,
+    "mer": 6.84,
+    "br": 26.66
    },
    "leadKnee": {
     "fs": 12.08,
@@ -55,25 +55,25 @@
    "mer": 30.56,
    "br": 5.56
   },
-  "angAll": 8.51
+  "angAll": 8.06
  },
  "behind_3b": {
   "views": 12,
-  "joint": 10.2,
+  "joint": 10.16,
   "arm": 9.87,
   "ang": {
    "throwElbow": {
-    "fs": 14.17,
+    "fs": 14.15,
     "mer": 11,
-    "br": 10.31
+    "br": 10.3
    },
    "throwAbd": {
-    "fs": 2.08,
+    "fs": 2.02,
     "mer": 5.36,
     "br": 4.59
    },
    "throwER": {
-    "fs": 6.61,
+    "fs": 6.63,
     "mer": 6.95,
     "br": 23.7
    },
@@ -117,18 +117,18 @@
  },
  "front_3b": {
   "views": 12,
-  "joint": 11.09,
+  "joint": 11.08,
   "arm": 15.27,
   "ang": {
    "throwElbow": {
-    "fs": 8.59,
+    "fs": 8.61,
     "mer": 10.34,
     "br": 5.75
    },
    "throwAbd": {
-    "fs": 5.81,
+    "fs": 5.82,
     "mer": 4.34,
-    "br": 8.08
+    "br": 8.07
    },
    "throwER": {
     "fs": 4.06,
@@ -175,7 +175,7 @@
  },
  "side_back": {
   "views": 12,
-  "joint": 9.94,
+  "joint": 9.92,
   "arm": 13.89,
   "ang": {
    "throwElbow": {
@@ -237,19 +237,19 @@
   "arm": 10.73,
   "ang": {
    "throwElbow": {
-    "fs": 8.94,
+    "fs": 8.95,
     "mer": 7.62,
-    "br": 6.54
+    "br": 6.55
    },
    "throwAbd": {
     "fs": 3.24,
     "mer": 5.08,
-    "br": 6.46
+    "br": 6.47
    },
    "throwER": {
     "fs": 5.65,
     "mer": 8.16,
-    "br": 18.36
+    "br": 18.38
    },
    "leadKnee": {
     "fs": 7.13,
@@ -287,27 +287,27 @@
    "mer": 30.56,
    "br": 5.56
   },
-  "angAll": 7.42
+  "angAll": 7.43
  },
  "all": {
   "views": 60,
-  "joint": 10.04,
-  "arm": 11.93,
+  "joint": 10.02,
+  "arm": 11.9,
   "ang": {
    "throwElbow": {
-    "fs": 9.8,
-    "mer": 9.73,
-    "br": 7.86
+    "fs": 9.5,
+    "mer": 9.66,
+    "br": 7.54
    },
    "throwAbd": {
-    "fs": 4.14,
+    "fs": 4.09,
     "mer": 5.11,
-    "br": 5.54
+    "br": 5.47
    },
    "throwER": {
-    "fs": 5.94,
-    "mer": 7.64,
-    "br": 24.71
+    "fs": 5.67,
+    "mer": 7.49,
+    "br": 23.52
    },
    "leadKnee": {
     "fs": 8.08,
@@ -345,6 +345,6 @@
    "mer": 26.67,
    "br": 6.11
   },
-  "angAll": 7.93
+  "angAll": 7.84
  }
 }
