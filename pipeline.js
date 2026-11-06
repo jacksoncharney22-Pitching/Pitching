@@ -417,21 +417,44 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
     }
     return { L, c: best, s: bs, k: bk };
   }).sort((a, b) => a.c - b.c);
-  const top = scored.slice(0, opts.armMatchK ?? 6);
+  // The arm's shape comes from the best 30 lab throws, each weighted frame by frame by how well it fits the video
+  // round that frame (a throw that fits the arm at foot strike needn't fit it at release). Before 2026-11-06 it was
+  // the plain average of the best 6, which pulled every frame toward a typical arm. 60 benchmark views: throwing elbow
+  // at max layback 12.7 -> 9.7° off, at release 8.8 -> 7.6°; layback at max layback 9.7 -> 7.4°, at release
+  // 39.8 -> 23.5°; shoulder abduction 4.4/7.1/6.8 -> 4.1/5.0/5.4°. Timing still comes from the best 6 (below).
+  // opts.armLocal === false: the old plain average (armMatchK sets how many).
+  const local = opts.armLocal !== false, top = scored.slice(0, opts.armMatchK ?? (local ? 30 : 6)), top6 = scored.slice(0, 6);
+  const lw = top.map(() => new Array(fr.length).fill(1));
+  if (local) {
+    const tau = opts._armLocalT ?? 0.02, sig = Math.max(1, (opts._armLocalS ?? 0.02) * fs), R3 = Math.ceil(3 * sig);
+    // each match's misfit on screen at each frame (same measure as the overall score), then smoothed over ~20 ms
+    const cl = top.map(m => fr.map(q => { const ta = ((q.t - rel) / fs + m.s) * m.k, u = sample(m.L.a, ta, 0), f = sample(m.L.a, ta, 3); if (!u) return NaN;
+      const ux = Lu * (q.px[0] * u[0] + q.px[1] * u[1] + q.px[2] * u[2]) - q.ou[0], uy = Lu * (q.py[0] * u[0] + q.py[1] * u[1] + q.py[2] * u[2]) - q.ou[1];
+      const fx = Lf * (q.px[0] * f[0] + q.px[1] * f[1] + q.px[2] * f[2]) - q.of[0], fy = Lf * (q.py[0] * f[0] + q.py[1] * f[1] + q.py[2] * f[2]) - q.of[1];
+      return (ux * ux + uy * uy) / (Lu * Lu) + (fx * fx + fy * fy) / (Lf * Lf) }));
+    const sm = cl.map(c => c.map((_, i) => { let a = 0, w = 0;
+      for (let j = Math.max(0, i - R3); j <= Math.min(c.length - 1, i + R3); j++) { if (c[j] !== c[j]) continue; const g = Math.exp(-0.5 * ((j - i) / sig) ** 2) * fr[j].w; a += g * c[j]; w += g }
+      return w ? a / w : NaN }));
+    for (let i = 0; i < fr.length; i++) {
+      let mn = Infinity; for (const c of sm) if (c[i] < mn) mn = c[i];
+      if (mn === Infinity) continue;
+      top.forEach((_, k) => { lw[k][i] = sm[k][i] === sm[k][i] ? Math.exp(-(sm[k][i] - mn) / tau) : 0 });
+    }
+  }
   const u = new Array(T).fill(null), f = new Array(T).fill(null), wt = new Array(T).fill(0);
-  for (const q of fr) {
+  for (const [qi, q] of fr.entries()) {
     let su = [0, 0, 0], sf = [0, 0, 0], n = 0;
-    for (const m of top) { const tau = ((q.t - rel) / fs + m.s) * m.k, a = sample(m.L.a, tau, 0), b = sample(m.L.a, tau, 3); if (!a) continue; su = add(su, a); sf = add(sf, b); n++ }
+    for (const [mi, m] of top.entries()) { const tau = ((q.t - rel) / fs + m.s) * m.k, a = sample(m.L.a, tau, 0), b = sample(m.L.a, tau, 3); if (!a) continue; const g = lw[mi][qi]; su = add(su, mul(a, g)); sf = add(sf, mul(b, g)); n += g }
     if (!n) continue;
     const toW = v => add(add(mul(q.R[0], v[0]), mul(q.R[1], v[1])), mul(q.R[2], v[2]));
     u[q.t] = unit(toW(su)); f[q.t] = unit(toW(sf));
     const ez = Math.max(3, Math.round(0.05 * fs)); wt[q.t] = sstep(Math.min(q.t - lo + 1, hi - q.t + 1), 0, ez);   // eased in and out over 50 ms at the window's ends
   }
   if (opts._dbgMatch) opts._dbgMatch.push({ top: top.map(m => [m.L.user, +m.c.toFixed(4), m.s, m.k]), lo, hi, u, f, rel });
-  let relShift = -top.reduce((a, m) => a + m.s, 0) / Math.max(1, top.length) * fs;   // where the lab throws put release, in frames
+  let relShift = -top6.reduce((a, m) => a + m.s, 0) / Math.max(1, top6.length) * fs;   // where the lab throws put release, in frames
   // matches pinned at the edge of the allowed timing (a much slower or faster arm than any lab throw: usually a
   // slow-motion clip whose speed changes partway) aren't trusted for timing, and steer the arm only half as much
-  const edge = top.filter(m => Math.abs(m.s) > 0.045 && (m.k <= speeds[0] || m.k >= speeds[speeds.length - 1])).length / Math.max(1, top.length);
+  const edge = top6.filter(m => Math.abs(m.s) > 0.045 && (m.k <= speeds[0] || m.k >= speeds[speeds.length - 1])).length / Math.max(1, top6.length);
   if (edge > 0.5) { relShift = 0; for (let t = 0; t < T; t++) wt[t] *= 0.5 }
   return { u, f, wt, relShift, edge };
 }
