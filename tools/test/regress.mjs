@@ -32,6 +32,8 @@ function mirrorRaw(raw) {
       spread: f.spread ? swapIn(f.spread, PAIRS33) : f.spread }),
     l3: raw.l3 && raw.l3.map(L => L && swapIn(L.map(p => [-p[0], ...p.slice(1)]), PAIRS17)) };
 }
+// the app matches the throwing arm to lab throws (armlib.json): run the saved clips the same way
+const LIB = process.argv.includes("--nolib") ? null : JSON.parse(readFileSync(new URL("../../armlib.json", import.meta.url), "utf8"));
 const jobs = [];
 for (const f of files) {
   const key = basename(f).replace(/\.gz$/, ""), buf = readFileSync(f), raw = JSON.parse((f.endsWith(".gz") ? gunzipSync(buf) : buf).toString("utf8"));
@@ -45,7 +47,7 @@ for (const { key, raw, base: bkey, flip } of jobs) {
     // same as the app on "auto" speed: the saved fps already includes the old speed reading, so start from the video's own fps
     const vf = raw.videoFps || raw.fps, slow = detectSlowFactor({ ...raw, fps: vf, videoFps: vf });
     raw.fps = vf * slow.factor;
-    const d = analyse(raw, { hand: "auto" }), fps = raw.fps;
+    const d = analyse(raw, { hand: "auto", ...(LIB ? { armLib: { ...LIB, _dec: undefined } } : {}) }), fps = raw.fps;
     res = { slow: slow.factor, hand: d.throwHand, frames: raw.frames.length, events: Object.fromEntries(d.phases.map(p => [p.name, +(p.frame / fps).toFixed(3)])) };
     // joint angles at each event, kept in memory only: the mirrored run must match them (a lefty is measured like a righty)
     angles = Object.fromEntries(d.phases.map(p => [p.name, Object.fromEntries(ANGLES.map(k => [k, d.metrics[k][p.frame]]))]));

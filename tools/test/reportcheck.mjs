@@ -18,7 +18,7 @@ import { gunzipSync } from "zlib";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js";
-import { truthD } from "./truth.mjs";
+import { truthD, armLibFor } from "./truth.mjs";
 // REPORT=<file> checks another copy of report.js (e.g. the previous version, for a before/after)
 const { buildReport } = await import(process.env.REPORT ? new URL("file://" + process.env.REPORT).href : "../../report.js");
 const dir = join(dirname(fileURLToPath(import.meta.url)), "bench");
@@ -46,7 +46,7 @@ const tally = {}, rows = [];
 const T = (id, k) => { tally[id] ??= { agree: 0, ungraded: 0, softened: 0, falseAlarm: 0, missed: 0, adviceWrong: 0, adviceN: 0, styleAgree: 0, styleN: 0, err: [] }; return tally[id] };
 for (const v of views) {
   const raw = load(v + ".raw.json.gz"), tr = load(v + ".truth.json.gz");
-  const D = analyse(raw), TD = truthD(tr);
+  const D = analyse(raw, argv.includes("--nolib") ? {} : { armLib: armLibFor(tr.sp) }), TD = truthD(tr);   // the lab arm match as in the app, this pitcher left out
   for (const X of [D, TD]) { X.heightIn = tr.height / 0.0254; X.velo = null }
   if (process.env.ELB) D._elbowSteady = +process.env.ELB;     // try another steadiness limit for the arm at landing
   for (const lv of levels) {

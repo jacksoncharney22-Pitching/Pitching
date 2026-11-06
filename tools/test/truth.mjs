@@ -1,6 +1,19 @@
 // Motion-capture truth for the accuracy benchmark (tools/test/bench), turned into the same shape analyse() returns,
 // so the app's skeleton and the truth go through the same angle code. Shared by bench.mjs and reportcheck.mjs.
 import { computeMetrics } from "../../pipeline.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+// The app matches the throwing arm to a library of lab throws (armlib.json, loaded by app.js). The benchmark pitches
+// come from the same lab, so each one is tested with that pitcher's own throws taken out of the library: the app is
+// measured as it runs, without it ever seeing the answer.
+let LIB = null;
+export function armLibFor(sp) {
+  LIB ??= JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../armlib.json"), "utf8"));
+  const user = (LIB.pitches.find(p => p.sp === sp) || {}).user;
+  return { ...LIB, _dec: undefined, _exclude: new Set(user == null ? [] : [user]) };
+}
 const MIRROR = {}; [[1,4],[2,5],[3,6],[7,8],[9,10],[11,12],[13,14],[15,16],[17,18],[19,20],[21,22],[23,24],[25,26],[27,28],[29,30],[31,32]].forEach(([a, b]) => { MIRROR[a] = b; MIRROR[b] = a });
 const mir = j => (j in MIRROR ? MIRROR[j] : j);
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
