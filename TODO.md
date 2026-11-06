@@ -77,9 +77,14 @@ up to date for the next.
   5.1/5.5°; throwing arm 12.6 -> 11.9 cm; no extra wobble. Elbow at foot strike unchanged (9.7 -> 9.8).
   Hackimer (16x slow, no truth) changed most: elbow ~115° at foot strike and ~100° at arm cocked (was 82° -> 29°
   between them, which looked wrong), 57° on the release frame (was 19°; 15° one frame later). Check on his video.
-- Next session (15:40): elbow at foot strike is still 9.8° off (worst behind_3b): try the long match window with its
-  own per-frame weighting tuned for foot strike (`_lPre`), or more of the video's weight there. Then the end-of-day
-  summary. Tools: `node tools/test/bench.mjs`, scratch per-frame arm error script idea: error and jitter FS->R+5.
+- Also 13:40: the long arm match now starts 0.7 s before release (was 0.55): elbow at foot strike 9.8 -> 9.5°, layback
+  at release 24.7 -> 23.5° (only "behind" views change). Tried, no gain: per-frame weight sharpness 0.01/0.04 (kept
+  0.02), smoothing 0.01-0.08 s (kept 0.02), `_lPre` 0.85/1.0, `_lPost` 0.3, `_tmplAll` 0.3 (elbow FS 9.1 but layback FS
+  worse).
+- Next session (15:40): elbow at foot strike is still 9.5° off (worst behind_3b 11.8): look per view at where the
+  matched arm and the video disagree at foot strike (the arm is often hidden behind the body there: `unseen`
+  frames get weight 0.05 in the match). Then the end-of-day summary for Jackson (live today: foot strike timing,
+  trunk turn, arm match per frame, PDF *, saved history fixes; numbers in Done).
 - (old plan) Next session (13:40): Friday theme. Do the PDF "*" for blurred throwing-arm values (like the screen; pdf.js), then
   open a real PDF and CSV in headless Chromium and compare with the screen numbers. For the elbow: try weighting the
   lab matches by how well each one's elbow bend fits the video at foot strike (instead of the plain average of 6).
