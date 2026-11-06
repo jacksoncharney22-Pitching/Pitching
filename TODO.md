@@ -32,7 +32,8 @@ up to date for the next.
   Then shipped: (1) foot strike where the front ankle stops sliding (< 0.3 m/s, never later than 0.1 s before arm
   cocked): benchmark foot-strike timing 54 -> 34 ms (avg -35 -> -10 ms); Maher max 1.567 -> 1.583 s; Staumont
   1.20 -> 1.30 s (re-recorded: ankle still 1.6 cm up and sliding ~1 m/s at 1.20, and 1.20 gave a 0.2 s foot strike to
-  arm cocked, longer than 95% of lab throws; check on his video when there's a chance). (2) shoulders smoothed less:
+  arm cocked, longer than 95% of lab throws; check on his video when there's a chance; his release also moved 1.433 ->
+  1.40 s, the same frame as arm cocked at 30 fps). (2) shoulders smoothed less:
   trunk turn error 12.7/9.9/14.8° -> 11.5/8.2/11.4° (foot strike / max layback / release), separation 12.1/5.4/9.0 ->
   11.5/5.4/6.9.
   Layback at release (40°) is mostly unfixable from one camera: the elbow is nearly straight there (~25°), so the
