@@ -49,7 +49,7 @@ function valAt(arr, ft) {
   if (arr[a] == null || arr[b] == null) return arr[Math.round(ft)] ?? null;
   return arr[a] + (arr[b] - arr[a]) * t;
 }
-const fmt = (v, u) => v == null ? "—" : (u === "°/s" ? Math.round(v).toLocaleString("en-US") : (Math.round(v * 10) / 10).toFixed(0)) + u;
+const fmt = (v, u) => v == null ? "—" : (u === "°/s" ? Math.round(v).toLocaleString("en-US") : (Math.round(v * 10) / 10).toFixed(0)).replace(/^-0$/, "0") + u;   // no "-0°"
 
 // ---------- state & video ----------
 const state = { f: 0, playing: true, rate: 0.5, overlay: true, path: false, ghosts: false, angleMode: "off", follow: false, ovAngles: true, style: "mocap", clock: 0, videoOK: true, vFrame: null };

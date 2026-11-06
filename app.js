@@ -3,7 +3,10 @@ import { FilesetResolver, PoseLandmarker } from "./lib/vision_bundle.mjs";
 import { analyse as analyseRaw, detectSlowFactor } from "./pipeline.js";
 // the lab throwing-arm library (404 motion-capture fastballs) the pipeline matches the throwing arm against
 let ARMLIB = null;
-fetch("armlib.json?v=2").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
+const armLibLoad = fetch("armlib.json?v=2").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
+// analyses that can start the moment the page opens (a saved one from Recent, an OpenCap file) wait for the library,
+// or a slow connection gives a different throwing arm than the first time (elbow 96° at foot strike read 114° on Maher)
+const armLibReady = () => Promise.race([armLibLoad, new Promise(r => setTimeout(r, 20000))]);
 const analyse = (raw, o = {}) => analyseRaw(raw, ARMLIB ? { ...o, armLib: ARMLIB } : o);
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
@@ -25,7 +28,7 @@ const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn
 try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn; if (sv.weightLb) opts.weightLb = sv.weightLb } catch (e) {}
 const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn, weightLb: opts.weightLb })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; if (from.userPhases) d.userPhases = from.userPhases; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -74,7 +77,7 @@ async function importOpenCap(files) {
   const trcF = files.find(isTRC), vid = files.find(isVideo);
   if (!trcF) { alert("Choose the OpenCap marker file (MarkerData/....trc)."); return }
   try {
-    const raw = trcToRaw(parseTRC(await trcF.text()));
+    const raw = trcToRaw(parseTRC(await trcF.text())); await armLibReady();
     raw.heightIn = opts.heightIn || null; lastRaw = raw; window.__lastRaw = raw;
     const data = analyse(raw, { hand: opts.hand });
     data.name = trcF.name.replace(/\.trc$/i, "") || "OpenCap pitch"; data.quality = "OpenCap · 3D measured with two phones";
@@ -647,7 +650,7 @@ function openResults(data, url, meta = {}) {
   $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
-    const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data);
+    const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data); d2.userPhases = phases;   // kept for re-opening
     if (meta.id != null) updateHistory(meta.id, d2);
     openResults(d2, url, { ...meta, startFrame: frame });
   } : null;
@@ -743,11 +746,14 @@ async function renderHistory() {
     const d = new Date(it.date);
     li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-del" aria-label="Remove">✕</button>`;
     li.querySelector(".rec-name").textContent = it.name || "Pitch";
-    li.querySelector(".rec-open").onclick = () => {
-      const url = URL.createObjectURL(it.blob); lastRaw = it.raw;
+    li.querySelector(".rec-open").onclick = async () => {
+      const url = it.blob ? URL.createObjectURL(it.blob) : ""; lastRaw = it.raw;   // OpenCap files may have no video
       let data = it.data;
       if (it.raw) {                     // rebuild with the current skeleton engine (tracking is reused, so it's instant)
-        try { const d = tagResult(analyse(it.raw, { hand: it.hand || "auto" }), it.data); data = d; updateHistory(it.id, d) } catch (e) { }
+        await armLibReady();
+        // events the user moved by hand stay where they put them
+        const up = it.data && it.data.userPhases, o = { hand: it.hand || "auto", ...(up ? { phases: up } : {}) };
+        try { const d = tagResult(analyse(it.raw, o), it.data); data = d; updateHistory(it.id, d) } catch (e) { }
       }
       openResults(data, url, { id: it.id, raw: it.raw });
     };

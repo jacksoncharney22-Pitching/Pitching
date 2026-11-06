@@ -137,6 +137,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     ["Lead knee flexion", "leadKnee"], ["Lead hip flexion", "leadHip"], ["Back knee flexion", "backKnee"],
     ["Pelvis rotation", "pelvisRot"], ["Trunk rotation", "trunkRot"], ["Hip-shoulder separation", "separation"],
     ["Trunk forward tilt", "trunkFwd"], ["Trunk side tilt", "trunkLat"], ["Pelvis tilt", "pelvisTilt"]];
+  const ARM = new Set(["throwElbow", "throwAbd"]), relF = (data.phases.find(p => p.name === "Release") || {}).frame ?? -9;
   const colW = [CW * 0.36, ...PH.map(() => CW * 0.64 / PH.length)];
   need(20 + rows.length * 16);
   doc.setFillColor(0); doc.rect(M, y, CW, 18, "F"); doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
@@ -148,10 +149,12 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(30); doc.text(lbl, M + 6, y + 11);
     let x = M + colW[0];
     // rounded exactly like the angle table on screen (Math.round alone rounds -21.5 to -21, the screen shows -22)
-    PH.forEach((p, i) => { const v = M_[k] ? M_[k][p.frame] : null; doc.text(v == null ? "-" : (Math.round(v * 10) / 10).toFixed(0) + "\xB0", x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
+    // throwing-arm values within a frame of release get a * like the screen: the arm is motion-blurred there
+    PH.forEach((p, i) => { const v = M_[k] ? M_[k][p.frame] : null; const bl = v != null && ARM.has(k) && Math.abs(p.frame - relF) <= 1; doc.text(v == null ? "-" : (Math.round(v * 10) / 10).toFixed(0).replace(/^-0$/, "0") + "\xB0" + (bl ? "*" : ""), x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
     y += 16;
   });
   y += 10;
+  text("* Arm is motion-blurred in the video at release, so this value is approximate.", 8, { color: 120, gap: 2 });
   text("Rotation is measured from the set position: 0\u00B0 faces the third-base side for a righty (first-base side for a lefty), 90\u00B0 faces home plate.", 8, { color: 120 });
   footer();
   const name = (data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";

@@ -58,6 +58,10 @@ Data flow: video → tracker per frame → `raw` (`{fps, videoFps, width, height
    - In a cloud sandbox the three.js CDNs may be blocked: set `THREE_JS` / `ORBIT_JS` to local files
      (`ORBIT_JS=tools/test/orbit_stub.js` works with any three.js build).
    - Fast takes ~5 min headless on a 4 s clip; Max takes much longer (software GPU).
+   - Exports and saved history: `python3 tools/test/export_check.py tools/test/fixtures/<clip>.json.gz <outdir>` opens
+     a fixture through the Recent list (seconds, no tracking) and checks the PDF and CSV match the screen, that
+     re-opening (also straight away on a slow connection) gives the same numbers, and that a hand-moved foot strike
+     survives re-opening.
 3. Do not commit pitching videos to this repo (it is published as a website, and most clips are other people's
    footage). Fixtures are tracker output only.
 
