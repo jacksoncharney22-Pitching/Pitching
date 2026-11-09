@@ -1292,7 +1292,11 @@ function analyseOnce(raw, opts = {}) {
     const ARM_T = new Set([14, 16, 18, 20, 22]);                        // throwing arm below the shoulder (right after mirroring)
     const CORE = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 23, 24]);   // head, shoulders, hips: the body's core
     const lim = f => Math.min(f, 0.42 * fs);
-    const cB = bw(lim(opts._fcLimb ?? 12)), cA = bw(lim(opts._fcArm ?? 14)), cC = bw(lim(opts._fcCore ?? 12)), cG = bw(lim(opts._fcGlove ?? 9));
+    // 20 Hz on the throwing arm (it was 14): the arm's whip through arm cocked and release is too quick for less, and 14 Hz was
+    // rounding it off, reading the elbow straighter than it is. 60 benchmark views vs motion capture: elbow at max layback
+    // 9.7 -> 8.0° off, at release 7.5 -> 6.4°; layback at max layback 7.5 -> 5.9°; frame-to-frame wobble of the elbow 4.7 -> 5.2,
+    // the same as the real arm (4.8)
+    const cB = bw(lim(opts._fcLimb ?? 12)), cA = bw(lim(opts._fcArm ?? 20)), cC = bw(lim(opts._fcCore ?? 12)), cG = bw(lim(opts._fcGlove ?? 9));
     const GLOVE = new Set([13, 15, 17, 19, 21]);
     // the arms move fast only from just before foot strike to the follow-through; outside that (the windup, the end of
     // the follow-through) they're held to a calmer limit, so tracker wobble on a slow arm can't show as a zig-zag
