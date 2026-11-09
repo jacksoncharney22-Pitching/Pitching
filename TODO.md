@@ -112,6 +112,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 17:40 finding: the elbow at arm cocked (13° as seen) and layback at foot strike are now limited by one-frame timing: the elbow straightens 30-40° per 1/60 s at max layback and layback changes ~20° per frame at foot strike, so a single-frame miss is the whole error. The worst foot-strike views are whole pitches (2919, 2935, 1826 early by 2 frames on every camera), so it's the pitch, not the view.
 
 - 17:40 tried, dropped: pulling arm cocked toward 33 ms before release (`_merPull` 0.5/1): elbow at arm cocked 13.1 -> 14.8/15.4° as seen.
+- 17:40 checked: late-started clips unchanged by the timing work (`slowmo.mjs --late 20`: 205 of 240 right, was 204; `--late 30`: 223, same); full clips 240 of 240.
 - **Next session (after 17:40):** rebuild still blocked unless the data has arrived. Event timing now: foot strike 14 ms, arm cocked 6, release 6. What's left as seen is one-frame noise (see finding), so more timing tuning is near its floor on 60 fps lab views. Options: (1) separation/trunk at foot strike as seen (10-11°) is the biggest remaining body reading; (2) late-started clips (Thursday list): the new foot-strike-to-arm-cocked gap (0.10-0.18 s) could be a third clue for the slow-motion reader; foot strike to release alone was too short; (3) Tuesday theme starts at the 8:15 plan: profile Max, phones. Hackimer's new events need his video to confirm.
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
