@@ -101,6 +101,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 16:40 tried, no gain (coach-seen error, don't repeat): `_slideV` 0.2/0.4, `_slideV2` 0.4/0.7, `_slideMax` 0.14; `_slideCock` 0.06 is -0.1° (0.08 kept: arm cocked to foot strike is 0.09+ s on 90% of lab pitches).
 - Next session (after 16:40): rebuild still blocked unless the data has arrived. (1) Arm cocked: only the wider nudge is left (5 ms vs 11; trunk at arm cocked still 15°, as seen) and it needs Maher's video: on the wait list. (2) Foot strike worst views: 3036 behind/behind_3b -50/-67, 3037 side_open -67 (foot reads stopped early). (3) Judge event changes with the "as the coach sees it" table in bench.mjs; `as seen` is now guarded in the baseline. Tomorrow's theme: speed and reliability (profile Max; phones).
 
+- 16:40 finding: the remaining early foot strikes (3036 from behind -50/-67, 1826 side_back) are the anchored foot's speed collapsing 3 frames before the lab's contact: the skeleton's foot is pinned before the real foot is. The 2D ankle trick already failed (14:40). Leave unless a new clue. CSV now includes the pitcher.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):

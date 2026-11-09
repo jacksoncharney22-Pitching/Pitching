@@ -744,7 +744,8 @@ $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
 // the delivery numbers (stride, arm slot...) follow the frame-by-frame table in the spreadsheet, after a blank line
 function deliveryCsv(data) {
   const q = v => `"${String(v).replace(/"/g, '""')}"`, cards = deliveryCards(data);
-  return cards.length ? "\n\n" + q("Delivery numbers") + "\n" + cards.map(c => q(c.label) + "," + q(c.value)).join("\n") : "";
+  const who = data.pitcher ? q("Pitcher") + "," + q(data.pitcher) + "\n" : "";
+  return who || cards.length ? "\n\n" + q("Delivery numbers") + "\n" + who + cards.map(c => q(c.label) + "," + q(c.value)).join("\n") : "";
 }
 
 // ---------------------------------------------------------------- history (this browser only)
