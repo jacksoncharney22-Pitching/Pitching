@@ -657,6 +657,7 @@ function renderDeliveryStrip(data) {
   el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b></div>`).join("");
 }
 function openResults(data, url, meta = {}) {
+  $("vidOv").hidden = !url;   // older saved pitches keep only their numbers: no video to draw the skeleton on
   { const n = $("numsChanged"), c = meta.changed; n.hidden = !c;
     if (c) n.innerHTML = `<b>These numbers have changed since this pitch was last opened</b>, because the app's measurements were improved. The biggest change: ${c.label} at ${c.ev.toLowerCase()}, ${Math.round(c.was)}° → ${Math.round(c.now)}°.` }
   if (viewer) { viewer.stop(); viewer = null }
@@ -740,7 +741,7 @@ function deliveryCsv(data) {
 }
 
 // ---------------------------------------------------------------- history (this browser only)
-const DB_NAME = "charney-pitching", STORE = "analyses";
+const DB_NAME = "charney-pitching", STORE = "analyses", HIST_KEEP = 30, HIST_VIDEOS = 6;
 function idb() {
   return new Promise((res, rej) => {
     try {
@@ -753,12 +754,15 @@ function idb() {
 async function tx(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, mode), s = t.objectStore(STORE); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error) }) }
 async function saveHistory(data, blob) {
   try {
-    const all = await tx("readonly", s => s.getAll());
-    const extra = (all || []).sort((a, b) => b.date - a.date).slice(5);
-    for (const x of extra) await tx("readwrite", s => s.delete(x.id));
+    const all = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => b.date - a.date);
+    // Videos are what fill a phone, the numbers are small: the newest 6 pitches keep their video, older ones keep only the
+    // tracking (enough to re-open the skeleton and numbers, and to compare), up to 30 pitches, so a coach can look back weeks.
+    for (const x of all.slice(HIST_KEEP - 1)) await tx("readwrite", s => s.delete(x.id));
+    for (const x of all.slice(HIST_VIDEOS - 1, HIST_KEEP - 1)) if (x.blob) { x.blob = null; await tx("readwrite", s => s.put(x)) }
     return await tx("readwrite", s => s.add({ date: Date.now(), name: data.name, hand: data.throwHand, frames: data.frames, fps: data.fps, data, blob, raw: lastRaw }));
   } catch (e) { return null }
 }
+window.__saveHistory = saveHistory;   // for tools/test/history_check.py
 async function updateHistory(id, data) { try { const rec = await tx("readonly", s => s.get(id)); if (rec) { rec.data = data; await tx("readwrite", s => s.put(rec)) } } catch (e) {} }
 async function renderHistory() {
   const list = $("recent"); let items = [];
@@ -769,7 +773,7 @@ async function renderHistory() {
   items.forEach(it => {
     const li = document.createElement("li");
     const d = new Date(it.date);
-    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-del" aria-label="Remove">✕</button>`;
+    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s${it.blob ? "" : " · no video"} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-del" aria-label="Remove">✕</button>`;
     li.querySelector(".rec-name").textContent = it.name || "Pitch";
     li.querySelector(".rec-open").onclick = async () => {
       const url = it.blob ? URL.createObjectURL(it.blob) : ""; lastRaw = it.raw;   // OpenCap files may have no video
