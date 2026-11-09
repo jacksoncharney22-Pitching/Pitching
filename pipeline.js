@@ -970,7 +970,7 @@ function analyseOnce(raw, opts = {}) {
   let pan = pnum.map((v, t) => den[t] > 0.05 ? [v[0] / den[t], v[1] / den[t]] : [0, 0]);
   { let ax = 0, ay = 0, mx = 0; pan.forEach(v => { ax += v[0]; ay += v[1]; mx = Math.max(mx, Math.hypot(ax, ay)) }); // The pan estimate comes from the planted feet, and a back foot that drags forward through the stride looks just like
     // a small pan. Below 0.2 body heights of total drift it's taken as foot movement, not a camera move (it was 0.06;
-    // 60 benchmark views, all fixed cameras: stride from side-on 17 -> 3 cm short, foot strike timing 34 -> 30 ms;
+    // 60 benchmark views, all fixed cameras: stride from side-on 17-19 -> 6 cm short, foot strike timing 34 -> 30 ms;
     // a real follow-the-pitcher pan moves the picture by a body height or so, far above this).
     if (mx < 0.2 * hPx) pan = pan.map(() => [0, 0]) }
   const dv = FEET.map(js => P.map((_, t) => dif(P, t, (b, a) => dot(sub(b[js[0]], a[js[0]]), camDir))));
