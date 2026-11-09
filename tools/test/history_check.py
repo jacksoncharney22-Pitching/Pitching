@@ -29,7 +29,8 @@ with sync_playwright() as p:
     meta = pg.evaluate("() => document.querySelector('.rec-meta').textContent"); print("list says:", meta)
     if "no video" not in meta: bad.append("no 'no video' note")
     # renaming sticks, in the list and on the results page
-    pg.once("dialog", lambda d: d.accept("Bob bullpen"))
+    answers = ["Bob bullpen", "Bob"]   # pitch name, then pitcher
+    pg.on("dialog", lambda d: d.accept(answers.pop(0)) if answers else d.dismiss())
     pg.evaluate("() => document.querySelector('.rec-ren').click()"); pg.wait_for_timeout(600)
     pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1000)
     nm = pg.evaluate("() => document.querySelector('.rec-name').textContent"); print("renamed to:", nm)
@@ -41,13 +42,24 @@ with sync_playwright() as p:
     print("rows in angle table:", pg.locator("#ptable tbody tr").count())
     # the over-time view plots each saved pitch that has the reading
     pg.evaluate("""raw => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onsuccess = () => { const t = r.result.transaction('analyses', 'readwrite');
-      t.objectStore('analyses').add({ date: Date.now() + 1000, name: 'Newer pitch', hand: 'auto', frames: raw.frames.length, fps: raw.fps, data: { name: 'Newer pitch' }, blob: null, raw }); t.oncomplete = res; t.onerror = () => rej(t.error) } })""", raw)
+      t.objectStore('analyses').add({ date: Date.now() + 1000, name: 'Newer pitch', hand: 'auto', frames: raw.frames.length, fps: raw.fps, data: { name: 'Newer pitch', pitcher: 'Ann' }, blob: null, raw }); t.oncomplete = res; t.onerror = () => rej(t.error) } })""", raw)
     pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1500)
     pg.evaluate("() => { document.getElementById('recentWrap').open = true; document.getElementById('trendGo').click() }"); pg.wait_for_selector(".tr-svg", timeout=60000)
     dots = pg.locator(".tr-dot").count(); print("over-time chart points:", dots)
     if dots != 2: bad.append(f"over-time chart: {dots} points, expected 2")
-    pg.select_option("#trN", "Bob bullpen"); pg.wait_for_timeout(300); dots = pg.locator(".tr-dot").count(); print("points for one pitch name:", dots)
-    if dots != 1: bad.append(f"name filter: {dots} points, expected 1")
+    pg.select_option("#trN", "Bob"); pg.wait_for_timeout(300); dots = pg.locator(".tr-dot").count(); print("points for one pitcher:", dots)
+    if dots != 1: bad.append(f"pitcher filter: {dots} points, expected 1")
+    pg.evaluate("() => document.getElementById('cmpBack').click()")
+    # a new clip from another spot than the pitcher's last one gets the note; from the same spot it doesn't
+    sv = "dir => window.__saveHistory({ name: 'Spot', pitcher: 'Bob', throwHand: 'R', frames: 100, fps: 60, cameraDir: dir }, null)"
+    openBob = "() => [...document.querySelectorAll('.rec-open')].find(b => b.textContent.includes('Bob bullpen')).click()"
+    def note():
+        pg.evaluate(openBob); pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=60000); pg.wait_for_timeout(800)
+        t = pg.evaluate("() => { const n = document.getElementById('numsChanged'); return n.hidden ? '' : n.textContent }"); pg.evaluate("() => document.querySelector('[data-go=home], #resBack, #backHome')?.click()"); return t
+    pg.evaluate(sv, [1, 0, 0]); pg.evaluate(sv, [0, 0, 1]); pg.wait_for_timeout(100); t = note(); print("spot note:", t[:90])
+    if "different spot" not in t: bad.append("no different-spot note")
+    pg.evaluate(sv, [0.02, 0, 1]); pg.wait_for_timeout(100); t = note()
+    if "different spot" in t: bad.append("spot note on the same spot")
     if len(sys.argv) > 2: pg.screenshot(path=sys.argv[2])
     b.close()
 print("page errors:", errs)

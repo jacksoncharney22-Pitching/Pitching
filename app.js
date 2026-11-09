@@ -12,7 +12,7 @@ import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { downloadPDF } from "./pdf.js";
-import { renderCompare, renderTrend } from "./compare.js";
+import { renderCompare, renderTrend, camGap, CAM_APART } from "./compare.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
@@ -29,7 +29,7 @@ const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn
 try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn; if (sv.weightLb) opts.weightLb = sv.weightLb } catch (e) {}
 const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn, weightLb: opts.weightLb })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; if (from.userPhases) d.userPhases = from.userPhases; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.pitcher) d.pitcher = from.pitcher; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; if (from.userPhases) d.userPhases = from.userPhases; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -71,6 +71,10 @@ const QUAL_HINT = {
 const drop = $("drop"), fileIn = $("fileIn");
 let angles = [];                 // [{blob, url, name, label}], angles[0] is the main angle (the one you trim and watch)
 const LABELS = ["Side", "Behind", "Front", "Other"];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Who is throwing, kept apart from the pitch's own name: "Over time" and the camera-spot note need to know which pitches belong to one pitcher.
+const stampPitcher = d => { const p = $("pitcherName").value.trim().slice(0, 40); if (p) d.pitcher = p; try { localStorage.setItem("fp-pitcher-name", p) } catch (e) {} };
+try { const p = localStorage.getItem("fp-pitcher-name"); if (p) $("pitcherName").value = p } catch (e) {}
 const isVideo = f => f.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(f.name);
 const isTRC = f => /\.trc$/i.test(f.name);
 // OpenCap (two phones, measured 3D): its marker file becomes the skeleton directly; one of its videos is shown beside it
@@ -239,7 +243,7 @@ async function run() {
       step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
       lastRaw = raw; window.__lastRaw = raw;
       const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
-      data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
+      data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
       if (data.learned) data.quality += " · learned 3D";
       data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
@@ -270,7 +274,7 @@ async function run() {
     { const sl = resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
     lastRaw = raw; window.__lastRaw = raw;
     const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
-    data.name = $("pitchName").value.trim() || current.name; data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
+    data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
     data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
     bar(1); step("stBuild", "done", "Done");
@@ -313,7 +317,7 @@ async function runUltraPitch(S, E) {
   const sl = resolveSlow(raw); raw.fps = res.fps * sl.factor; raw.slowNote = sl.note;
   lastRaw = raw; window.__lastRaw = raw;
   const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
-  data.name = $("pitchName").value.trim() || current.name; data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
+  data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
   data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
   bar(1); step("stBuild", "done", "Done"); releaseWake();
   const id = await saveHistory(data, current.blob);
@@ -658,14 +662,17 @@ function renderDeliveryStrip(data) {
 }
 function openResults(data, url, meta = {}) {
   $("vidOv").hidden = !url;   // older saved pitches keep only their numbers: no video to draw the skeleton on
-  { const n = $("numsChanged"), c = meta.changed; n.hidden = !c;
-    if (c) n.innerHTML = `<b>These numbers have changed since this pitch was last opened</b>, because the app's measurements were improved. The biggest change: ${c.label} at ${c.ev.toLowerCase()}, ${Math.round(c.was)}° → ${Math.round(c.now)}°.` }
+  { const n = $("numsChanged"), c = meta.changed, s = pendingSpot; pendingSpot = null; n.hidden = !c && !s;
+    const parts = [];
+    if (c) parts.push(`<b>These numbers have changed since this pitch was last opened</b>, because the app's measurements were improved. The biggest change: ${c.label} at ${c.ev.toLowerCase()}, ${Math.round(c.was)}° → ${Math.round(c.now)}°.`);
+    if (s) parts.push(`<b>This clip looks filmed from a different spot than ${esc(s.who)}'s last saved pitch</b> (about ${Math.round(s.gap / 5) * 5}° around the pitcher, from ${new Date(s.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}). The numbers are still right for this clip, but Compare and Over time will partly show the camera moving. Film from the same spot to track a change.`);
+    n.innerHTML = parts.join("<br>") }
   if (viewer) { viewer.stop(); viewer = null }
   lastResult = { data, url, meta }; window.__lastData = data;
   const mount = $("viewerMount"); mount.innerHTML = ""; mount.append($("viewerTpl").content.cloneNode(true));
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
-  $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  $("resMeta").textContent = `${data.pitcher ? data.pitcher + " · " : ""}${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   renderDeliveryStrip(data);
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
@@ -752,9 +759,13 @@ function idb() {
   });
 }
 async function tx(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, mode), s = t.objectStore(STORE); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error) }) }
+let pendingSpot = null;
 async function saveHistory(data, blob) {
   try {
     const all = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => b.date - a.date);
+    // A new clip from a different spot than this pitcher's last one: say so now, before the coach reads a camera move as a change in the delivery.
+    pendingSpot = null;
+    if (data.pitcher) { const prev = all.find(x => x.data && x.data.pitcher === data.pitcher && x.data.cameraDir), g = prev ? camGap(prev.data, data) : null; if (g != null && g >= CAM_APART) pendingSpot = { gap: g, who: data.pitcher, date: prev.date } }
     // Videos are what fill a phone, the numbers are small: the newest 6 pitches keep their video, older ones keep only the
     // tracking (enough to re-open the skeleton and numbers, and to compare), up to 30 pitches, so a coach can look back weeks.
     for (const x of all.slice(HIST_KEEP - 1)) await tx("readwrite", s => s.delete(x.id));
@@ -769,11 +780,12 @@ async function renderHistory() {
   try { items = (await tx("readonly", s => s.getAll())) || [] } catch (e) {}
   items.sort((a, b) => b.date - a.date);
   fillComparePicker(items);
+  $("pitcherList").innerHTML = [...new Set(items.map(x => x.data && x.data.pitcher).filter(Boolean))].map(p => `<option value="${esc(p)}">`).join("");
   $("recentWrap").hidden = !items.length; list.innerHTML = "";
   items.forEach(it => {
     const li = document.createElement("li");
     const d = new Date(it.date);
-    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s${it.blob ? "" : " · no video"} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-ren" aria-label="Rename" title="Rename">✎</button><button class="rec-del" aria-label="Remove">✕</button>`;
+    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.data && it.data.pitcher ? esc(it.data.pitcher) + " · " : ""}${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s${it.blob ? "" : " · no video"} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-ren" aria-label="Rename" title="Rename">✎</button><button class="rec-del" aria-label="Remove">✕</button>`;
     li.querySelector(".rec-name").textContent = it.name || "Pitch";
     li.querySelector(".rec-open").onclick = async () => {
       const url = it.blob ? URL.createObjectURL(it.blob) : ""; lastRaw = it.raw;   // OpenCap files may have no video
@@ -789,9 +801,10 @@ async function renderHistory() {
     // file names like IMG_2041 tell a coach nothing a week later; the new name also shows on Compare, Over time and the PDF
     li.querySelector(".rec-ren").onclick = async () => {
       const name = (prompt("Name this pitch (for example the pitcher and the day):", it.name || "") || "").trim().slice(0, 60);
-      if (!name || name === it.name) return;
+      if (!name) return;
+      const who = prompt("Pitcher (leave empty for none):", (it.data && it.data.pitcher) || "");
       const rec = await tx("readonly", s => s.get(it.id)).catch(() => null);
-      if (rec) { rec.name = name; if (rec.data) rec.data.name = name; await tx("readwrite", s => s.put(rec)).catch(() => {}) }
+      if (rec) { rec.name = name; if (rec.data) { rec.data.name = name; if (who !== null) { if (who.trim()) rec.data.pitcher = who.trim().slice(0, 40); else delete rec.data.pitcher } } await tx("readwrite", s => s.put(rec)).catch(() => {}) }
       renderHistory();
     };
     li.querySelector(".rec-del").onclick = async () => { await tx("readwrite", s => s.delete(it.id)).catch(() => {}); renderHistory() };
@@ -818,7 +831,7 @@ function biggestChange(old, now) {
   return best;
 }
 // ---- compare two saved pitches (rebuilt from their saved tracking, so both are measured with the current maths)
-const savedLabel = it => `${it.name || "Pitch"} (${new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })})`;
+const savedLabel = it => `${it.data && it.data.pitcher ? it.data.pitcher + ": " : ""}${it.name || "Pitch"} (${new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })})`;
 function fillComparePicker(items) {
   const pick = $("cmpPick"); pick.hidden = items.length < 2; if (items.length < 2) return;
   const fill = (sel, idx) => { sel.innerHTML = ""; items.forEach((it, i) => { const o = document.createElement("option"); o.value = it.id; o.textContent = savedLabel(it); o.selected = i === idx; sel.append(o) }) };

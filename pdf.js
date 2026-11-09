@@ -109,7 +109,7 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text("Skeleton and angles", M + 72, 56);
   doc.setFontSize(9); doc.text(clean(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })), PW - M, 40, { align: "right" });
   y = 100;
-  text(data.name || "Pitch", 18, { bold: true, gap: 2 });
+  text((data.pitcher ? data.pitcher + ": " : "") + (data.name || "Pitch"), 18, { bold: true, gap: 2 });
   const fpsTxt = `${Math.round(data.videoFps || data.fps)} fps`;
   const hIn = data.heightIn, htTxt = hIn ? ` | ${Math.floor(hIn / 12)} ft ${hIn % 12} in` : "";
   text(`${data.throwHand === "L" ? "Left" : "Right"}-handed${htTxt} | ${fpsTxt} | ${(data.frames / data.fps).toFixed(2)} s analysed${data.quality ? " | " + data.quality : ""}`, 9, { color: 110, gap: 10 });
