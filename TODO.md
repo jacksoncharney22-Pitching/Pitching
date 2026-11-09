@@ -32,7 +32,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 10:40: (c) Fast flip after release on Maher: no flip left in the finished skeleton (shoulder depth steady 1.78-1.95 s). Closed.
 - Shipped 10:40: warning banner when the clip doesn't look like a pitch (no full stride at foot strike, or no arm speed): `pitchCheck` in pipeline.js. False alarms: 0 of 60 full clips, 1 of 60 started 1/3 s late, 5 of 60 started 1/2 s late (those events are unreliable anyway); caught standing still, cut before the stride, follow-through only. Delivery numbers hidden then.
 - REVERTED 10:40 pan threshold 0.2 -> 0.06: shipped for ~20 min, then found front knee at foot strike 8.1 -> 8.9° off overall and up to 16° worse on single views (1612 side_back, 2919 side_open/front_3b, 3035 side_open: knee reads too straight), 32 of 60 views moved >2°. Thresholds 0.08-0.14: same trade, smaller. Stride (side-on 17-19 -> 6 cm short) and foot strike 34 -> 30 ms went back too. Next idea: the pan estimate is right to go, but then a planted lead foot needs pinning before the knee is solved (the hips travel further, the foot anchor doesn't). Check per-view front knee, not just the table, before re-trying.
-- Next session: (1) the stride/foot-strike gain from not reading a dragging back foot as camera pan, done properly: pin the planted front foot so the knee doesn't straighten (see REVERTED note; judge on per-view front knee at foot strike); (2) (d) trunk rotation, (e) throwing arm at release. Kinematic sequence verdict stays off the screen. Bench only prints averages by camera/angle: read the full angle table before and after, a small average change can hide big single-view changes.
+- Next session: (1) the stride/foot-strike gain from not reading a dragging back foot as camera pan, done properly: pin the planted front foot so the knee doesn't straighten (see REVERTED note; judge on per-view front knee at foot strike); (2) (d) trunk rotation, (e) throwing arm at release. Kinematic sequence verdict stays off the screen. Bench only prints averages: for any change to the skeleton, also run `node tools/test/perview.mjs <copy of the previous version>` (reading by reading, how many of the 60 views got more than 5° worse or better).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
@@ -87,6 +87,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   changes the look of the report).
 
 ## Thursday: testing and validation
+- Add `perview.mjs` to the GitHub checks (compare with the previous commit, fail on many views >5° worse).
+- Video export check (see Friday) and a saved-pitch check for the new Delivery numbers (same numbers on re-open).
 - Net cleaning: test on more net/fence clips (chain-link, batting cage, diagonal nets) and confirm crowd/fence
   clips keep the net check off (Sale, Ohtani, Flaherty, McKenzie, Joyce). (Needs clips.)
 - Regression tests: add a fixture for a crowd-background clip so the net check is guarded too (left-handed part done

@@ -47,6 +47,7 @@ Data flow: video → tracker per frame → `raw` (`{fps, videoFps, width, height
    `tools/test/fixtures/` and compares event times (±0.05 s), speed reading and throwing hand with
    `tools/test/baseline.json`; each clip is also run mirrored as a left-hander (same events and angles, other hand). Any FAIL is a behaviour change: either fix it, or, if the new result is
    genuinely better (check the video), re-record with `--update` and say so in the commit.
+   For skeleton changes also run `node tools/test/perview.mjs <copy of the previous version>`: the averages can hide a reading getting much worse on a few views.
    `node tools/test/slowmo.mjs` checks the slow-motion reading on every benchmark pitch at 1×/2×/4×/8× (~4 min).
    Both run on GitHub Actions on every push (`.github/workflows/tests.yml`); a red X on a commit means one failed.
 2. **Full check in the real app:** `python3 tools/test/serve.py . 8766 &` then
