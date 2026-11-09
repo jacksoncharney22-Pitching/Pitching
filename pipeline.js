@@ -1416,7 +1416,7 @@ function analyseOnce(raw, opts = {}) {
   // ---- angles on the final pose
   // from one camera the hips and shoulders read as turning too little between foot strike and release (60 lab views: pelvis 73-80° of a true 85°, trunk
   // 130-145° of 148°, probably because the depth of a line swinging toward the camera is under-read), so the turn after foot strike is scaled up, the arms carried along. Filmed from behind the under-read is bigger and, for the shoulders, grows late (arm cocked to release), so those views get a little more, measured on the same lab views.
-  { const cxB = Math.max(0, -unit(camDir)[0]); const hG = (opts._hipGain ?? 1.05) + (opts._hipGainB ?? 0.04) * cxB, sG = opts._shGain ?? 1.03, sB = (opts._shGainB ?? 0.08) * cxB; const yawAt = (F, a, b) => Math.atan2(F[b][2] - F[a][2], F[b][0] - F[a][0]);
+  { const cxB = Math.max(0, -unit(camDir)[0]); const hG = (opts._hipGain ?? 1.05) + (opts._hipGainB ?? 0.08) * cxB, sG = opts._shGain ?? 1.03, sB = (opts._shGainB ?? 0.08) * cxB; const yawAt = (F, a, b) => Math.atan2(F[b][2] - F[a][2], F[b][0] - F[a][0]);
     const wr = d => ((d + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
     const ARM = { 11: [13, 15, 17, 19, 21], 12: [14, 16, 18, 20, 22] };   // the arm moves with its shoulder, so the elbow angle stays as it was
     const turn = (a, b, g, late) => { if (!g) return; let prev = yawAt(P[contactF], a, b), acc = 0;
