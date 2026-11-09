@@ -525,7 +525,10 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     // The shoulders only lightly (about 25 ms at 30 fps): the trunk turns some 150° between foot strike and release, and
     // more smoothing rounded that off (60 benchmark views: trunk turn at release 15° off -> 11°, hip-shoulder
     // separation at release 9° -> 7°)
-    const sgm = (a < 0 ? (a === -2 ? opts._hipSig ?? 1.5 : opts._shSig ?? 0.8) : opts._armSig ?? 0.6) * K;
+    // The arms lightly too (0.3): the elbow bends quickly in the last moments before foot strike and more smoothing read it too
+    // straight. 60 benchmark views vs motion capture: elbow at foot strike 8.6 -> 7.8° off, the rest unchanged; slightly more
+    // frame-to-frame wobble in the elbow (6.4 -> 6.7, the real arm: 5.8)
+    const sgm = (a < 0 ? (a === -2 ? opts._hipSig ?? 1.5 : opts._shSig ?? 0.8) : opts._armSig ?? 0.3) * K;
     const VS = gauss(ip.map((v, t) => add(v, mul(cz, st[t] ? -dz[t] : dz[t]))), sgm);
     // frames the camera lost to blur: the matched lab arm itself
     const tw = new Array(T).fill(0);
