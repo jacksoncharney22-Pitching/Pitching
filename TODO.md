@@ -9,7 +9,7 @@ Measure before and after every change. The accuracy benchmark (`tools/test/bench
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
 ## Today (2026-11-09, Monday: accuracy)
-Sessions: 8:15 ET plan, then every hour 9:40-17:40 ET; each picks up here and leaves this section up to date.
+Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40); each picks up here and leaves this section up to date.
 - **Big project: the throwing elbow reads ~7° too straight from late stride through max layback** (signed error -7.4° at foot
   strike, -6.0° at max layback, -2.6° at release; 2D matches the truth within 1°, so it happens in the 3D arm lock `lockArms`). Steps:
   1. Add a debug hook recording upper-arm/forearm vectors per lockArms stage; rebuild the elbow per stage on the 60 views.
@@ -90,7 +90,7 @@ Sessions: 8:15 ET plan, then every hour 9:40-17:40 ET; each picks up here and le
 - Video export: check the skeleton/overlay MP4 frames line up with the screen (frame count, events) with a test tool.
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
-## Ideas (ask Jackson before starting)
+## Ideas (free rein from Jackson, 2026-11-09: take these on when the day's project is done or blocked)
 - Graded coaching report: Jackson said on 2026-11-06 he does NOT want it back. report.js and tools/test/reportcheck.mjs
   stay in the repo unused; don't spend time on them.
 - Side-by-side comparison of two pitches (same pitcher, different days).

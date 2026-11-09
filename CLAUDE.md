@@ -84,14 +84,17 @@ detected as a net.
 - Code comments explain *why* in plain language; keep that style.
 - Keep backups or small focused commits; commit messages describe the effect for the pitcher/clip, e.g.
   "Clips filmed through a net: …".
-- Don't change the look of the app without telling the owner first.
+- Jackson gave free rein (2026-11-09): the look and layout of the app, the report and the PDF can be changed
+  without asking, when it makes the app better for pitchers and coaches. Check every look change with screenshots
+  at desktop and phone width, keep everything that worked working, and tell him what changed (with a screenshot or
+  a clear description) in the notification and the end-of-day summary.
 
 ## Daily work sessions
 
-Work sessions run every day of the week: a morning session at 8:15 ET and a continuation session every hour from
-9:40 to 17:40 ET. Each one works until just before the next starts (it does not stop after one fix or one finding),
-and hands over through the "Today" section of `TODO.md`. Themes: Mon accuracy, Tue speed and reliability, Wed
-pitching measurements, Thu testing, Fri coaching report, Sat accuracy, Sun testing. The morning session posts a
-short plan to Jackson; the 17:40 session sends the end-of-day summary in pitching terms. Measure before and after
-(accuracy benchmark `node tools/test/bench.mjs`, `tools/test/regress.mjs`), ship, keep `TODO.md` up to date.
-Items under "Ideas" or anything changing the look of the app need Jackson's go-ahead first.
+Work runs all day, every day: a planning session at 8:15 ET, then a work session every hour at :40, round the clock
+(9:40 through 7:40 the next morning). Each one works until just before the next starts and hands over through the
+"Today" section of `TODO.md`. Themes: Mon accuracy, Tue speed and reliability, Wed pitching measurements, Thu
+testing, Fri coaching report, Sat accuracy, Sun testing; any session may take on whatever will make the app better
+(new features, look and layout, "Ideas" items) once the day's project is done or blocked. Every finished item sends
+Jackson a phone notification; the 21:40 session sends the day's summary. Measure before and after (accuracy
+benchmark `node tools/test/bench.mjs`, `tools/test/regress.mjs`), ship, keep `TODO.md` up to date.
