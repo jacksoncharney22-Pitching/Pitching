@@ -42,31 +42,36 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   second-order track and a faster Viterbi step did not help.
 - Layback at release is mostly unfixable from one camera (elbow nearly straight, forearm spin ambiguous).
 
-## TOP PRIORITY: the rebuild (Jackson's decision, 2026-11-09)
+## TOP PRIORITY: the pitching-aware rebuild (Jackson's decision, 2026-11-09)
 
 Jackson wants the glitches gone for good: limbs jumping/shaking, body flips/twists, the throwing arm not following
-the real motion, wrong timing/numbers. Decision: rebuild the core on a cloud GPU with a whole-delivery 3D model
-(GVHMR, already wired up as "Ultra": `ultra/app.py`, deployed by `.github/workflows/ultra.yml`), instead of
-per-frame browser tracking plus fixes. Every session works on this before anything else, in order:
+the real motion, wrong timing/numbers. Decision: **fit the whole delivery to real motion-capture pitches** instead of
+building the body frame by frame and patching it. The output is always a believable pitching motion; the video
+decides how this pitcher differs. Runs in the browser (free, private, no accounts). Feole is free/personal, so the
+non-commercial OpenBiomechanics data is fine. (The cloud/SMPL-X route was dropped; Ultra stays parked.)
 
-1. **Unblock the model** (waiting on Jackson): he is signing up at smpl-x.is.tue.mpg.de and will put his login in
-   the Modal secret `smplx` (`SMPLX_USER`, `SMPLX_PW`) himself. Never ask for or print the values. Once he says it's
-   done, run `.github/workflows/ultra-test.yml` and confirm "SMPL-X downloaded OK" in the logs.
-2. **Prove it on real clips**: run Ultra on the clip library (Maher, Hackimer, Staumont, Ohtani, Flaherty, Joyce,
-   McKenzie, Helsley, Rodon, two-angle pair) and compare with the current app: frame-by-frame jumps of each joint,
-   left/right flips, throwing-arm path through layback and release (frame strips), event times. Report to Jackson
-   with strips side by side.
-3. **Rebuild the analysis on top of it**: a new path in `pipeline.js` that takes the cloud's whole-delivery 3D joints
-   directly (no per-frame fixes), finds the events and measures the angles from that; scored with
-   `tools/test/bench.mjs`-style checks against motion capture where possible, and the regression clips.
-4. **Make it the default**: "Analyze" sends the clip to the cloud (clear consent line: the clip goes to our server
-   for processing and is deleted after); the browser tracker stays as the offline/fallback "Quick" mode. Show
-   progress and a clear message if the cloud is busy or down. Watch GPU cost per clip and report it.
-5. **Retire the patches** the new path no longer needs (left/right flip fixes, arm-blur matching, etc.) once the
-   cloud path beats them on every test, so there's less code to go wrong.
+The arm already works this way (`armlib.json`, "lab throws"), which is why layback improved most. Extend it to the
+whole body. Every session works on this before anything else, in order:
+
+1. **Build the pitching motion library** from all OpenBiomechanics pitches (github.com/drivelineresearch/openbiomechanics,
+   `baseball_pitching/data/full_sig/landmarks`): whole-body 3D joints, normalised for height, handedness (mirror to
+   cover lefties), direction, and time-warped to common events (leg lift, foot strike, max layback, release). Learn a
+   compact model of it (e.g. PCA over time-warped whole deliveries plus per-phase variation) small enough to ship
+   (a few MB). Hold out the benchmark pitchers from the library when scoring.
+2. **Fit it to the video**: find the delivery shape, timing (event times / time-warp), body size and camera
+   (direction, distance, tilt, pan) that best line up with the tracker's 2D points over the whole clip, robust to bad
+   frames (blur, net, occlusion) and with the tracker's left/right uncertainty handled inside the fit, not patched.
+   Allow the pitcher to differ from the library (arm slot, stride, trunk tilt, timing) but only smoothly.
+3. **Score it** with `tools/test/bench.mjs` (12 pitches x 5 views vs motion capture), `reportcheck.mjs`,
+   `regress.mjs` and new glitch measures: frame-to-frame joint jumps, left/right flips, impossible joint angles.
+   Must beat the current skeleton on the benchmark averages and per view (`tools/test` compare tool).
+4. **Check unusual deliveries**: sidearm, submarine, very long or short strides, slide-step, lefties; make sure the fit
+   lets the video win where it's clear (report how far the pitcher sits from the library average).
+5. **Make it the default** once it wins, show Jackson frame strips old vs new on the real clips, then **retire the
+   patches** it replaces (flip fixes, per-frame smoothing tricks, separate arm matching) so there's less to go wrong.
 
 ## Waiting on Jackson
-- SMPL-X account for the rebuild (step 1 above): Jackson signing up, then adding his login to the Modal secret `smplx`.
+- Ultra mode (GVHMR cloud): parked by Jackson's choice (2026-11-09); no SMPL-X account needed.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
 - Clips needed for the items marked "(Needs clip…)": the Cooper Maher video, a few net / batting-cage / chain-link
   clips, one crowd-background clip (Sale, Ohtani, Flaherty, McKenzie or Joyce) and, ideally, a real left-hander. The
