@@ -1399,17 +1399,22 @@ function analyseOnce(raw, opts = {}) {
     const settle = lf.slice(fs_, Math.min(T, fs_ + Math.max(3, Math.round(0.25 * fs)))).sort((a, b) => a - b);
     const ground = settle[Math.floor(settle.length * 0.3)];
     for (let t = fs_; t <= Math.min(T - 4, fs_ + Math.round(0.12 * fs)); t++) if (lf[t] <= ground + 0.015) { contactF = t; break }
+    // a foot that reads as still dropping can't be landing after the arm is already cocked (2 views of 60 read 0.13-0.15 s late this way)
+    contactF = Math.min(contactF, Math.max(fs_, cock - Math.round((opts._slideCock ?? 0.08) * fs)));
     // a front foot that is down can still be sliding forward on its heel; the research's foot contact is when it stops.
     // Marked where the lead ankle slows below 0.3 m/s along the ground (60 benchmark views against motion capture:
-    // foot strike 3 frames early on a typical pitch, 54 ms off on average; with this, 34 ms)
+    // foot strike 3 frames early on a typical pitch, 54 ms off on average; with this and the two limits around it, 24 ms)
     if (opts.contactSlide !== false) {
       // speed over a fixed 1/30 s, whatever the frame rate (in slow motion, frame-to-frame jitter would swamp it)
       const h = Math.max(1, Math.round(fs / 60));
       const sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h);
       // never later than 0.1 s before the arm is cocked: foot strike to max layback takes 0.12 s on a typical pitch
       // (0.09-0.17 s on 90% of 404 lab fastballs), and a filmed foot that looks planted is, near enough, planted
-      const last = Math.min(T - 1 - h, contactF + Math.round((opts._slideMax ?? 0.1) * fs), cock - Math.round((opts._slideCock ?? 0.1) * fs));
-      for (let t = Math.max(legLift + 1 + h, contactF - Math.round(0.05 * fs)); t <= last; t++) if (sp(t) < (opts._slideV ?? 0.3)) { contactF = t; break }
+      const last = Math.min(T - 1 - h, contactF + Math.round((opts._slideMax ?? 0.1) * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs));
+      let found = false;
+      for (let t = Math.max(legLift + 1 + h, contactF - Math.round(0.05 * fs)); t <= last; t++) if (sp(t) < (opts._slideV ?? 0.3)) { contactF = t; found = true; break }
+      // a foot that never quite drops under that speed on the way down (it is still creeping on the heel) would otherwise keep the early reach frame
+      if (!found) for (let t = Math.max(legLift + 1 + h, contactF - Math.round(0.05 * fs)); t <= last; t++) if (sp(t) < (opts._slideV2 ?? 0.5)) { contactF = t; break }
     }
   }
 
@@ -1514,7 +1519,7 @@ export function deliveryCards(D) {
   out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 6\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
   // real units only with the pitcher's height entered: without it the size of the body is an estimate
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
-  // tempo: the one timing that held up (60 lab views: 34 ms off, against a 74 ms spread between pitchers, r 0.80). Foot strike to release didn't
+  // tempo: the one timing that held up (60 lab views: 24 ms off, against a 74 ms spread between pitchers, r 0.92). Foot strike to release didn't
   // (34 ms off a 21 ms spread), so it isn't shown here. Left out when the clip starts about at leg lift: the true top of the lift may be missing.
   { const fr = n => (D.phases.find(p => p.name === n) || {}).frame, ll = fr("Peak leg lift"), fs = fr("Foot strike");
     if (ll != null && fs != null && ll >= 0.1 * D.fps && fs > ll) { const sec = (fs - ll) / D.fps; out.push({ k: "tempo", label: "Leg lift to foot strike", value: sec.toFixed(2) + " s", n: sec * 1000, unit: " ms", def: "Time from the top of the leg lift to the front foot landing. Typical error about 0.03 s; use it to compare a pitcher with himself or to spot a rushed or slow tempo." }) } }
