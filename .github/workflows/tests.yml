@@ -48,7 +48,7 @@ jobs:
           python-version: "3.12"
       - name: Install a headless browser and ffmpeg (test tools only; the website itself uses neither)
         run: |
-          sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+          sudo apt-get update -q && sudo apt-get install -yq ffmpeg poppler-utils
           pip install -q playwright && playwright install --with-deps chromium
           mkdir -p "$RUNNER_TEMP/t3" && cd "$RUNNER_TEMP/t3" && npm i --silent three@0.128.0
       - name: PDF and CSV match the screen; saved pitches re-open the same
