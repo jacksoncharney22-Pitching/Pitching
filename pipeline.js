@@ -1420,7 +1420,7 @@ function analyseOnce(raw, opts = {}) {
     let b = t + 1; while (b < pose.length && pose[b].some(p => p.some(v => !Number.isFinite(v)))) b++;
     const src = a >= 0 ? pose[a] : pose[b]; if (src) pose[t] = src.map(p => p.slice());
   }
-  return {
+  const out = {
     fps: fs, videoFps: raw.videoFps || fs, frames: T, width: W, height: H, start: raw.start || 0, throwHand: hand,
     cameraDir: cam.map(r4), footR: FOOT_R, rubberTop: RUB_TOP, moundDrop: r4(DROP), landX: r4(pose[settle][hand === "L" ? 28 : 27][0]), rubber: rub.map(r4), bones,
     pose: pose.map(F => F.map(p => p.map(r4))),
@@ -1428,6 +1428,8 @@ function analyseOnce(raw, opts = {}) {
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
     fsReach: fs_, bodyH: r4(bodyH), metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, heightUsed: heightM ? +heightM.toFixed(3) : null, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
+  out.pitchCheck = opts.phases ? { ok: true } : pitchCheck(out);
+  return out;
 }
 
 // Delivery measurements a coach reads off the skeleton. All from the finished 3D pose in the body's own frame:
@@ -1454,6 +1456,7 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
 // The delivery numbers as shown to a coach (screen, PDF, compare). Only the ones that held up against motion capture on
 // the 60 benchmark views; how far in front of the rubber the hand gets (extension) didn't, so it isn't shown.
 export function deliveryCards(D) {
+  if (D.pitchCheck && !D.pitchCheck.ok) return [];
   const h = D.bodyH || (D.heightUsed ?? null); let m; try { m = deliveryMeasures(D, h) } catch (e) { return [] }
   if (!m) return [];
   const ftIn = v => { const n = Math.round(v / 0.0254), f = Math.floor(n / 12); return `${f}'${n - f * 12}"` };
@@ -1466,4 +1469,20 @@ export function deliveryCards(D) {
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
   if (m.peakSep != null) out.push({ k: "sep", label: "Peak hip-shoulder separation", value: Math.round(m.peakSep) + "\u00B0", n: m.peakSep, unit: "\u00B0", def: "Largest gap between hips and shoulders from just before foot strike to release. Typical error about 7\u00B0." });
   return out;
+}
+
+// Does this clip actually show a pitch? On anything else (a pitcher standing, a clip cut before the stride or after it)
+// the event finder still has to put foot strike somewhere, and the numbers would look real but mean nothing.
+// Measured: 60 benchmark views and every saved clip have the ankles 0.59-0.88 of body height apart at foot strike and a
+// peak wrist speed of 7.6-19.5 body heights per second; a standing pitcher, a clip cut before the stride and one that's
+// only the follow-through had 0.09-0.40 apart (standing: wrist speed 3.8).
+export function pitchCheck(D) {
+  try {
+    if (!D.bodyH) return { ok: true };
+    const P = D.pose, R = D.throwHand !== "L", lead = R ? 27 : 28, back = R ? 28 : 27, wr = R ? 16 : 15;
+    const fs = D.phases.find(p => p.name === "Foot strike").frame;
+    const gap = Math.hypot(P[fs][lead][0] - P[fs][back][0], P[fs][lead][2] - P[fs][back][2]) / D.bodyH;
+    let ws = 0; for (let t = 1; t < P.length; t++) ws = Math.max(ws, Math.hypot(P[t][wr][0] - P[t - 1][wr][0], P[t][wr][1] - P[t - 1][wr][1], P[t][wr][2] - P[t - 1][wr][2]) * D.fps / D.bodyH);
+    return { ok: gap >= 0.5 && ws >= 5, gap: +gap.toFixed(2), wristSpeed: +ws.toFixed(1) };
+  } catch (e) { return { ok: true } }
 }

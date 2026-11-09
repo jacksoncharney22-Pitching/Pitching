@@ -645,6 +645,7 @@ async function trackMax(src) {
 // The delivery numbers above the viewer: stride, arm slot, hand height at release, peak separation
 function renderDeliveryStrip(data) {
   const el = $("delStrip"); if (!el) return;
+  const warn = $("notPitch"); if (warn) warn.hidden = !(data.pitchCheck && !data.pitchCheck.ok);
   const items = deliveryCards(data);
   el.hidden = !items.length;
   el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b></div>`).join("");

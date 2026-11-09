@@ -139,6 +139,8 @@ input[type=text], select { font: inherit; color: var(--fg); background: var(--pa
 @keyframes spin { to { transform: rotate(360deg) } }
 @media (prefers-reduced-motion: reduce) { .steps li[data-state="doing"] i { animation: none } }
 
+.notpitch { margin: 2px 0 12px; padding: 12px 14px; border: 1px solid #c98a2b; border-radius: var(--radius); background: rgba(201,138,43,.12); font-size: 14px; line-height: 1.45 }
+.notpitch[hidden] { display: none }
 /* delivery numbers above the viewer */
 .delstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 2px 0 14px }
 .delstrip[hidden] { display: none }
@@ -571,6 +573,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
+    <p class="notpitch" id="notPitch" role="status" hidden><b>This clip may not show a full pitch.</b> The skeleton never takes a full stride with the throwing arm coming through, so the phases and numbers below may not mean anything. Trim the clip to one delivery, from before the leg lift to after release, and analyse it again.</p>
     <div id="delStrip" class="delstrip" hidden></div>
     <div id="viewerMount" style="display:grid;gap:20px"></div>
   </section>
@@ -644,22 +647,22 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794240380",
-  "./fuse.js": "./fuse.js?v=1794240380",
-  "./multiview.js": "./multiview.js?v=1794240380",
-  "./rtm.js": "./rtm.js?v=1794240380",
-  "./pdf.js": "./pdf.js?v=1794240380",
-  "./compare.js": "./compare.js?v=1794240380",
-  "./editor.js": "./editor.js?v=1794240380",
-  "./lifter.js": "./lifter.js?v=1794240380",
-  "./armzoom.js": "./armzoom.js?v=1794240380",
-  "./net.js": "./net.js?v=1794240380",
-  "./opencap.js": "./opencap.js?v=1794240380",
-  "./ultra.js": "./ultra.js?v=1794240380",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794240380"
+  "./pipeline.js": "./pipeline.js?v=1794240552",
+  "./fuse.js": "./fuse.js?v=1794240552",
+  "./multiview.js": "./multiview.js?v=1794240552",
+  "./rtm.js": "./rtm.js?v=1794240552",
+  "./pdf.js": "./pdf.js?v=1794240552",
+  "./compare.js": "./compare.js?v=1794240552",
+  "./editor.js": "./editor.js?v=1794240552",
+  "./lifter.js": "./lifter.js?v=1794240552",
+  "./armzoom.js": "./armzoom.js?v=1794240552",
+  "./net.js": "./net.js?v=1794240552",
+  "./opencap.js": "./opencap.js?v=1794240552",
+  "./ultra.js": "./ultra.js?v=1794240552",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794240552"
 }}
 </script>
-<script src="viewer.js?v=1794240380" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794240380"></script>
+<script src="viewer.js?v=1794240552" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794240552"></script>
 </body>
 </html>

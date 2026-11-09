@@ -30,6 +30,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - Tried 10:40, dropped: depth travel gain (`vdepth`×1.25): stride from behind 20 -> 5 cm short, but front knee at foot strike 8.1 -> 12.7° (hips moved, front foot pinned). Holding the last speed when the feet aren't planted: no change. Don't retry the plain gain.
 - 10:40 finding: kinematic sequence order can't be read from one camera yet. Heavier smoothing (50 ms) gets 'order right' 49 -> 55 of 60, but it just says pelvis-first every time: truth is pelvis-first on 55 of 60 and it catches 0 of the 5 out-of-order (unsmoothed: 2 of 5, with 8 false alarms). Don't show an in/out-of-sequence verdict; don't count the 55.
 - 10:40: (c) Fast flip after release on Maher: no flip left in the finished skeleton (shoulder depth steady 1.78-1.95 s). Closed.
+- Shipped 10:40: warning banner when the clip doesn't look like a pitch (no full stride at foot strike, or no arm speed): `pitchCheck` in pipeline.js. False alarms: 0 of 60 full clips, 1 of 60 started 1/3 s late, 5 of 60 started 1/2 s late (those events are unreliable anyway); caught standing still, cut before the stride, follow-through only. Delivery numbers hidden then.
 - Next session: follow-on (c) Fast flip after release, (d) trunk rotation, (e) throwing arm at release; or the Wednesday kinematic sequence (peak pelvis, trunk, arm speeds and order, checked vs truth).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
