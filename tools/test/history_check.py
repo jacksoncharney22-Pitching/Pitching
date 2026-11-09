@@ -31,6 +31,13 @@ with sync_playwright() as p:
     pg.evaluate("() => document.querySelector('.rec-open').click()"); pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=60000); pg.wait_for_timeout(1500)
     if pg.evaluate("() => !document.getElementById('vidOv').hidden"): bad.append("overlay video offered without a video")
     print("rows in angle table:", pg.locator("#ptable tbody tr").count())
+    # the over-time view plots each saved pitch that has the reading
+    pg.evaluate("""raw => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onsuccess = () => { const t = r.result.transaction('analyses', 'readwrite');
+      t.objectStore('analyses').add({ date: Date.now() + 1000, name: 'Newer pitch', hand: 'auto', frames: raw.frames.length, fps: raw.fps, data: { name: 'Newer pitch' }, blob: null, raw }); t.oncomplete = res; t.onerror = () => rej(t.error) } })""", raw)
+    pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1500)
+    pg.evaluate("() => { document.getElementById('recentWrap').open = true; document.getElementById('trendGo').click() }"); pg.wait_for_selector(".tr-svg", timeout=60000)
+    dots = pg.locator(".tr-dot").count(); print("over-time chart points:", dots)
+    if dots != 2: bad.append(f"over-time chart: {dots} points, expected 2")
     if len(sys.argv) > 2: pg.screenshot(path=sys.argv[2])
     b.close()
 print("page errors:", errs)

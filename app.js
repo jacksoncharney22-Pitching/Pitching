@@ -12,7 +12,7 @@ import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { downloadPDF } from "./pdf.js";
-import { renderCompare } from "./compare.js";
+import { renderCompare, renderTrend } from "./compare.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
@@ -828,8 +828,21 @@ $("cmpGo").onclick = async () => {
       return { data, label: savedLabel(it) };
     };
     const [A, B] = [await load(ids[0]), await load(ids[1])];
-    renderCompare($("cmpBody"), A, B); show("compare");
+    $("cmpEyebrow").textContent = "Side by side"; $("cmpTitle").textContent = "Compare two pitches"; renderCompare($("cmpBody"), A, B); show("compare");
   } catch (e) { alert("Those two pitches could not be compared. Try opening each one from Recent first.") }
+  go.disabled = false; go.textContent = was;
+};
+$("trendGo").onclick = async () => {
+  const go = $("trendGo"), was = go.textContent; go.disabled = true;
+  try {
+    await armLibReady();
+    const items = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => a.date - b.date), pts = [];
+    for (let i = 0; i < items.length; i++) { const it = items[i]; go.textContent = `Reading ${i + 1} of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
+      let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(analyse(it.raw, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
+      if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) }
+    $("cmpEyebrow").textContent = "Over time"; $("cmpTitle").textContent = "One reading across saved pitches";
+    show("compare"); renderTrend($("cmpBody"), pts);   // shown first so the chart can size itself to the screen
+  } catch (e) { alert("Those pitches could not be read. Try opening each one from Recent first.") }
   go.disabled = false; go.textContent = was;
 };
 $("cmpBack").onclick = () => show("home");

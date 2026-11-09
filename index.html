@@ -106,6 +106,17 @@ table.cmp th[scope=row], table.cmp thead th:first-child { text-align: left; whit
 table.cmp td { font-family: var(--mono); font-size: 13px }
 table.cmp .cmp-g th { text-align: left; color: var(--muted); font-size: 12px; padding-top: 10px; text-transform: uppercase; letter-spacing: .04em }
 table.cmp .cmp-big th, table.cmp .cmp-big td { font-weight: 600; color: #fff }
+.trend-card, .trend-card ~ .card { grid-column: 1 / -1 }
+.trend-ctl { margin: 0 0 8px }
+.tr-svg { width: 100%; height: auto; display: block }
+.tr-grid { stroke: var(--line); stroke-width: 1 }
+.tr-ax { fill: var(--muted); font-size: 12px; font-family: var(--mono) }
+.tr-line { stroke: var(--throw); stroke-width: 2 }
+.tr-dot { fill: var(--throw); stroke: var(--panel, #111); stroke-width: 2 }
+table.trend-t th[scope=row] { white-space: normal; overflow-wrap: anywhere }
+table.trend-t td:first-child, table.trend-t thead th:nth-child(1), table.trend-t thead th:nth-child(2) { text-align: left }
+table.trend-t td:first-child { width: 44px }
+table.trend-t input { width: 18px; height: 18px }
 .cmp-a { color: var(--throw) } .cmp-b { color: var(--trunk) }
 
 /* prep */
@@ -518,6 +529,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
           <label>Pitch A <select id="cmpA"></select></label>
           <label>Pitch B <select id="cmpB"></select></label>
           <button type="button" id="cmpGo">Compare these two</button>
+          <button type="button" id="trendGo">Track a reading over time</button>
         </div>
       </details>
     </div>
@@ -525,7 +537,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 
   <!-- COMPARE -->
   <section id="compare" class="view" hidden>
-    <div class="reshead"><div><span class="eyebrow">Side by side</span><h1>Compare two pitches</h1></div><button type="button" id="cmpBack">Back</button></div>
+    <div class="reshead"><div><span class="eyebrow" id="cmpEyebrow">Side by side</span><h1 id="cmpTitle">Compare two pitches</h1></div><button type="button" id="cmpBack">Back</button></div>
     <div id="cmpBody" class="cmp-body"></div>
   </section>
 
@@ -650,22 +662,22 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794257419",
-  "./fuse.js": "./fuse.js?v=1794257419",
-  "./multiview.js": "./multiview.js?v=1794257419",
-  "./rtm.js": "./rtm.js?v=1794257419",
-  "./pdf.js": "./pdf.js?v=1794257419",
-  "./compare.js": "./compare.js?v=1794257419",
-  "./editor.js": "./editor.js?v=1794257419",
-  "./lifter.js": "./lifter.js?v=1794257419",
-  "./armzoom.js": "./armzoom.js?v=1794257419",
-  "./net.js": "./net.js?v=1794257419",
-  "./opencap.js": "./opencap.js?v=1794257419",
-  "./ultra.js": "./ultra.js?v=1794257419",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794257419"
+  "./pipeline.js": "./pipeline.js?v=1794257602",
+  "./fuse.js": "./fuse.js?v=1794257602",
+  "./multiview.js": "./multiview.js?v=1794257602",
+  "./rtm.js": "./rtm.js?v=1794257602",
+  "./pdf.js": "./pdf.js?v=1794257602",
+  "./compare.js": "./compare.js?v=1794257602",
+  "./editor.js": "./editor.js?v=1794257602",
+  "./lifter.js": "./lifter.js?v=1794257602",
+  "./armzoom.js": "./armzoom.js?v=1794257602",
+  "./net.js": "./net.js?v=1794257602",
+  "./opencap.js": "./opencap.js?v=1794257602",
+  "./ultra.js": "./ultra.js?v=1794257602",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794257602"
 }}
 </script>
-<script src="viewer.js?v=1794257419" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794257419"></script>
+<script src="viewer.js?v=1794257602" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794257602"></script>
 </body>
 </html>

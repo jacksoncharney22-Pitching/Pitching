@@ -56,3 +56,34 @@ export function renderCompare(el, A, B) {
   html += `<p class="hint">Bold rows differ by more than one camera can misread: 8&ndash;20° depending on the reading (layback at release needs about 50°), measured against motion capture on lab pitches. Rows that are not bold may be the camera rather than the pitcher, and elbow at release is never bold because pitchers barely differ there. Film both pitches from the same spot for the fairest comparison.</p>`;
   el.innerHTML = html;
 }
+
+// ---- one reading across all saved pitches, oldest to newest. Rebuilt from saved tracking like Compare; un-tick a pitch
+// to leave it out (file names aren't reliable pitcher names, so the coach picks which pitches belong together).
+const DELIVERY = [["Stride (% of height)", "stride"], ["Arm slot", "slot"], ["Peak hip-shoulder separation", "sep"], ["Leg lift to foot strike (s)", "tempo"]];
+export function renderTrend(el, pts) {
+  const st = { k: "separation", ph: "Foot strike", off: new Set() };
+  const isDel = k => DELIVERY.some(d => d[1] === k);
+  const val = (d, k, ph) => { if (isDel(k)) { const c = deliveryCards(d).find(c => c.k === k); return c ? (k === "tempo" ? c.n / 1000 : c.n) : null } const f = frameOf(d, ph), v = f == null || !d.metrics[k] ? null : d.metrics[k][f]; return Number.isFinite(v) ? Math.round(v) : null };
+  const opts = ROWS.map(([g, l]) => `<optgroup label="${g}">${l.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("") + `<optgroup label="Delivery">${DELIVERY.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`;
+  el.innerHTML = `<div class="card cmp-card trend-card"><div class="cmp-pick trend-ctl"><label>Reading <select id="trK">${opts}</select></label><label id="trPhL">At <select id="trPh">${PHASES.map(p => `<option>${p}</option>`).join("")}</select></label></div><div id="trChart"></div><p class="hint" id="trNote"></p></div><div class="card cmp-card"><table class="cmp trend-t"><thead><tr><th>Use</th><th>Pitch</th><th>Value</th></tr></thead><tbody id="trRows"></tbody></table></div>`;
+  const $ = id => el.querySelector("#" + id); $("trK").value = st.k; $("trPh").value = st.ph;
+  const draw = () => {
+    const unit = st.k === "stride" ? "%" : st.k === "tempo" ? " s" : "°", dec = st.k === "tempo" ? 2 : 0, vals = pts.map(p => st.off.has(p) ? null : val(p.data, st.k, st.ph)), use = pts.map((p, i) => ({ p, v: vals[i] })).filter(x => x.v != null);
+    $("trPhL").hidden = isDel(st.k);
+    const W = Math.max(300, $("trChart").clientWidth || 700), H = 260, L = 44, R = 14, T = 14, B = 34, n = Math.max(2, use.length), x = i => L + (W - L - R) * (use.length < 2 ? .5 : i / (n - 1));
+    let svg = "";
+    if (use.length) { const vs = use.map(u => u.v), span = Math.max(...vs) - Math.min(...vs), pad = Math.max(span * .15, st.k === "tempo" ? .03 : 3), lo = Math.min(...vs) - pad, hi = Math.max(...vs) + pad, y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+      for (let g = 0; g <= 3; g++) { const v = lo + (hi - lo) * g / 3; svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="tr-grid"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" class="tr-ax">${v.toFixed(dec)}</text>` }
+      if (use.length > 1) svg += `<polyline fill="none" class="tr-line" points="${use.map((u, i) => x(i) + "," + y(u.v)).join(" ")}"/>`;
+      const every = Math.max(1, Math.ceil(use.length / 7));
+      use.forEach((u, i) => { svg += `<circle cx="${x(i)}" cy="${y(u.v)}" r="5" class="tr-dot"><title>${esc(u.p.label)}: ${u.v.toFixed(dec)}${unit}</title></circle>`; if (i % every === 0) svg += `<text x="${x(i)}" y="${H - 12}" text-anchor="${use.length > 1 && i === 0 ? "start" : use.length > 1 && i === use.length - 1 ? "end" : "middle"}" class="tr-ax">${esc(u.p.day)}</text>` });
+    }
+    $("trChart").innerHTML = use.length ? `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Reading across saved pitches" class="tr-svg">${svg}</svg>` : `<p class="hint">No value for this reading on the pitches ticked.</p>`;
+    const th = SIG[st.k + "|" + EV[st.ph]];
+    $("trNote").textContent = isDel(st.k) ? "Film from the same spot each time: a different camera angle moves these numbers too." : th == null ? "One camera can't show real differences on this reading, so treat this line as noise." : `A change smaller than about ${th}° may be the camera rather than the pitcher. Film from the same spot each time.`;
+    $("trRows").innerHTML = pts.map((p, i) => { const v = val(p.data, st.k, st.ph); return `<tr><td><input type="checkbox" data-i="${i}" aria-label="Use this pitch"${st.off.has(p) ? "" : " checked"}></td><th scope="row">${esc(p.label)}</th><td>${v == null ? "–" : v.toFixed(dec) + unit}</td></tr>` }).join("");
+    $("trRows").querySelectorAll("input").forEach(c => c.onchange = () => { const p = pts[+c.dataset.i]; c.checked ? st.off.delete(p) : st.off.add(p); draw() });
+  };
+  $("trK").onchange = e => { st.k = e.target.value; draw() }; $("trPh").onchange = e => { st.ph = e.target.value; draw() };
+  draw();
+}
