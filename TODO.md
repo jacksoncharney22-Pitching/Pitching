@@ -82,6 +82,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 15:40 finding: worst single readings: trunk at release, 3035 side-on +30 (app 155, truth 128), 2653/3222 from behind -25; several of these are the same pitch on different views, so the camera is deciding the reading there.
 - 15:40 finding: how well each camera follows real pitcher-to-pitcher differences (correlation with truth; 1 = perfect): front_3b is best for rotation (0.91-0.97 at FS/BR), behind_3b worst (0.47-0.84). Side-on cameras exaggerate trunk differences late (slope 1.27-1.52 at MER/BR: a 10° real difference reads 13-15°); behind/behind_3b pelvis at release shrinks them (0.70-0.74). 12 pitches only.
 - GitHub now fails if compare.js thresholds go stale (`comparecheck.mjs --check`): after a skeleton change, re-run `--json` and paste into `SIG` in compare.js.
+- 15:40 shipped: "What to trust" on the results page now gives measured numbers and no longer says sequencing is solid (it read 0 of 5 out-of-order pitches).
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
