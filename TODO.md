@@ -1,7 +1,7 @@
 # Feole Pitching to-do list
 
 The daily work session picks its work from here. Jackson adds items any time ("add X to the list").
-Each weekday has a theme. Pick **one big project** from today's theme (a few hours of real work: measure, build,
+Each day has a theme (Sat = accuracy, Sun = testing). Pick **one big project** from today's theme (a few hours of real work: measure, build,
 test, ship), then quick items if time is left. Top of each list = most important. Move finished items to Done
 with the date. When a theme has fewer than 3 items left, add new ones that fit it (and say so in the summary).
 
@@ -9,7 +9,7 @@ Measure before and after every change. The accuracy benchmark (`tools/test/bench
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
 ## Today (2026-11-06, Friday)
-Sessions run at 8:15, 9:40, 11:40, 13:40 and 15:40 ET on weekdays; each one picks up here and leaves this section
+Sessions run every day at 8:15 ET and every hour from 9:40 to 17:40 ET (from 2026-11-09); each one picks up here and leaves this section
 up to date for the next.
 - Done: coaching report checked against motion capture (174 -> 139 wrong statements); PDF rounds like the screen.
 - Big project for the rest of today: the accuracy scorecard (Monday's top item, the base for every later
