@@ -1440,7 +1440,10 @@ function analyseOnce(raw, opts = {}) {
     M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
   // Arm cocked is the moment of most layback, so read it off the layback itself: the hand being highest over the shoulder is only
   // close to it (60 lab views against motion capture: 27 -> 11 ms off). Nudged by at most 1/30 s: a wider search reaches 5 ms on the lab views but moves Maher by 0.07 s, which needs his video to judge.
-  if (opts._merSnap !== false && !(opts.phases && opts.phases.armCocked != null)) { const a = Math.round(0.034 * fs), b = a; let best = cock; for (let t = Math.max(contactF + 1, cock - a); t <= Math.min(rel - 1, cock + b); t++) if ((M.throwER[t] ?? -999) > (M.throwER[best] ?? -999)) best = t; cock = best }
+  if (opts._merSnap !== false && !(opts.phases && opts.phases.armCocked != null)) { const a = Math.round(0.034 * fs), b = a; let best = cock; for (let t = Math.max(contactF + 1, cock - a); t <= Math.min(rel - 1, cock + b); t++) if ((M.throwER[t] ?? -999) > (M.throwER[best] ?? -999)) best = t; const moved = best > cock; cock = best;
+    // the foot strike limit above leaned on the old arm cocked; when that moved later, a still-sliding foot gets another look
+    if (moved && opts._fs2 !== false && !userFS && opts.contactFix !== false && opts.contactSlide !== false) { const h = Math.max(1, Math.round(fs / 60)), sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h), v2 = opts._slideV2 ?? 0.5;
+      if (sp(contactF) >= v2) for (let t = contactF + 1, e = Math.min(T - 1 - h, contactF + Math.round(0.1 * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs)); t <= e; t++) if (sp(t) < v2) { contactF = t; break } } }
 
   // ---- mirror left-handers back for display
   // the tracked points drawn over the video get the same treatment as the skeleton: each part held to how fast it can
