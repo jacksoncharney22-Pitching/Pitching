@@ -65,6 +65,12 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - (13:40 wrapped; the hip/shoulder turn fix is live, tests and deploy passed.) Possible follow-up: trunk at release got >5° worse on 12 of 60 views, mostly side_back/side_open (they under-turn less), so try a smaller shoulder gain on side-on cameras.
 - Next session: rebuild still blocked unless the data has arrived. Otherwise: (1) the camera tilt: a reader needs clips at other camera heights to validate (see 13:40 notes), so ask for or wait on those rather than tuning on the 8° benchmark; never hard-code -8. With the true tilt `_spineG` 0.8 does better still (side tilt 3.7/4.2, forward 4.5/3.6), and elbow FS 6.9 -> 8.0 and layback FS 5.4 -> 7.4 got worse: worth knowing why before any tilt ships. (2) Pelvis late rotation from behind (-13/-11°, unaffected by tilt). (3) Layback at release 21°. Front knee by view is now explained by the tilt, so don't chase it on its own.
 
+- 14:40 shipped: extra hip/shoulder turn for cameras behind the pitcher (`_hipGain` 1.05 + 0.04 x behindness, `_shGain` 1.03 + 0.08 x behindness from arm cocked to release; `camDir[0]` < 0 is behind): trunk BR 8.8 -> 7.9, pelvis MER/BR 6.9/6.4 -> 6.5/6.1, behind_3b trunk BR 13 -> 10; separation same. Side-on cameras want ~1.0, behind ~1.08-1.10. Still tuned on the 8° benchmark.
+- 14:40 shipped: tempo card "Leg lift to foot strike" (60 views: 34 ms off, truth spread 74 ms, r 0.80; hidden if the clip starts within 0.1 s of the leg lift). Foot strike to release NOT shown (34 ms off a 21 ms spread, r 0.33).
+- 14:40 shipped (speed reading, late-started clips): when there's no leg lift to go on, the throwing hand's peak speed helps (14 body heights/s, blended 40%): clips starting 1/2 s before foot strike 20 -> 11 views wrong of 60 (33 -> 17 of 240 readings), 1/3 s 22 -> 16 views (42 -> 36). Full clips unaffected.
+- 14:40 tried, dropped: foot strike from the 2D ankle stopping (33.9 ms now, 39-110 ms with it; a planted foot still moves in the picture on the heel). 2919 FS -83/MER -83 ms on all 5 views: that pitch itself, not a view problem (don't chase).
+- 14:40 finding: with the true tilt the throwing shoulder's position error shrinks a lot (front_3b FS-MER 14 -> 9 cm, side_back MER-BR 13 -> 7 cm), i.e. the 14.8 cm front_3b arm is the tilt, not the arm.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
@@ -151,6 +157,7 @@ whole body. Every session works on this before anything else, in order:
   speed). Without the leg lift the only timing left is foot strike to release, which is too short to read reliably
   (0.12-0.30 s across views). Needs a second clue that doesn't depend on the leg lift (e.g. how long the stride or the
   arm path takes). Full clips are all right (240 of 240).
+  2026-11-09: added peak hand speed as a second clue: 1/2 s late 20 -> 11 views wrong, 1/3 s 22 -> 16 (of 60). Still not solved.
 
 ## Friday: coaching report and finish
 

@@ -643,7 +643,12 @@ export function detectSlowFactor(raw) {
   const shown = LL >= 3 && kneeUp(LL) - Math.max(low, kneeUp(FS)) > 0.15;
   let est, basis;
   if (shown && R > LL + 2) { est = (R - LL) / vf / 0.8; basis = "leg lift to release" }
-  else if (R > FS) { est = (R - FS) / vf / 0.2; basis = "foot strike to release" }
+  else if (R > FS) {
+    // a clip started after the leg lift only has foot strike to release to go on, and that gap (0.12-0.30 s) is too short to read reliably, so the throwing
+    // hand's peak speed helps: in real time it's about 14 body heights a second. Clips cut to start 1/2 s before foot strike: wrong speed readings 24 -> 12 of 180.
+    const Wr = d.throwHand === "L" ? 15 : 16, h = Math.max(1, Math.round((R - FS) / 8)), Y = P[FS].map(p => p[1]), H = Math.max(1e-6, Math.max(...Y) - Math.min(...Y));
+    let pk = 0; for (let t = FS; t < Math.min(T - h, R + h); t++) { const a = P[t][Wr], b = P[t + h][Wr], sp = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) / H * vf / h; if (sp > pk) pk = sp }
+    est = (R - FS) / vf / 0.2; if (pk > 0) est = est ** 0.6 * (14 / pk) ** 0.4; basis = "foot strike to release" }
   else return { factor: 1, basis: "none" };
   const opts = [1, 2, 4, 8, 16];
   const factor = opts.reduce((b, f) => Math.abs(Math.log2(f) - Math.log2(est)) < Math.abs(Math.log2(b) - Math.log2(est)) ? f : b, 1);
