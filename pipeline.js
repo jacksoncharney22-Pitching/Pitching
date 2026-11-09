@@ -1245,7 +1245,7 @@ function analyseOnce(raw, opts = {}) {
     const mirr = F => { const M = mid(F[11], F[12]); return [11, 12].map(j => { const v = sub(F[j], M); return add(M, sub(v, mul(cz, 2 * dot(v, cz)))) }) };
     const flag = new Array(T).fill(false);
     for (let t = lo; t <= hi; t++) {
-      const LIM = t >= fs_ - Math.round(0.12 * fs) ? (opts._sepNear ?? 0) : (opts._sepMin ?? -12);   // stricter in the last 0.1 s before foot strike
+      const LIM = t >= fs_ - Math.round(0.12 * fs) ? (opts._sepNear ?? 15) : (opts._sepMin ?? -12);   // stricter in the last 0.1 s before foot strike: at foot strike the shoulders should still be clearly behind the hips (+15 fixes shoulders that read turned with the hips on side-on views: trunk at foot strike 10.6 -> 9.4° off)
       const F = P[t], pel = head(sub(F[24], F[23])), sep = wrapD(pel - head(sub(F[12], F[11])));
       if (sep >= LIM) continue;
       const [m11, m12] = mirr(F), sep2 = wrapD(pel - head(sub(m12, m11)));
