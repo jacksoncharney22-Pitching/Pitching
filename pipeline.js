@@ -1453,7 +1453,10 @@ function analyseOnce(raw, opts = {}) {
     // (not while the slow-motion reader is still working out the clip's real speed: seconds aren't real yet, hence _noGaps)
     // foot strike to max layback takes 0.10-0.18 s on the lab pitches (0.09-0.17 s on 90% of 404 lab fastballs): a foot read as planted well outside that was pinned too early or too late
     if (!opts._noGaps && !userFS && opts.contactFix !== false && !(opts.phases && opts.phases.armCocked != null)) { const gMax = opts._fsGapMax ?? 0.183, gMin = opts._fsGapMin ?? 0.1;
-      contactF = Math.min(Math.max(contactF, cock - Math.round(gMax * fs)), Math.max(legLift + 1, cock - Math.round(gMin * fs))) } }
+      contactF = Math.min(Math.max(contactF, cock - Math.round(gMax * fs)), Math.max(legLift + 1, cock - Math.round(gMin * fs)));
+      // and the foot's own reading is noisy by a frame or two, so it is met halfway by the typical gap (0.125 s): on the
+      // 60 lab views foot strike 19 -> 14 ms off, layback at the marked foot strike 22 -> 15°; trusting the gap alone is worse (17 ms)
+      const pull = opts._fsPull ?? 0.5; if (pull) contactF = Math.max(legLift + 1, Math.round(contactF * (1 - pull) + (cock - 0.125 * fs) * pull)) } }
 
   // ---- mirror left-handers back for display
   // the tracked points drawn over the video get the same treatment as the skeleton: each part held to how fast it can

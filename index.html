@@ -651,7 +651,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <details class="fold"><summary>About these numbers</summary>
   <section class="notes">
     <div><h4>Where they come from</h4><p>A body tracker finds the pitcher's joints in every frame (in Max accuracy, a stronger tracker reads where they are on screen and the built-in one adds depth). Feole Pitching rebuilds them in 3D with constant bone lengths, keeps each planted foot in place and smooths the motion. Frames where an arm or leg is a motion blur are filled with a natural throwing motion between the clear frames either side.</p></div>
-    <div><h4>What to trust</h4><p>Checked against motion capture on 12 lab pitches from 5 camera angles: release lands about 6 ms from the truth, arm cocked about 6 ms, foot strike about 20 ms, most angles 4&ndash;13° off on average at the frames the app marks, and joints about 10 cm. Layback is the least certain reading at foot strike and release (about 22° and 33° off); at arm cocked it's about 7°. One camera can't reliably tell whether the hips peak before the shoulders, so the app doesn't call that order. Real clips with blur, a net or a moving camera can do worse.</p></div>
+    <div><h4>What to trust</h4><p>Checked against motion capture on 12 lab pitches from 5 camera angles: release lands about 6 ms from the truth, arm cocked about 6 ms, foot strike about 15 ms, most angles 4&ndash;13° off on average at the frames the app marks, and joints about 10 cm. Layback is the least certain reading at foot strike and release (about 15° and 33° off); at arm cocked it's about 7°. One camera can't reliably tell whether the hips peak before the shoulders, so the app doesn't call that order. Real clips with blur, a net or a moving camera can do worse.</p></div>
     <div><h4>Better video</h4><p>A tripod, a side view from the throwing-arm side, the whole body in frame and 240 fps slow-motion give the most exact skeleton.</p></div>
   </section>
   </details>
@@ -664,22 +664,22 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794265123",
-  "./fuse.js": "./fuse.js?v=1794265123",
-  "./multiview.js": "./multiview.js?v=1794265123",
-  "./rtm.js": "./rtm.js?v=1794265123",
-  "./pdf.js": "./pdf.js?v=1794265123",
-  "./compare.js": "./compare.js?v=1794265123",
-  "./editor.js": "./editor.js?v=1794265123",
-  "./lifter.js": "./lifter.js?v=1794265123",
-  "./armzoom.js": "./armzoom.js?v=1794265123",
-  "./net.js": "./net.js?v=1794265123",
-  "./opencap.js": "./opencap.js?v=1794265123",
-  "./ultra.js": "./ultra.js?v=1794265123",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794265123"
+  "./pipeline.js": "./pipeline.js?v=1794265860",
+  "./fuse.js": "./fuse.js?v=1794265860",
+  "./multiview.js": "./multiview.js?v=1794265860",
+  "./rtm.js": "./rtm.js?v=1794265860",
+  "./pdf.js": "./pdf.js?v=1794265860",
+  "./compare.js": "./compare.js?v=1794265860",
+  "./editor.js": "./editor.js?v=1794265860",
+  "./lifter.js": "./lifter.js?v=1794265860",
+  "./armzoom.js": "./armzoom.js?v=1794265860",
+  "./net.js": "./net.js?v=1794265860",
+  "./opencap.js": "./opencap.js?v=1794265860",
+  "./ultra.js": "./ultra.js?v=1794265860",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794265860"
 }}
 </script>
-<script src="viewer.js?v=1794265123" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794265123"></script>
+<script src="viewer.js?v=1794265860" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794265860"></script>
 </body>
 </html>

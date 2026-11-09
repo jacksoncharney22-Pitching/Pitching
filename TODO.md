@@ -107,6 +107,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 - 17:40 shipped: foot strike kept 0.10-0.183 s before arm cocked (lab range, now that arm cocked is accurate; `_fsGapMin/_fsGapMax`, off while the slow-motion reader runs, `_noGaps`, because seconds aren't real there): foot strike 23 -> 19 ms off; as the coach sees it pelvis at foot strike 12.3 -> 11.0°, trunk 10.8 -> 10.1°, layback 24.8 -> 21.8°, elbow 9.6 -> 9.8 (slightly worse). Tried `_fsGapMin` 0.117 (17 ms, trunk 10.5, pelvis 11.1, layback 19.0, marks foot strike 11 ms early on average): held at 0.1 as the measured lab minimum.
 
+- 17:40 shipped: foot strike met halfway by the typical lab gap to arm cocked (0.125 s; `_fsPull` 0.5, after the 0.10-0.183 s clamp): foot strike 19 -> 14 ms off; as the coach sees it layback at foot strike 21.8 -> 14.8°, elbow 9.8 -> 8.3°, pelvis 11.0 -> 10.2°, separation 7.5 -> 6.9°, trunk 10.1 -> 10.7 (a bit worse). Tempo leg lift to foot strike 24 -> 15 ms off, r 0.92 -> 0.97 (`tempo.mjs`); foot strike to release still r 0.43, stays hidden. Pull 0.7: 13 ms, about the same; 1.0 (gap only): 17 ms and pelvis/trunk 13°. Compare limits re-measured (tempo 0.05 -> 0.033 s). Staumont foot strike 1.30 -> 1.267 s, Maher, Hackimer within a frame or two.
+- 17:40 tried, no gain: release offset `_relOff` 0 / 0.03 (0.012 kept).
+- 17:40 finding: the elbow at arm cocked (13° as seen) and layback at foot strike are now limited by one-frame timing: the elbow straightens 30-40° per 1/60 s at max layback and layback changes ~20° per frame at foot strike, so a single-frame miss is the whole error. The worst foot-strike views are whole pitches (2919, 2935, 1826 early by 2 frames on every camera), so it's the pitch, not the view.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
