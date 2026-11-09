@@ -976,7 +976,10 @@ function analyseOnce(raw, opts = {}) {
     if (mx < 0.2 * hPx) { const r = Math.max(1, Math.round(0.05 * fs)); pan = pan.map((v, t) => { const k = sstep(t, fs_, fs_ + r); return [v[0] * k, v[1] * k] }) } }
   const dv = FEET.map(js => P.map((_, t) => dif(P, t, (b, a) => dot(sub(b[js[0]], a[js[0]]), camDir))));
   const dnum = gauss(P.map((_, t) => -(contact[0][t] * dv[0][t] + contact[1][t] * dv[1][t])), sg);
-  const vdepth = dnum.map((v, t) => den[t] > 0.05 ? v / den[t] : 0);
+  // before foot strike the only planted foot is the back one, and it's dragging toward the plate: depth travel read from
+  // it comes out short (a stride filmed from behind read 20 cm short). Boosted there only (x1.25, measured on 60 lab
+  // views), off after foot strike: the lead foot is a true anchor there, and boosting it too straightened the front knee.
+  const vdepth = dnum.map((v, t) => (den[t] > 0.05 ? v / den[t] : 0) * (1 + 0.25 * (1 - sstep(t, fs_, fs_ + Math.max(1, Math.round(0.05 * fs))))));
   const root = []; { let cx = 0, cy = 0, rd = 0;
     for (let t = 0; t < T; t++) {
       if (t > 0) { const sc = liftScale[t]; cx += (hipPx[t][0] - hipPx[t - 1][0] - pan[t][0]) * sc; cy -= (hipPx[t][1] - hipPx[t - 1][1] - pan[t][1]) * sc; rd += vdepth[t] }
@@ -1462,7 +1465,7 @@ export function deliveryCards(D) {
   if (!m) return [];
   const ftIn = v => { const n = Math.round(v / 0.0254), f = Math.floor(n / 12); return `${f}'${n - f * 12}"` };
   const out = [];
-  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Reads about 7% of height short of motion capture; use it to compare pitches filmed from the same spot." });
+  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Reads about 5% of height short of motion capture; use it to compare pitches filmed from the same spot." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
   const lowFps = D.fps < 50;   // the true rate: slow motion is plenty of frames even from a 30 fps file
   out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 6\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
