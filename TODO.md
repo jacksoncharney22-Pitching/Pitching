@@ -133,8 +133,6 @@ whole body. Every session works on this before anything else, in order:
 - Stride: stride length (% of height), stride direction (open/closed), front-foot angle at foot strike.
 - Arm slot at release (degrees) and release height/extension, checked against the benchmark truth.
 - Hip-shoulder separation: peak value and when it happens relative to foot strike.
-- Add the new measurements to the report and CSV export (wording reviewed by Jackson before it goes live if it
-  changes the look of the report).
 
 ## Thursday: testing and validation
 - Net cleaning: test on more net/fence clips (chain-link, batting cage, diagonal nets) and confirm crowd/fence
@@ -155,6 +153,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: CSV export ends with the delivery numbers (stride, arm slot, peak separation), checked against the screen.
 - 2026-11-09: Re-opening a saved pitch says so when its numbers have changed by 3° or more since last opened, with the biggest change (once only).
 - 2026-11-09: Video downloads checked (`tools/test/video_check.py`, also on GitHub): right length, and every picture of the overlay video is the exact source frame its skeleton was computed for (Maher, Staumont, Hackimer's slow motion: 0 wrong frames). No bug found.
 - 2026-11-09: Shoulder width from the pitcher's own delivery (trunk at release 11.4 -> 10.8° off); spine lean scaled back (side tilt 7.7 -> 7.2° at max layback); PDF rotation speeds; per-view check on GitHub; plainer failure messages.

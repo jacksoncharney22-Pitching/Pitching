@@ -721,7 +721,7 @@ $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
   $("csvBtn").onclick = async () => {
     if (!viewer || !lastResult) return;
     const name = (lastResult.data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
-    const filename = `${name}_angles.csv`, csv = viewer.csv();
+    const filename = `${name}_angles.csv`, csv = viewer.csv() + deliveryCsv(lastResult.data);
     if (dl) {
       try { await dl.save({ filename, data: csv }) }
       catch (e) { if (e?.code === "unavailable" || e?.code === "not_granted") $("csvBtn").hidden = true }
@@ -732,6 +732,12 @@ $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 })();
+
+// the delivery numbers (stride, arm slot...) follow the frame-by-frame table in the spreadsheet, after a blank line
+function deliveryCsv(data) {
+  const q = v => `"${String(v).replace(/"/g, '""')}"`, cards = deliveryCards(data);
+  return cards.length ? "\n\n" + q("Delivery numbers") + "\n" + cards.map(c => q(c.label) + "," + q(c.value)).join("\n") : "";
+}
 
 // ---------------------------------------------------------------- history (this browser only)
 const DB_NAME = "charney-pitching", STORE = "analyses";

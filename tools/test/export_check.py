@@ -119,6 +119,13 @@ for (g, lbl), vals in scr.items():
         sv = float(norm(v).replace("*", "").replace(",", "").replace("/s", ""))
         if abs(float(cv) - sv) > 0.51 + (0.5 if "speed" in hdr[col].lower() else 0): bad.append(f"CSV {hdr[col]} at {pn}: {cv} vs screen {v}")
         checked += 1
+# delivery numbers: every one on the screen is also in the spreadsheet, after the table
+blank = next((i for i, r in enumerate(rows) if not r), None)
+dcsv = {r[0]: r[1] for r in rows[blank + 1:] if len(r) == 2} if blank else {}
+if blank is None or not dcsv: bad.append("CSV has no delivery numbers")
+for k, v in dcsv.items():
+    if f"{k} {v}" not in s1: bad.append(f"CSV delivery number {k} = {v} isn't what the screen shows: {s1}")
+print("delivery numbers in CSV:", dcsv)
 print(f"checked {len(PDFROWS)} PDF rows and {checked} CSV values against the screen")
 for e in errs: print("PAGE ERROR:", e)
 for x in bad: print("MISMATCH:", x)
