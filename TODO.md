@@ -74,6 +74,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 14:40 finding: front-foot direction at foot strike reads 10.5° off where it can be checked, but the benchmark truth has no heel-to-toe line (all zero), so it can't be validated: don't show it until there's a truth for it. Stride direction open/closed also can't be read from one view (the app assumes the stride's 7.4° offset).
 - Next session: rebuild still blocked unless the data has arrived. Otherwise: (1) elbow FS/layback FS get worse with the true tilt: why (needs an idea, the arm lock already uses the tilted camera); (2) separation at release from behind (8-10° off, worst reading left there); (3) Tuesday-tomorrow: profile Max accuracy; check phones. Late-started clips (see Thursday list) still 11-16 views of 60 wrong.
 
+- **15:30 next session, first check: did the website deploy?** The pages run for 73d010d (hip gain) was still "in progress" after 10+ minutes at 15:30 (usually ~1 min); the two runs before it were cancelled because newer pushes replaced them, so the slow-motion reading on late-started clips (f43a3b1) and the hip gain are NOT confirmed live yet. Trunk-from-behind and the tempo card did deploy. If the latest pages run failed or hung, re-check and tell Jackson (Settings > Pages / Actions).
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
