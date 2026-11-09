@@ -24,6 +24,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - Shipped 9:40: arm 2D smoothing lighter (`_armSig` 0.6 -> 0.3): elbow at foot strike 8.6 -> 7.8° off, wobble 6.4 -> 6.7 (truth 5.8). Sweeps with no gain, don't repeat: `_fcCore` 16/20 (separation worse), `_shSig` 0.5 (separation worse), `_hipSig` 1, `_fcLimb` 16, `_lPre` 0.5/0.9.
 - Finding: layback at foot strike is -43° on Maher (max) and 110° on Staumont; the 12 lab pitchers are -11 to 64°. The benchmark says 5.6° off, so these real clips behave differently from the lab views: needs the videos to judge (Maher's video is on the wait list).
 - PDF/CSV check now runs on GitHub Actions on every push (`exports` job).
+- Shipped 10:40: foot strike timing 34 -> 30 ms (and the whole-body travel down the mound: on side-on fixed-camera clips, stride was 17 -> 3 cm short): back foot dragging forward was being read as camera pan (pipeline.js, pan threshold 0.06 -> 0.2 body heights). Behind/behind_3b still 15-20 cm short (depth travel, separate cause: lifter depth of hips over the planted back foot).
+- Shipped 10:40: Delivery numbers strip above the viewer, in PDF and in Compare: stride % of height, arm slot, hand height (only with height entered), peak hip-shoulder separation. Checked vs truth with `tools/test/measures.mjs` (stride 6% of height off, r 0.77; slot 7.4° off, r 0.68; hand height 7.5 cm off, r 0.68; peak separation 6.6° off). Extension and time of peak separation not shown (r 0.23 / 0.41).
+- Tried 10:40, no gain: shoulder width at release (`_shRel`, `_shFull` lower): trunk at release worse (11.4 -> 11.8-12.9). Trunk bias at release is -15 to -18° from behind (pelvis -11), a depth thing, not width.
 - Next session: follow-on (c) Fast flip after release, (d) trunk rotation, (e) throwing arm at release; or the Wednesday kinematic sequence (peak pelvis, trunk, arm speeds and order, checked vs truth).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)

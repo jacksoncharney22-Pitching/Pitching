@@ -1,3 +1,4 @@
+import { deliveryCards } from "./pipeline.js";
 // Two saved pitches side by side: the same pitcher on different days, or two pitchers. Numbers only (no video), rebuilt
 // from the saved tracking with the current skeleton maths, so both pitches are measured the same way.
 const PHASES = ["Peak leg lift", "Foot strike", "Arm cocked", "Release"];
@@ -27,6 +28,13 @@ export function renderCompare(el, A, B) {
   const a = A.data, b = B.data, nameA = esc(A.label), nameB = esc(B.label);
   let html = `<div class="cmp-key"><span><i class="cmp-a">A</i> ${nameA}</span><span><i class="cmp-b">B</i> ${nameB}</span></div>`;
   html += `<div class="card cmp-card"><h3>Timing</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${timingRows(a, b)}</tbody></table></div>`;
+  { const da = deliveryCards(a), db = deliveryCards(b), keys = [...new Set([...da, ...db].map(c => c.k))];
+    if (keys.length) {
+      let rows = "";
+      for (const k of keys) { const x = da.find(c => c.k === k), y = db.find(c => c.k === k), d = x && y ? Math.round((x.n - y.n)) : null;
+        rows += `<tr><th scope="row">${(x || y).label}</th><td>${x ? x.value : "–"}</td><td>${y ? y.value : "–"}</td><td>${d == null ? "–" : (d > 0 ? "+" : "") + d + (x || y).unit}</td></tr>` }
+      html += `<div class="card cmp-card"><h3>Delivery numbers</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    } }
   for (const ph of PHASES) {
     const fa = frameOf(a, ph), fb = frameOf(b, ph);
     let rows = "";

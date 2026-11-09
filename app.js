@@ -1,6 +1,6 @@
 // Charney Pitching — app shell: upload, trim, track, analyse, view, history.
 import { FilesetResolver, PoseLandmarker } from "./lib/vision_bundle.mjs";
-import { analyse as analyseRaw, detectSlowFactor } from "./pipeline.js";
+import { analyse as analyseRaw, deliveryCards, detectSlowFactor } from "./pipeline.js";
 // the lab throwing-arm library (404 motion-capture fastballs) the pipeline matches the throwing arm against
 let ARMLIB = null;
 const armLibLoad = fetch("armlib.json?v=2").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
@@ -642,6 +642,13 @@ async function trackMax(src) {
 
 
 // ---------------------------------------------------------------- results
+// The delivery numbers above the viewer: stride, arm slot, hand height at release, peak separation
+function renderDeliveryStrip(data) {
+  const el = $("delStrip"); if (!el) return;
+  const items = deliveryCards(data);
+  el.hidden = !items.length;
+  el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b></div>`).join("");
+}
 function openResults(data, url, meta = {}) {
   if (viewer) { viewer.stop(); viewer = null }
   lastResult = { data, url, meta }; window.__lastData = data;
@@ -649,6 +656,7 @@ function openResults(data, url, meta = {}) {
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
   $("resMeta").textContent = `${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  renderDeliveryStrip(data);
   show("results");
   const onPhases = meta.raw ? (phases, frame) => {
     const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data); d2.userPhases = phases;   // kept for re-opening

@@ -1,3 +1,4 @@
+import { deliveryCards } from "./pipeline.js";
 // Feole Pitching: downloadable PDF. The pitcher at the four key moments (video frame with the skeleton drawn on it,
 // plus a clean side-view skeleton) and the key angles at each phase. Built in the browser with jsPDF (bundled in
 // lib/), so nothing is uploaded anywhere.
@@ -131,6 +132,8 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
 
   // ---- angles at each phase
   need(250);                                  // heading and table stay together
+  { const dc = deliveryCards(data);
+    if (dc.length) { text("Delivery numbers", 13, { bold: true, gap: 4 }); text(dc.map(c => `${c.label}: ${c.value}`).join("   |   "), 10, { gap: 10 }) } }
   text("Key angles at each phase", 13, { bold: true, gap: 6 });
   const M_ = data.metrics, rows = [
     ["Throwing elbow flexion", "throwElbow"], ["Throwing shoulder abduction", "throwAbd"], ["Layback", "throwER"], ["Glove arm abduction", "gloveAbd"],

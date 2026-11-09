@@ -139,6 +139,12 @@ input[type=text], select { font: inherit; color: var(--fg); background: var(--pa
 @keyframes spin { to { transform: rotate(360deg) } }
 @media (prefers-reduced-motion: reduce) { .steps li[data-state="doing"] i { animation: none } }
 
+/* delivery numbers above the viewer */
+.delstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 2px 0 14px }
+.delstrip[hidden] { display: none }
+.dcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; display: grid; gap: 2px; min-width: 0 }
+.dcard span { font-size: 12px; color: var(--muted) }
+.dcard b { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums }
 /* results header */
 .reshead { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between }
 .reshead h1 { font-size: clamp(30px, 4.4vw, 46px) }
@@ -565,6 +571,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
+    <div id="delStrip" class="delstrip" hidden></div>
     <div id="viewerMount" style="display:grid;gap:20px"></div>
   </section>
 </div>
@@ -637,22 +644,22 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794236639",
-  "./fuse.js": "./fuse.js?v=1794236639",
-  "./multiview.js": "./multiview.js?v=1794236639",
-  "./rtm.js": "./rtm.js?v=1794236639",
-  "./pdf.js": "./pdf.js?v=1794236639",
-  "./compare.js": "./compare.js?v=1794236639",
-  "./editor.js": "./editor.js?v=1794236639",
-  "./lifter.js": "./lifter.js?v=1794236639",
-  "./armzoom.js": "./armzoom.js?v=1794236639",
-  "./net.js": "./net.js?v=1794236639",
-  "./opencap.js": "./opencap.js?v=1794236639",
-  "./ultra.js": "./ultra.js?v=1794236639",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794236639"
+  "./pipeline.js": "./pipeline.js?v=1794239583",
+  "./fuse.js": "./fuse.js?v=1794239583",
+  "./multiview.js": "./multiview.js?v=1794239583",
+  "./rtm.js": "./rtm.js?v=1794239583",
+  "./pdf.js": "./pdf.js?v=1794239583",
+  "./compare.js": "./compare.js?v=1794239583",
+  "./editor.js": "./editor.js?v=1794239583",
+  "./lifter.js": "./lifter.js?v=1794239583",
+  "./armzoom.js": "./armzoom.js?v=1794239583",
+  "./net.js": "./net.js?v=1794239583",
+  "./opencap.js": "./opencap.js?v=1794239583",
+  "./ultra.js": "./ultra.js?v=1794239583",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794239583"
 }}
 </script>
-<script src="viewer.js?v=1794236639" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794236639"></script>
+<script src="viewer.js?v=1794239583" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794239583"></script>
 </body>
 </html>

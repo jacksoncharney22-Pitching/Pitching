@@ -852,14 +852,14 @@ function analyseOnce(raw, opts = {}) {
   // shoulders 29.2%, between the shoulders 18.0%, between the hips 15.2%; spread 3-7%). The tracker's own lengths are
   // biased (its upper arm comes out ~15% short, its shoulders too wide), and the whole body comes out too small.
   // With the pitcher's height entered, the skeleton gets its true size; either way the proportions are pulled to the lab's.
-  let sizeK = 1, heightM = null;
+  let sizeK = 1, heightM = null, bodyH = null;
   if (opts.proportions !== false) {
     const RATIO = { "-2,-1": 0.292, "-1,11": 0.0898, "-1,12": 0.0898, "11,13": 0.1818, "12,14": 0.1818, "13,15": 0.1429, "14,16": 0.1429,
                     "-2,23": 0.076, "-2,24": 0.076, "23,25": 0.2471, "24,26": 0.2471, "25,27": 0.2484, "26,28": 0.2484 };
     const W8 = k => k.startsWith("-2,2") ? 0.5 : 0.7;
     const est = median(["13,15", "23,25", "25,27", "-2,-1"].map(k => BL[k] / RATIO[k]));
     heightM = raw.heightIn > 40 && raw.heightIn < 96 ? raw.heightIn * 0.0254 : (opts.heightIn > 40 ? opts.heightIn * 0.0254 : null);
-    const Hm = heightM || est; sizeK = Hm / est;
+    const Hm = heightM || est; sizeK = Hm / est; bodyH = Hm;
     for (const k in BL) BL[k] = k in RATIO ? W8(k) * RATIO[k] * Hm + (1 - W8(k)) * sizeK * BL[k] : sizeK * BL[k];
     if (sizeK !== 1) { P = P.map(F => F.map(p => mul(p, sizeK))); for (let t = 0; t < liftScale.length; t++) liftScale[t] *= sizeK }
   }
@@ -968,7 +968,11 @@ function analyseOnce(raw, opts = {}) {
   const sg = 0.2 * fs, den = gauss(wsum, sg);
   const pnum = gauss(P.map((_, t) => [contact[0][t] * fv[0][t][0] + contact[1][t] * fv[1][t][0], contact[0][t] * fv[0][t][1] + contact[1][t] * fv[1][t][1]]), sg);
   let pan = pnum.map((v, t) => den[t] > 0.05 ? [v[0] / den[t], v[1] / den[t]] : [0, 0]);
-  { let ax = 0, ay = 0, mx = 0; pan.forEach(v => { ax += v[0]; ay += v[1]; mx = Math.max(mx, Math.hypot(ax, ay)) }); if (mx < 0.06 * hPx) pan = pan.map(() => [0, 0]) }
+  { let ax = 0, ay = 0, mx = 0; pan.forEach(v => { ax += v[0]; ay += v[1]; mx = Math.max(mx, Math.hypot(ax, ay)) }); // The pan estimate comes from the planted feet, and a back foot that drags forward through the stride looks just like
+    // a small pan. Below 0.2 body heights of total drift it's taken as foot movement, not a camera move (it was 0.06;
+    // 60 benchmark views, all fixed cameras: stride from side-on 17 -> 3 cm short, foot strike timing 34 -> 30 ms;
+    // a real follow-the-pitcher pan moves the picture by a body height or so, far above this).
+    if (mx < 0.2 * hPx) pan = pan.map(() => [0, 0]) }
   const dv = FEET.map(js => P.map((_, t) => dif(P, t, (b, a) => dot(sub(b[js[0]], a[js[0]]), camDir))));
   const dnum = gauss(P.map((_, t) => -(contact[0][t] * dv[0][t] + contact[1][t] * dv[1][t])), sg);
   const vdepth = dnum.map((v, t) => den[t] > 0.05 ? v / den[t] : 0);
@@ -1422,6 +1426,42 @@ function analyseOnce(raw, opts = {}) {
     pose: pose.map(F => F.map(p => p.map(r4))),
     img: img.map(F => F.map(p => [r4(p[0]), r4(p[1]), Math.round((p[2] ?? 1) * 100) / 100])),
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: legLift }, { name: "Foot strike", frame: clamp(contactF, legLift + 1, rel - 1) }, { name: "Arm cocked", frame: cock }, { name: "Release", frame: rel }, { name: "Finish", frame: T - 1 }],
-    fsReach: fs_, metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, heightUsed: heightM ? +heightM.toFixed(3) : null, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
+    fsReach: fs_, bodyH: r4(bodyH), metrics, match, swaps, depopped, armBridged: bridged, armModelled, armFlips, learned, heightUsed: heightM ? +heightM.toFixed(3) : null, mode: faithful ? "faithful" : "classic", ...(opts.debug ? { _contact: contact } : {}),
   };
+}
+
+// Delivery measurements a coach reads off the skeleton. All from the finished 3D pose in the body's own frame:
+// x = toward home, y = up, z = across. Lengths need the pitcher's height entered to be in real units.
+//   strideLen   stride from the rubber to the front ankle at foot strike, as a share of height
+//   armSlot     the throwing arm's angle above horizontal, shoulder to wrist as seen from home plate, at release
+//   relHeight   wrist height above the ground at release (m), extension: how far in front of the rubber it is (m)
+//   peakSep     largest hip-shoulder separation from just before foot strike to release, and its time after foot strike
+export function deliveryMeasures(D, heightM) {
+  const ph = n => (D.phases.find(p => p.name === n) || {}).frame;
+  const fs = ph("Foot strike"), br = ph("Release"), P = D.pose;
+  if (fs == null || br == null || !P[fs] || !P[br]) return null;
+  const R = D.throwHand !== "L", sh = R ? 12 : 11, wr = R ? 16 : 15, lead = R ? 27 : 28, back = R ? 28 : 27, fps = D.fps;
+  const stance = (() => { const a = P.slice(0, Math.max(1, ph("Peak leg lift") ?? 1)).map(F => F[back]); const med = i => a.map(p => p[i]).sort((x, y) => x - y)[a.length >> 1]; return [med(0), med(1), med(2)] })();
+  const dx = P[fs][lead][0] - stance[0], dz = P[fs][lead][2] - stance[2], strideM = Math.hypot(dx, dz);
+  const ground = Math.min(P[fs][lead][1], stance[1]);
+  const s = P[br][sh], w = P[br][wr], slot = Math.atan2(w[1] - s[1], Math.abs(w[2] - s[2])) * 180 / Math.PI;
+  let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
+  return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
+}
+
+// The delivery numbers as shown to a coach (screen, PDF, compare). Only the ones that held up against motion capture on
+// the 60 benchmark views; how far in front of the rubber the hand gets (extension) didn't, so it isn't shown.
+export function deliveryCards(D) {
+  const h = D.bodyH || (D.heightUsed ?? null); let m; try { m = deliveryMeasures(D, h) } catch (e) { return [] }
+  if (!m) return [];
+  const ftIn = v => { const n = Math.round(v / 0.0254), f = Math.floor(n / 12); return `${f}'${n - f * 12}"` };
+  const out = [];
+  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 6% of height (a bit short from behind the pitcher)." });
+  // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
+  const lowFps = (D.videoFps || D.fps) < 50;
+  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 7\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
+  // real units only with the pitcher's height entered: without it the size of the body is an estimate
+  if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
+  if (m.peakSep != null) out.push({ k: "sep", label: "Peak hip-shoulder separation", value: Math.round(m.peakSep) + "\u00B0", n: m.peakSep, unit: "\u00B0", def: "Largest gap between hips and shoulders from just before foot strike to release. Typical error about 7\u00B0." });
+  return out;
 }
