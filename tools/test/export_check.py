@@ -72,6 +72,14 @@ with sync_playwright() as p:
     t3 = pg.evaluate("""() => [...document.querySelectorAll('#ptable tr')].map(tr => [...tr.children].map(td => td.firstChild ? (td.firstChild.textContent || '').trim() : ''))""")
     t4 = open_saved(3000)
     fs_back = pg.evaluate("() => window.__lastData.phases.find(p => p.name === 'Foot strike').frame")
+    # a saved number that differs from the rebuilt one by 3° or more gets the note, once; no difference, no note
+    note = lambda: pg.evaluate("() => { const n = document.getElementById('numsChanged'); return n.hidden ? null : n.innerText }")
+    note_none = note()
+    pg.evaluate("""() => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onsuccess = () => { const db = r.result;
+      db.transaction('analyses').objectStore('analyses').getAll().onsuccess = e => { const it = e.target.result[0], f = it.data.phases.find(p => p.name === 'Release').frame;
+        it.data.metrics.trunkRot[f] -= 7; const q = db.transaction('analyses', 'readwrite').objectStore('analyses').put(it); q.onsuccess = res; q.onerror = () => rej(q.error) } } })""")
+    open_saved(1000); note_on = note()
+    open_saved(1000); note_off = note()
     b.close()
 
 # screen table: {(group, row label): [values at LL, FS, AC, R]}
@@ -84,6 +92,10 @@ if t0 != t1: bad.append("opening a saved analysis straight away on a slow connec
 if t1 != t2: bad.append("re-opening the saved analysis changed the angle table")
 if not s1: bad.append("Delivery numbers missing on the results page")
 if len({s0, s1, s2}) != 1: bad.append(f"Delivery numbers changed on re-opening: {s1} / {s0} / {s2}")
+print("changed-numbers note:", note_on)
+if note_none: bad.append(f"changed-numbers note shown with nothing changed: {note_none}")
+if not note_on or "Trunk rotation at release" not in note_on: bad.append(f"changed-numbers note missing or wrong: {note_on}")
+if note_off: bad.append(f"changed-numbers note shown a second time: {note_off}")
 fs_auto = dict(phases)["Foot strike"]
 print(f"foot strike: found at frame {fs_auto}, moved by hand to {fs_set}, after re-opening {fs_back}")
 if fs_set != fs_auto + 3: bad.append(f"moving foot strike by hand didn't take (frame {fs_auto} -> {fs_set}, wanted {fs_auto + 3})")
