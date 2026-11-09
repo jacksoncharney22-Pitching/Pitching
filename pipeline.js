@@ -484,9 +484,20 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
   // by tracker wobble), 18% under right at foot strike, back to 6% by mid-way to release. 60 benchmark views: trunk
   // turn at foot strike 11.5 -> 10.6° off, hip-shoulder separation at foot strike 11.5 -> 9.0°, from behind toward
   // third base trunk turn 17.9 -> 13.4°.
+  // Late in the delivery the chest swings through square to the camera, so the widest the shoulders look from foot strike to
+  // just after release is this pitcher's true shoulder width as the tracker sees it (0.86 to 1.04 of the fixed width: it varies
+  // pitcher by pitcher, nothing to do with where the camera stands). Read against that instead of a fixed 94%, a shoulder line
+  // that really is flat to the camera isn't over-turned. 60 benchmark views vs motion capture: trunk turn at release 11.4 -> 10.8°
+  // off, at max layback 7.9 -> 7.5°, foot strike 8.3 -> 8.1°; separation 6.8/4.9/6.4 -> 6.6/4.8/6.1°.
+  let autoFull = null;
+  if (opts._shAuto !== false && opts._fsF != null) {
+    const f0 = Math.max(0, Math.round(opts._fsF)), r0 = Math.max(f0 + 1, opts._relF ?? f0 + 0.1 * fs), end = Math.min(T - 1, Math.round(r0 + 0.1 * fs)), w = [];
+    for (let t = f0; t <= end; t++) w.push(norm(sub(scr(t, -1, 12), scr(t, -1, 11))) / 2);
+    if (w.length) autoFull = Math.max(...gauss(w.map(v => [v, 0, 0]), Math.max(0.7, 0.5 * K)).map(v => v[0])) / BLk(-1, 12);
+  }
   const shW = t => {
     if (opts.shoulderPinch === false || opts._fsF == null) return 1;
-    const full = opts._shFull ?? 0.94, pinch = opts._shPinch ?? 0.82, out = opts._shOut ?? 1;
+    const full = autoFull != null ? clamp(autoFull, 0.86, 1.04) : opts._shFull ?? 0.94, pinch = opts._shPinch ?? 0.82, out = opts._shOut ?? 1;
     const f0 = opts._fsF, r0 = Math.max(f0 + 1, opts._relF ?? f0 + 0.1 * fs), m0 = (f0 + r0) / 2, s = x => x * fs;
     const knots = [[f0 - s(opts._shPre ?? 0.4), out], [f0, pinch], [m0, full], [r0 + s(0.08), full], [r0 + s(0.15), out]];
     if (t <= knots[0][0]) return out;
