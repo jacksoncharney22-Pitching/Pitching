@@ -73,6 +73,7 @@ for (const g of groups) {
   for (const k of Object.keys(ANGLES)) for (const e of Object.keys(EVENTS)) { const m = mean(R.map(r => r.ang[k]?.[e]).filter(v => v != null).map(Math.abs)); if (m != null) (s.ang[k] ??= {})[e] = m }
   for (const e of Object.keys(EVENTS)) s.ev[e] = mean(R.map(r => r.ev[e]).filter(v => v != null).map(Math.abs));
   s.angAll = mean(Object.values(s.ang).flatMap(o => Object.values(o)));
+  s.seenAll = mean(R.flatMap(r => Object.values(r.seen || {})));   // average of the coach's-view table below
   summary[g] = s;
 }
 
@@ -103,7 +104,7 @@ const cmp = (label, now, was, tol, unit) => { if (now == null || was == null) re
 console.log("\nchange since baseline (negative = better):");
 for (const g of groups) {
   const s = summary[g], b = base[g]; if (!b) continue;
-  const parts = [`joints ${cmp(g + " joints", s.joint, b.joint, 0.3, "cm") || "0"} cm`, `arm ${cmp(g + " arm", s.arm, b.arm, 0.3, "cm") || "0"} cm`, `angles ${cmp(g + " angles", s.angAll, b.angAll, 1, "°") || "0"}°`,
+  const parts = [`joints ${cmp(g + " joints", s.joint, b.joint, 0.3, "cm") || "0"} cm`, `arm ${cmp(g + " arm", s.arm, b.arm, 0.3, "cm") || "0"} cm`, `angles ${cmp(g + " angles", s.angAll, b.angAll, 1, "°") || "0"}°`, `as seen ${cmp(g + " as seen", s.seenAll, b.seenAll, 1, "°") || "0"}°`,
     ...Object.keys(EVENTS).map(e => `${e} ${cmp(g + " " + e, s.ev[e], b.ev[e], 5, "ms") || "0"} ms`)];
   console.log(`  ${g.padEnd(12)} ${parts.join(", ")}`);
 }

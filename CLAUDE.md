@@ -71,7 +71,7 @@ Data flow: video → tracker per frame → `raw` (`{fps, videoFps, width, height
 
 | Clip | What makes it hard | Known good |
 | --- | --- | --- |
-| Cooper Maher (side, through a net) | Net in front; camera zooms after release | Net detected (k≈19); real speed at 60 fps; leg lift 0.95 s, foot strike ~1.56 s, arm cocked ~1.68 s, release ~1.77 s; fit 2.4 cm (max) / 2.9 cm (fast) |
+| Cooper Maher (side, through a net) | Net in front; camera zooms after release | Net detected (k≈19); real speed at 60 fps; leg lift 0.95 s, foot strike ~1.56 s, arm cocked ~1.68-1.72 s (probably later: lab max layback is 17-50 ms before release; needs the video), release ~1.77 s; fit 2.4 cm (max) / 2.9 cm (fast) |
 | Tom Hackimer | Speed-ramped slow motion | Read as 16× slow; no whole-body left/right flips |
 | Jordan Staumont | Camera behind the pitcher | Shoulders not mirrored; real speed |
 | Sale, Ohtani, Flaherty, McKenzie, Joyce | Crowds/fences behind | Net check must stay **off** |

@@ -98,6 +98,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 16:40 FINDING (important): the scorecard reads every angle at the TRUE event frame, but a coach sees the angle at the frame the APP marked; a miss of 1-2 frames costs many degrees where the arm is moving fast. `bench.mjs` now prints that table too ("as the coach sees it"). Timing fixes today moved it: layback at arm cocked 33.9 -> 11.1°, elbow at arm cocked 29 -> 13.6°, trunk at arm cocked 27.6 -> 15.2°, separation at arm cocked 18.9 -> 11°, pelvis at foot strike 16.9 -> 12.8°. So event timing is now the most valuable accuracy lever: judge event changes with that table, not the truth-frame one. "What to trust" corrected to 6-13° (it said 4-8°).
 - 16:40: after arm cocked moves later, a still-sliding front foot gets another look: foot strike 24 -> 23 ms, 3037 front_3b -83 -> -33 ms.
 
+- 16:40 tried, no gain (coach-seen error, don't repeat): `_slideV` 0.2/0.4, `_slideV2` 0.4/0.7, `_slideMax` 0.14; `_slideCock` 0.06 is -0.1° (0.08 kept: arm cocked to foot strike is 0.09+ s on 90% of lab pitches).
+- Next session (after 16:40): rebuild still blocked unless the data has arrived. (1) Arm cocked: only the wider nudge is left (5 ms vs 11; trunk at arm cocked still 15°, as seen) and it needs Maher's video: on the wait list. (2) Foot strike worst views: 3036 behind/behind_3b -50/-67, 3037 side_open -67 (foot reads stopped early). (3) Judge event changes with the "as the coach sees it" table in bench.mjs; `as seen` is now guarded in the baseline. Tomorrow's theme: speed and reliability (profile Max; phones).
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
@@ -194,6 +197,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: Foot strike 34 -> 23 ms off motion capture; arm cocked 27 -> 11 ms; as the coach sees it, layback at arm cocked 33.9 -> 11.1° off. Pitcher box and different-spot note.
 - 2026-11-09: Recent keeps 30 pitches (newest 6 with video), renaming, "Track a reading over time", Compare bolds by each reading's own measured limit, warnings for different camera spots and accuracy settings; "What to trust" gives measured numbers.
 - 2026-11-09: Late-started clips read their slow motion better using the hand's speed (1/2 s late: 20 -> 11 of 60 views wrong).
 - 2026-11-09: Tempo card, leg lift to foot strike, on the results page, PDF and spreadsheet.
