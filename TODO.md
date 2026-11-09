@@ -111,6 +111,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 17:40 tried, no gain: release offset `_relOff` 0 / 0.03 (0.012 kept).
 - 17:40 finding: the elbow at arm cocked (13° as seen) and layback at foot strike are now limited by one-frame timing: the elbow straightens 30-40° per 1/60 s at max layback and layback changes ~20° per frame at foot strike, so a single-frame miss is the whole error. The worst foot-strike views are whole pitches (2919, 2935, 1826 early by 2 frames on every camera), so it's the pitch, not the view.
 
+- 17:40 tried, dropped: pulling arm cocked toward 33 ms before release (`_merPull` 0.5/1): elbow at arm cocked 13.1 -> 14.8/15.4° as seen.
+- **Next session (after 17:40):** rebuild still blocked unless the data has arrived. Event timing now: foot strike 14 ms, arm cocked 6, release 6. What's left as seen is one-frame noise (see finding), so more timing tuning is near its floor on 60 fps lab views. Options: (1) separation/trunk at foot strike as seen (10-11°) is the biggest remaining body reading; (2) late-started clips (Thursday list): the new foot-strike-to-arm-cocked gap (0.10-0.18 s) could be a third clue for the slow-motion reader; foot strike to release alone was too short; (3) Tuesday theme starts at the 8:15 plan: profile Max, phones. Hackimer's new events need his video to confirm.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
@@ -207,6 +210,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09 (17:40): Event timing from the lab's own gaps: arm cocked 11 -> 6 ms off motion capture, foot strike 23 -> 14 ms; as the coach sees it layback at foot strike 25 -> 15°, at arm cocked 11 -> 7°, trunk at arm cocked 15 -> 10°; tempo 24 -> 15 ms.
 - 2026-11-09: Foot strike 34 -> 23 ms off motion capture; arm cocked 27 -> 11 ms; as the coach sees it, layback at arm cocked 33.9 -> 11.1° off. Pitcher box and different-spot note.
 - 2026-11-09: Recent keeps 30 pitches (newest 6 with video), renaming, "Track a reading over time", Compare bolds by each reading's own measured limit, warnings for different camera spots and accuracy settings; "What to trust" gives measured numbers.
 - 2026-11-09: Late-started clips read their slow motion better using the hand's speed (1/2 s late: 20 -> 11 of 60 views wrong).
