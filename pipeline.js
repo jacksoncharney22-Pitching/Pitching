@@ -740,8 +740,11 @@ function analyseOnce(raw, opts = {}) {
   // pitchers don't stride straight at the plate: in 404 lab fastballs the stride points 7.4° off the line to home on
   // average (spread 6.6°), so home is taken as the stride direction turned back by that much
   const sd = sub(P[fmax][27], P[fmax][28]), ang = Math.atan2(sd[2], sd[0]) - (opts.strideOff ?? 7.4) * Math.PI / 180, c = Math.cos(ang), s = Math.sin(ang);
-  const rot = p => [c * p[0] + s * p[2], p[1], -s * p[0] + c * p[2]];
-  const unrot = p => [c * p[0] - s * p[2], p[1], s * p[0] + c * p[2]];
+  const rot0 = p => [c * p[0] + s * p[2], p[1], -s * p[0] + c * p[2]], unrot0 = p => [c * p[0] - s * p[2], p[1], s * p[0] + c * p[2]];
+  // camera looking down or up at the pitcher (degrees; off by default): the skeleton is otherwise built as if the camera were level
+  const th0 = (opts._camTilt ?? 0) * Math.PI / 180, ax0 = unit((p => [p[2], 0, -p[0]])(rot0([0, 0, 1])));
+  const tipBy = (p, th) => { if (!th) return p; const cs = Math.cos(th), sn = Math.sin(th), ax = ax0, x = [ax[1] * p[2] - ax[2] * p[1], ax[2] * p[0] - ax[0] * p[2], ax[0] * p[1] - ax[1] * p[0]], d = dot(ax, p); return p.map((v, i) => v * cs + x[i] * sn + ax[i] * d * (1 - cs)) };
+  const rot = p => tipBy(rot0(p), th0), unrot = p => unrot0(tipBy(p, -th0));
   P = P.map(F => F.map(rot));
   const camDir = rot([0, 0, 1]);
 
