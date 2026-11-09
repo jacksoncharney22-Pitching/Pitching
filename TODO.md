@@ -88,6 +88,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 15:40 shipped: Compare bolds and Over time notes for the delivery numbers too: stride 6% of height, arm slot 9°, peak separation 13°, leg lift to foot strike 0.08 s (same `comparecheck` method).
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
+- 16:21: everything from the 15:40 session confirmed live (tests and website deploy passed on b2724c5). Note: the bold limits apply to different pitchers from the same camera; same pitcher on different days is untested (needs repeat clips of one pitcher).
 - Next session (after 15:40): rebuild still blocked unless the data has arrived. (1) The camera-spot check works well; try using it elsewhere (e.g. tell a coach at upload that a new clip is from a different spot than the pitcher's earlier ones). (2) Over time filters by exact pitch name (rename in Recent); a real pitcher field at upload would be better. (3) Rotation readings: scatter, not offset, is what's left (see 15:40 findings), so more gain tuning is a waste. Tomorrow's theme: speed and reliability (profile Max accuracy; phones).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
