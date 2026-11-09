@@ -28,7 +28,7 @@ export function renderCompare(el, A, B) {
   const a = A.data, b = B.data, nameA = esc(A.label), nameB = esc(B.label);
   let html = `<div class="cmp-key"><span><i class="cmp-a">A</i> ${nameA}</span><span><i class="cmp-b">B</i> ${nameB}</span></div>`;
   html += `<div class="card cmp-card"><h3>Timing</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${timingRows(a, b)}</tbody></table></div>`;
-  { const da = deliveryCards(a), db = deliveryCards(b), keys = [...new Set([...da, ...db].map(c => c.k))];
+  { const da = deliveryCards(a), db = deliveryCards(b), keys = [...new Set([...da, ...db].map(c => c.k))].filter(k => k !== "tempo");   // tempo is in the Timing card above
     if (keys.length) {
       let rows = "";
       for (const k of keys) { const x = da.find(c => c.k === k), y = db.find(c => c.k === k), d = x && y ? Math.round((x.n - y.n)) : null;
