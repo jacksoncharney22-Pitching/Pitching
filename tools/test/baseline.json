@@ -6,9 +6,9 @@
   "events": {
    "Start": 0,
    "Peak leg lift": 0,
-   "Foot strike": 0.392,
-   "Arm cocked": 0.494,
-   "Release": 0.602,
+   "Foot strike": 0.467,
+   "Arm cocked": 0.585,
+   "Release": 0.588,
    "Finish": 0.758
   }
  },

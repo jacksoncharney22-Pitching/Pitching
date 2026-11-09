@@ -103,6 +103,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 - 16:40 finding: the remaining early foot strikes (3036 from behind -50/-67, 1826 side_back) are the anchored foot's speed collapsing 3 frames before the lab's contact: the skeleton's foot is pinned before the real foot is. The 2D ankle trick already failed (14:40). Leave unless a new clue. CSV now includes the pitcher.
 
+- 17:40 shipped: arm cocked can't be more than 50 ms before release (true on all 12 lab pitches, 17-50 ms): arm cocked 11 -> 6 ms off; as the coach sees it layback at arm cocked 11.1 -> 7.1°, trunk 15.2 -> 10.2°, separation 11.0 -> 8.0°, pelvis 7.7 -> 5.9°. Maher/Staumont unchanged. Hackimer (speed-ramped) arm cocked 0.494 -> 0.585 s and, via the second foot-strike look, foot strike 0.392 -> 0.467 s; baseline re-recorded: new foot strike is where the foot actually stops (1.5 -> 0.3 m/s), front knee at foot strike 6° -> 70° bent, separation -33 -> -8°. No video to eyeball it; check Hackimer when a clip arrives (layback at foot strike there now 168°).
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
