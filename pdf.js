@@ -139,7 +139,11 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     ["Throwing elbow flexion", "throwElbow"], ["Throwing shoulder abduction", "throwAbd"], ["Layback", "throwER"], ["Glove arm abduction", "gloveAbd"],
     ["Lead knee flexion", "leadKnee"], ["Lead hip flexion", "leadHip"], ["Back knee flexion", "backKnee"],
     ["Pelvis rotation", "pelvisRot"], ["Trunk rotation", "trunkRot"], ["Hip-shoulder separation", "separation"],
-    ["Trunk forward tilt", "trunkFwd"], ["Trunk side tilt", "trunkLat"], ["Pelvis tilt", "pelvisTilt"]];
+    ["Trunk forward tilt", "trunkFwd"], ["Trunk side tilt", "trunkLat"], ["Pelvis tilt", "pelvisTilt"],
+    ["Pelvis rotation speed", "pelvisSpd"], ["Trunk rotation speed", "trunkSpd"]];
+  // rotation speeds worked out the same way as the screen's angle table (viewer.js speedOf), so the two match
+  const T_ = M_.pelvisRot.length, fps_ = data.fps, speedOf = arr => { const v = arr.map((_, i) => { const a = Math.max(0, i - 1), b = Math.min(T_ - 1, i + 1); return (arr[b] - arr[a]) / ((b - a) / fps_) }); return v.map((_, i) => (v[Math.max(0, i - 1)] + 2 * v[i] + v[Math.min(T_ - 1, i + 1)]) / 4) };
+  const SPD = { pelvisSpd: speedOf(M_.pelvisRot), trunkSpd: speedOf(M_.trunkRot) };
   const ARM = new Set(["throwElbow", "throwAbd", "throwER"]), relF = (data.phases.find(p => p.name === "Release") || {}).frame ?? -9;
   const colW = [CW * 0.36, ...PH.map(() => CW * 0.64 / PH.length)];
   need(20 + rows.length * 16);
@@ -153,12 +157,12 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
     let x = M + colW[0];
     // rounded exactly like the angle table on screen (Math.round alone rounds -21.5 to -21, the screen shows -22)
     // throwing-arm values within a frame of release get a * like the screen: the arm is motion-blurred there
-    PH.forEach((p, i) => { const v = M_[k] ? M_[k][p.frame] : null; const bl = v != null && ARM.has(k) && Math.abs(p.frame - relF) <= 1; doc.text(v == null ? "-" : (Math.round(v * 10) / 10).toFixed(0).replace(/^-0$/, "0") + "\xB0" + (bl ? "*" : ""), x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
+    PH.forEach((p, i) => { const v = SPD[k] ? SPD[k][p.frame] : M_[k] ? M_[k][p.frame] : null; const bl = v != null && ARM.has(k) && Math.abs(p.frame - relF) <= 1; doc.text(v == null ? "-" : SPD[k] ? Math.round(v).toLocaleString("en-US") + " \xB0/s" : (Math.round(v * 10) / 10).toFixed(0).replace(/^-0$/, "0") + "\xB0" + (bl ? "*" : ""), x + colW[i + 1] - 6, y + 11, { align: "right" }); x += colW[i + 1] });
     y += 16;
   });
   y += 10;
   text("* Arm is motion-blurred in the video at release, so this value is approximate.", 8, { color: 120, gap: 2 });
-  text("Rotation is measured from the set position: 0\u00B0 faces the third-base side for a righty (first-base side for a lefty), 90\u00B0 faces home plate.", 8, { color: 120 });
+  text("Rotation is measured from the set position: 0\u00B0 faces the third-base side for a righty (first-base side for a lefty), 90\u00B0 faces home plate. Rotation speeds are a rough guide.", 8, { color: 120 });
   footer();
   const name = (data.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
   onStatus("");
