@@ -1410,16 +1410,16 @@ function analyseOnce(raw, opts = {}) {
 
   // ---- angles on the final pose
   // from one camera the hips and shoulders read as turning too little between foot strike and release (60 lab views: pelvis 73-80° of a true 85°, trunk
-  // 130-145° of 148°, probably because the depth of a line swinging toward the camera is under-read), so the turn after foot strike is scaled up, the arms carried along.
-  { const hG = opts._hipGain ?? 1.06, sG = opts._shGain ?? 1.04; const yawAt = (F, a, b) => Math.atan2(F[b][2] - F[a][2], F[b][0] - F[a][0]);
+  // 130-145° of 148°, probably because the depth of a line swinging toward the camera is under-read), so the turn after foot strike is scaled up, the arms carried along. Filmed from behind the under-read is bigger and, for the shoulders, grows late (arm cocked to release), so those views get a little more, measured on the same lab views.
+  { const cxB = Math.max(0, -unit(camDir)[0]); const hG = (opts._hipGain ?? 1.05) + (opts._hipGainB ?? 0.04) * cxB, sG = opts._shGain ?? 1.03, sB = (opts._shGainB ?? 0.08) * cxB; const yawAt = (F, a, b) => Math.atan2(F[b][2] - F[a][2], F[b][0] - F[a][0]);
     const wr = d => ((d + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
     const ARM = { 11: [13, 15, 17, 19, 21], 12: [14, 16, 18, 20, 22] };   // the arm moves with its shoulder, so the elbow angle stays as it was
-    const turn = (a, b, g) => { if (!g) return; let prev = yawAt(P[contactF], a, b), acc = 0;
+    const turn = (a, b, g, late) => { if (!g) return; let prev = yawAt(P[contactF], a, b), acc = 0;
       for (let t = contactF + 1; t < T; t++) { const y = yawAt(P[t], a, b); acc += wr(y - prev); prev = y;
-        const w = sstep(t, contactF, contactF + fk(4)) * (1 - sstep(t, rel + fk(4), rel + fk(16))), th = (g - 1) * acc * w, c = Math.cos(th), s = Math.sin(th), m = mid(P[t][a], P[t][b]);
+        const w = sstep(t, contactF, contactF + fk(4)) * (1 - sstep(t, rel + fk(4), rel + fk(16))), th = ((g - 1) * w + (late || 0) * w * sstep(t, cock - fk(1), rel)) * acc, c = Math.cos(th), s = Math.sin(th), m = mid(P[t][a], P[t][b]);
         for (const j of [a, b]) { const dx = P[t][j][0] - m[0], dz = P[t][j][2] - m[2], nx = m[0] + c * dx - s * dz, nz = m[2] + s * dx + c * dz, sx = nx - P[t][j][0], sz = nz - P[t][j][2]; P[t][j] = [nx, P[t][j][1], nz];
           (ARM[j] || []).forEach(k => { P[t][k] = [P[t][k][0] + sx, P[t][k][1], P[t][k][2] + sz] }) } } };
-    turn(23, 24, hG); turn(11, 12, sG) }
+    turn(23, 24, hG); turn(11, 12, sG, sB) }
   const M = computeMetrics(P);
   M.throwHorz = M.throwHorz.map((v, t) => M.throwAbd[t] > 50 ? v : null);
   // layback is only measured from foot strike to just after release: unwrap within that window only (before it the
