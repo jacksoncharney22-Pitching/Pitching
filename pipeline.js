@@ -1443,7 +1443,9 @@ function analyseOnce(raw, opts = {}) {
   if (opts._merSnap !== false && !(opts.phases && opts.phases.armCocked != null)) { const a = Math.round(0.034 * fs), b = a; let best = cock; for (let t = Math.max(contactF + 1, cock - a); t <= Math.min(rel - 1, cock + b); t++) if ((M.throwER[t] ?? -999) > (M.throwER[best] ?? -999)) best = t;
     // The arm goes from max layback to release in 17-50 ms on every lab pitch: the arm can't sit "cocked" any longer than that.
     // When the layback reading peaks earlier (a noisy arm on the way back), take the highest layback inside that window instead.
-    const gapMax = Math.max(1, Math.round((opts._merGap ?? 0.05) * fs)); if (rel - best > gapMax) { let b2 = rel - gapMax; for (let t = b2; t < rel; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
+    // ...and never closer than 17 ms either (matters at high frame rates, where one frame is only a few ms)
+    const gapMax = Math.max(1, Math.round((opts._merGap ?? 0.05) * fs)), gapMin = Math.max(1, Math.round(0.017 * fs));
+    if (rel - best > gapMax || rel - best < gapMin) { let b2 = rel - gapMax; for (let t = b2; t <= rel - gapMin; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
     const moved = best > cock; cock = best;
     // the foot strike limit above leaned on the old arm cocked; when that moved later, a still-sliding foot gets another look
     if (moved && opts._fs2 !== false && !userFS && opts.contactFix !== false && opts.contactSlide !== false) { const h = Math.max(1, Math.round(fs / 60)), sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h), v2 = opts._slideV2 ?? 0.5;
