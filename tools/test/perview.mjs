@@ -1,7 +1,7 @@
 // Compares this checkout with another copy of the repo, angle by angle and view by view, on the 60 benchmark views at
 // foot strike, max layback and release. The scorecard only prints averages, and a small change in an average can hide a
 // reading getting 15° worse on a few views (it happened: front knee at foot strike, 2026-11-09).
-//   git worktree add /tmp/before HEAD~1 && node tools/test/perview.mjs /tmp/before
+//   git worktree add /tmp/before HEAD~1 && node tools/test/perview.mjs /tmp/before [--check]
 import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib";
 import { dirname, resolve } from "path"; import { fileURLToPath } from "url";
 const R = resolve(dirname(fileURLToPath(import.meta.url)), "../.."), O = resolve(process.argv[2]);
@@ -22,3 +22,9 @@ for (const key in now) { if (was[key] == null) continue; const [v, k, e] = key.s
 const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
 console.log("reading                  avg change   views >5° worse   >5° better   worst single view");
 for (const k in G) { const a = G[k].sort((x, y) => y[0] - x[0]); console.log(k.padEnd(24), mean(a.map(x => x[0])).toFixed(2).padStart(8), String(a.filter(x => x[0] > 5).length).padStart(14), String(a.filter(x => x[0] < -5).length).padStart(13), `   ${a[0][1]} ${a[0][0] > 0 ? "+" : ""}${a[0][0].toFixed(1)}°`) }
+// --check: exit 1 if a reading got clearly worse across many views (avg more than 0.3° worse and 6+ views more than 5° worse).
+if (process.argv.includes("--check")) {
+  const bad = Object.keys(G).filter(k => mean(G[k].map(x => x[0])) > 0.3 && G[k].filter(x => x[0] > 5).length >= 6);
+  if (bad.length) { console.log("\nCLEARLY WORSE on many views: " + bad.join(", ")); process.exit(1) }
+  console.log("\nno reading clearly worse across the views");
+}

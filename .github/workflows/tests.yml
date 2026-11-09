@@ -31,11 +31,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Accuracy scorecard vs motion capture (fails only if a camera angle gets clearly worse)
         run: node tools/test/bench.mjs
+      - name: Per-view check against the previous commit (averages can hide a reading getting much worse on a few views)
+        run: |
+          git worktree add -q "$RUNNER_TEMP/prev" HEAD~1
+          node tools/test/perview.mjs "$RUNNER_TEMP/prev" --check
   exports:
     runs-on: ubuntu-latest
     steps:
