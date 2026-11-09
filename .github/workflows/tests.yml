@@ -38,6 +38,8 @@ jobs:
           node-version: "22"
       - name: Accuracy scorecard vs motion capture (fails only if a camera angle gets clearly worse)
         run: node tools/test/bench.mjs
+      - name: Compare screen thresholds still match the skeleton
+        run: node tools/test/comparecheck.mjs --check
       - name: Per-view check against the previous commit (averages can hide a reading getting much worse on a few views)
         run: |
           git worktree add -q "$RUNNER_TEMP/prev" HEAD~1

@@ -3,6 +3,7 @@
 // motion capture. Compare (compare.js) bolds a row by these numbers.
 //   node tools/test/comparecheck.mjs            per-reading table
 //   node tools/test/comparecheck.mjs --json     the numbers to paste into compare.js
+//   node tools/test/comparecheck.mjs --check    fails if those numbers have gone stale (GitHub)
 import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib";
 import { dirname, resolve } from "path"; import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js"; import { truthD, armLibFor } from "./truth.mjs";
@@ -32,3 +33,7 @@ for (const key in pool) { const a = pool[key], e = a.map(p => Math.abs(p[0] - p[
     for (const p of B) { n++; const ok = Math.sign(p[0]) === Math.sign(p[1]) && Math.abs(p[1]) >= 3; if (Math.abs(p[0]) >= 10) { f10++; r10 += ok } if (Math.abs(p[0]) >= th) { fp++; rp += ok } } }
   console.log(`\nheld-out, all readings: flag at 10°: ${(100 * f10 / n).toFixed(0)}% of rows, ${(100 * r10 / f10).toFixed(0)}% right; flag at the reading's own size: ${(100 * fp / n).toFixed(0)}% of rows, ${(100 * rp / fp).toFixed(0)}% right`) }
 if (process.argv.includes("--json")) console.log(JSON.stringify(out));
+// --check (GitHub): fail when skeleton changes moved a threshold far from the numbers compare.js uses, so they get re-measured
+if (process.argv.includes("--check")) { const m = readFileSync(R + "/compare.js", "utf8").match(/const SIG = (\{.*?\});/), S = JSON.parse(m[1]), bad = [];
+  for (const k in out) { const a = S[k] ?? null, b = out[k]; if ((a == null) !== (b == null) || (a != null && Math.abs(a - b) > (k === "throwER|br" ? 10 : 3))) bad.push(`${k}: compare.js ${a}, measured ${b}`) }
+  if (bad.length) { console.log("\ncompare.js thresholds out of date (node tools/test/comparecheck.mjs --json):\n" + bad.join("\n")); process.exit(1) } console.log("\ncompare.js thresholds up to date") }
