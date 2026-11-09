@@ -83,6 +83,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 15:40 finding: how well each camera follows real pitcher-to-pitcher differences (correlation with truth; 1 = perfect): front_3b is best for rotation (0.91-0.97 at FS/BR), behind_3b worst (0.47-0.84). Side-on cameras exaggerate trunk differences late (slope 1.27-1.52 at MER/BR: a 10° real difference reads 13-15°); behind/behind_3b pelvis at release shrinks them (0.70-0.74). 12 pitches only.
 - GitHub now fails if compare.js thresholds go stale (`comparecheck.mjs --check`): after a skeleton change, re-run `--json` and paste into `SIG` in compare.js.
 - 15:40 shipped: "What to trust" on the results page now gives measured numbers and no longer says sequencing is solid (it read 0 of 5 out-of-order pitches).
+- 15:40 shipped: Compare and Over time warn when pitches were filmed from different camera spots (estimated camera direction 25°+ apart: on the benchmark 0% false alarms on same-camera pairs, 99% of different-camera pairs caught; Compare then stops bolding) and when read at different accuracy settings (Maher fast vs max, the same pitch, has 15 rows over the bold limits).
+- 15:40 tried, no gain: lower side-on shoulder gain (`_shGain` 1.015/1.0 with `_shGainB` raised to keep behind the same): trunk MER/BR 6.3/7.9 -> 6.5/8.1 and 6.9/8.4.
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)

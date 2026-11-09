@@ -14,6 +14,12 @@ const ROWS = [
 const SIG = {"throwElbow|ll":18,"throwElbow|fs":15,"throwElbow|mer":18,"throwElbow|br":null,"throwAbd|ll":13,"throwAbd|fs":8,"throwAbd|mer":9,"throwAbd|br":11,"throwER|fs":10,"throwER|mer":15,"throwER|br":51,"leadKnee|ll":8,"leadKnee|fs":14,"leadKnee|mer":12,"leadKnee|br":15,"leadHip|ll":8,"leadHip|fs":10,"leadHip|mer":12,"leadHip|br":9,"backKnee|ll":9,"backKnee|fs":12,"backKnee|mer":11,"backKnee|br":8,"pelvisRot|ll":14,"pelvisRot|fs":15,"pelvisRot|mer":12,"pelvisRot|br":14,"trunkRot|ll":15,"trunkRot|fs":17,"trunkRot|mer":15,"trunkRot|br":20,"separation|ll":10,"separation|fs":14,"separation|mer":10,"separation|br":14,"trunkFwd|ll":null,"trunkFwd|fs":7,"trunkFwd|mer":9,"trunkFwd|br":9,"trunkLat|ll":9,"trunkLat|fs":7,"trunkLat|mer":9,"trunkLat|br":10};
 const EV = { "Peak leg lift": "ll", "Foot strike": "fs", "Arm cocked": "mer", "Release": "br" };
 const isReal = (d, k, ph) => { const th = SIG[k + "|" + EV[ph]]; return d != null && th != null && Math.abs(d) >= th };
+// Camera direction around the pitcher, from each pitch's own skeleton. On the benchmark, pitches from the same camera read
+// within 28° of each other (median 7°) and different cameras at least 25° apart on 99% of pairs, so 25° is the line.
+const CAM_APART = 25;
+const camAngle = d => d.cameraDir ? Math.atan2(d.cameraDir[2], d.cameraDir[0]) * 180 / Math.PI : null;
+const camGap = (a, b) => { const x = camAngle(a), y = camAngle(b); if (x == null || y == null) return null; const g = Math.abs(x - y) % 360; return g > 180 ? 360 - g : g };
+const camWarn = gap => `<p class="numschanged cmp-camwarn"><b>These were filmed from different camera angles (about ${Math.round(gap / 5) * 5}° apart).</b> The same delivery reads differently from a different spot, so don't read much into the differences below.</p>`;
 const frameOf = (d, name) => (d.phases.find(p => p.name === name) || {}).frame;
 const round = v => v == null ? null : +(Math.round(v * 10) / 10).toFixed(0).replace(/^-0$/, "0");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -31,7 +37,10 @@ function timingRows(a, b) {
 
 export function renderCompare(el, A, B) {
   const a = A.data, b = B.data, nameA = esc(A.label), nameB = esc(B.label);
-  let html = `<div class="cmp-key"><span><i class="cmp-a">A</i> ${nameA}</span><span><i class="cmp-b">B</i> ${nameB}</span></div>`;
+  const gap = camGap(a, b), apart = gap != null && gap >= CAM_APART;
+  // the same pitch read by Fast and by Max differs by more than these limits on many rows (Maher: 15 rows bold), so say so
+  const mixed = a.quality && b.quality && a.quality !== b.quality;
+  let html = (apart ? camWarn(gap) : "") + (mixed ? `<p class="numschanged cmp-camwarn"><b>These were read at different accuracy settings (${esc(a.quality)} and ${esc(b.quality)}).</b> The same pitch can read differently between settings; use one setting for pitches you want to compare.</p>` : "") + `<div class="cmp-key"><span><i class="cmp-a">A</i> ${nameA}</span><span><i class="cmp-b">B</i> ${nameB}</span></div>`;
   html += `<div class="card cmp-card"><h3>Timing</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${timingRows(a, b)}</tbody></table></div>`;
   { const da = deliveryCards(a), db = deliveryCards(b), keys = [...new Set([...da, ...db].map(c => c.k))].filter(k => k !== "tempo");   // tempo is in the Timing card above
     if (keys.length) {
@@ -48,12 +57,12 @@ export function renderCompare(el, A, B) {
       for (const [lbl, k] of list) {
         const x = fa == null || !a.metrics[k] ? null : round(a.metrics[k][fa]), y = fb == null || !b.metrics[k] ? null : round(b.metrics[k][fb]);
         const d = x == null || y == null ? null : x - y;
-        rows += `<tr${isReal(d, k, ph) ? ' class="cmp-big"' : ""}><th scope="row">${lbl}</th><td>${x == null ? "–" : x + "°"}</td><td>${y == null ? "–" : y + "°"}</td><td>${fmtD(d, "°")}</td></tr>`;
+        rows += `<tr${!apart && isReal(d, k, ph) ? ' class="cmp-big"' : ""}><th scope="row">${lbl}</th><td>${x == null ? "–" : x + "°"}</td><td>${y == null ? "–" : y + "°"}</td><td>${fmtD(d, "°")}</td></tr>`;
       }
     }
     html += `<div class="card cmp-card"><h3>${ph}</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  html += `<p class="hint">Bold rows differ by more than one camera can misread: 8&ndash;20° depending on the reading (layback at release needs about 50°), measured against motion capture on lab pitches. Rows that are not bold may be the camera rather than the pitcher, and elbow at release is never bold because pitchers barely differ there. Film both pitches from the same spot for the fairest comparison.</p>`;
+  html += apart ? `<p class="hint">Rows are not bolded because the camera angles differ. Film both pitches from the same spot for a fair comparison.</p>` : `<p class="hint">Bold rows differ by more than one camera can misread: 8&ndash;20° depending on the reading (layback at release needs about 50°), measured against motion capture on lab pitches. Rows that are not bold may be the camera rather than the pitcher, and elbow at release is never bold because pitchers barely differ there. Film both pitches from the same spot for the fairest comparison.</p>`;
   el.innerHTML = html;
 }
 
@@ -65,7 +74,7 @@ export function renderTrend(el, pts) {
   const isDel = k => DELIVERY.some(d => d[1] === k);
   const val = (d, k, ph) => { if (isDel(k)) { const c = deliveryCards(d).find(c => c.k === k); return c ? (k === "tempo" ? c.n / 1000 : c.n) : null } const f = frameOf(d, ph), v = f == null || !d.metrics[k] ? null : d.metrics[k][f]; return Number.isFinite(v) ? Math.round(v) : null };
   const opts = ROWS.map(([g, l]) => `<optgroup label="${g}">${l.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("") + `<optgroup label="Delivery">${DELIVERY.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`;
-  el.innerHTML = `<div class="card cmp-card trend-card"><div class="cmp-pick trend-ctl"><label>Reading <select id="trK">${opts}</select></label><label id="trPhL">At <select id="trPh">${PHASES.map(p => `<option>${p}</option>`).join("")}</select></label></div><div id="trChart"></div><p class="hint" id="trNote"></p></div><div class="card cmp-card"><table class="cmp trend-t"><thead><tr><th>Use</th><th>Pitch</th><th>Value</th></tr></thead><tbody id="trRows"></tbody></table></div>`;
+  el.innerHTML = `<div class="card cmp-card trend-card"><div class="cmp-pick trend-ctl"><label>Reading <select id="trK">${opts}</select></label><label id="trPhL">At <select id="trPh">${PHASES.map(p => `<option>${p}</option>`).join("")}</select></label></div><p id="trWarn" class="numschanged cmp-camwarn" hidden></p><div id="trChart"></div><p class="hint" id="trNote"></p></div><div class="card cmp-card"><table class="cmp trend-t"><thead><tr><th>Use</th><th>Pitch</th><th>Value</th></tr></thead><tbody id="trRows"></tbody></table></div>`;
   const $ = id => el.querySelector("#" + id); $("trK").value = st.k; $("trPh").value = st.ph;
   const draw = () => {
     const unit = st.k === "stride" ? "%" : st.k === "tempo" ? " s" : "°", dec = st.k === "tempo" ? 2 : 0, vals = pts.map(p => st.off.has(p) ? null : val(p.data, st.k, st.ph)), use = pts.map((p, i) => ({ p, v: vals[i] })).filter(x => x.v != null);
@@ -80,6 +89,8 @@ export function renderTrend(el, pts) {
     }
     $("trChart").innerHTML = use.length ? `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Reading across saved pitches" class="tr-svg">${svg}</svg>` : `<p class="hint">No value for this reading on the pitches ticked.</p>`;
     const th = SIG[st.k + "|" + EV[st.ph]];
+    let far = 0; for (const u of use) far = Math.max(far, camGap(use[0].p.data, u.p.data) ?? 0);
+    $("trWarn").hidden = far < CAM_APART; if (far >= CAM_APART) $("trWarn").innerHTML = camWarn(far).replace("<p class=\"numschanged cmp-camwarn\">", "").replace("</p>", "").replace("These were", "Some of these were").replace("the differences below", "this line unless you untick those pitches");
     $("trNote").textContent = isDel(st.k) ? "Film from the same spot each time: a different camera angle moves these numbers too." : th == null ? "One camera can't show real differences on this reading, so treat this line as noise." : `A change smaller than about ${th}° may be the camera rather than the pitcher. Film from the same spot each time.`;
     $("trRows").innerHTML = pts.map((p, i) => { const v = val(p.data, st.k, st.ph); return `<tr><td><input type="checkbox" data-i="${i}" aria-label="Use this pitch"${st.off.has(p) ? "" : " checked"}></td><th scope="row">${esc(p.label)}</th><td>${v == null ? "–" : v.toFixed(dec) + unit}</td></tr>` }).join("");
     $("trRows").querySelectorAll("input").forEach(c => c.onchange = () => { const p = pts[+c.dataset.i]; c.checked ? st.off.delete(p) : st.off.add(p); draw() });
