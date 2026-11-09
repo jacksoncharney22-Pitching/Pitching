@@ -629,7 +629,7 @@ export function detectSlowFactor(raw) {
   // fastest hand is at the end of the window the arm is still speeding up (slow motion), so look further.
   let d, ph;
   for (const w of [0.5, 1, 2, 4, 60]) {
-    try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: w, armBridge: false, depop: false }) } catch (e) { return { factor: 1, basis: "none" } }
+    try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: w, armBridge: false, depop: false, _noGaps: true }) } catch (e) { return { factor: 1, basis: "none" } }
     ph = Object.fromEntries(d.phases.map(p => [p.name, p.frame]));
     if ((ph["Release"] - ph["Foot strike"]) / vf < 0.75 * w) break;
   }
@@ -1445,11 +1445,15 @@ function analyseOnce(raw, opts = {}) {
     // When the layback reading peaks earlier (a noisy arm on the way back), take the highest layback inside that window instead.
     // ...and never closer than 17 ms either (matters at high frame rates, where one frame is only a few ms)
     const gapMax = Math.max(1, Math.round((opts._merGap ?? 0.05) * fs)), gapMin = Math.max(1, Math.round(0.017 * fs));
-    if (rel - best > gapMax || rel - best < gapMin) { let b2 = rel - gapMax; for (let t = b2; t <= rel - gapMin; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
+    if (!opts._noGaps && (rel - best > gapMax || rel - best < gapMin)) { let b2 = rel - gapMax; for (let t = b2; t <= rel - gapMin; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
     const moved = best > cock; cock = best;
     // the foot strike limit above leaned on the old arm cocked; when that moved later, a still-sliding foot gets another look
     if (moved && opts._fs2 !== false && !userFS && opts.contactFix !== false && opts.contactSlide !== false) { const h = Math.max(1, Math.round(fs / 60)), sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h), v2 = opts._slideV2 ?? 0.5;
-      if (sp(contactF) >= v2) for (let t = contactF + 1, e = Math.min(T - 1 - h, contactF + Math.round(0.1 * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs)); t <= e; t++) if (sp(t) < v2) { contactF = t; break } } }
+      if (sp(contactF) >= v2) for (let t = contactF + 1, e = Math.min(T - 1 - h, contactF + Math.round(0.1 * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs)); t <= e; t++) if (sp(t) < v2) { contactF = t; break } }
+    // (not while the slow-motion reader is still working out the clip's real speed: seconds aren't real yet, hence _noGaps)
+    // foot strike to max layback takes 0.10-0.18 s on the lab pitches (0.09-0.17 s on 90% of 404 lab fastballs): a foot read as planted well outside that was pinned too early or too late
+    if (!opts._noGaps && !userFS && opts.contactFix !== false && !(opts.phases && opts.phases.armCocked != null)) { const gMax = opts._fsGapMax ?? 0.183, gMin = opts._fsGapMin ?? 0.1;
+      contactF = Math.min(Math.max(contactF, cock - Math.round(gMax * fs)), Math.max(legLift + 1, cock - Math.round(gMin * fs))) } }
 
   // ---- mirror left-handers back for display
   // the tracked points drawn over the video get the same treatment as the skeleton: each part held to how fast it can

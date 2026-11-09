@@ -105,6 +105,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 - 17:40 shipped: arm cocked can't be more than 50 ms before release (true on all 12 lab pitches, 17-50 ms): arm cocked 11 -> 6 ms off; as the coach sees it layback at arm cocked 11.1 -> 7.1°, trunk 15.2 -> 10.2°, separation 11.0 -> 8.0°, pelvis 7.7 -> 5.9°. Maher/Staumont unchanged. Hackimer (speed-ramped) arm cocked 0.494 -> 0.585 s and, via the second foot-strike look, foot strike 0.392 -> 0.467 s; baseline re-recorded: new foot strike is where the foot actually stops (1.5 -> 0.3 m/s), front knee at foot strike 6° -> 70° bent, separation -33 -> -8°. No video to eyeball it; check Hackimer when a clip arrives (layback at foot strike there now 168°).
 
+- 17:40 shipped: foot strike kept 0.10-0.183 s before arm cocked (lab range, now that arm cocked is accurate; `_fsGapMin/_fsGapMax`, off while the slow-motion reader runs, `_noGaps`, because seconds aren't real there): foot strike 23 -> 19 ms off; as the coach sees it pelvis at foot strike 12.3 -> 11.0°, trunk 10.8 -> 10.1°, layback 24.8 -> 21.8°, elbow 9.6 -> 9.8 (slightly worse). Tried `_fsGapMin` 0.117 (17 ms, trunk 10.5, pelvis 11.1, layback 19.0, marks foot strike 11 ms early on average): held at 0.1 as the measured lab minimum.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
