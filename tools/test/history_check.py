@@ -46,6 +46,8 @@ with sync_playwright() as p:
     pg.evaluate("() => { document.getElementById('recentWrap').open = true; document.getElementById('trendGo').click() }"); pg.wait_for_selector(".tr-svg", timeout=60000)
     dots = pg.locator(".tr-dot").count(); print("over-time chart points:", dots)
     if dots != 2: bad.append(f"over-time chart: {dots} points, expected 2")
+    pg.select_option("#trN", "Bob bullpen"); pg.wait_for_timeout(300); dots = pg.locator(".tr-dot").count(); print("points for one pitch name:", dots)
+    if dots != 1: bad.append(f"name filter: {dots} points, expected 1")
     if len(sys.argv) > 2: pg.screenshot(path=sys.argv[2])
     b.close()
 print("page errors:", errs)

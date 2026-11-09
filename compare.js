@@ -73,8 +73,9 @@ export function renderTrend(el, pts) {
   const st = { k: "separation", ph: "Foot strike", off: new Set() };
   const isDel = k => DELIVERY.some(d => d[1] === k);
   const val = (d, k, ph) => { if (isDel(k)) { const c = deliveryCards(d).find(c => c.k === k); return c ? (k === "tempo" ? c.n / 1000 : c.n) : null } const f = frameOf(d, ph), v = f == null || !d.metrics[k] ? null : d.metrics[k][f]; return Number.isFinite(v) ? Math.round(v) : null };
+  const names = [...new Set(pts.map(p => p.data.name).filter(Boolean))].sort();   // rename pitches to the pitcher (pencil in Recent) and this picks them out
   const opts = ROWS.map(([g, l]) => `<optgroup label="${g}">${l.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`).join("") + `<optgroup label="Delivery">${DELIVERY.map(([n, k]) => `<option value="${k}">${n}</option>`).join("")}</optgroup>`;
-  el.innerHTML = `<div class="card cmp-card trend-card"><div class="cmp-pick trend-ctl"><label>Reading <select id="trK">${opts}</select></label><label id="trPhL">At <select id="trPh">${PHASES.map(p => `<option>${p}</option>`).join("")}</select></label></div><p id="trWarn" class="numschanged cmp-camwarn" hidden></p><div id="trChart"></div><p class="hint" id="trNote"></p></div><div class="card cmp-card"><table class="cmp trend-t"><thead><tr><th>Use</th><th>Pitch</th><th>Value</th></tr></thead><tbody id="trRows"></tbody></table></div>`;
+  el.innerHTML = `<div class="card cmp-card trend-card"><div class="cmp-pick trend-ctl"><label>Reading <select id="trK">${opts}</select></label>${names.length > 1 ? `<label>Pitch name <select id="trN"><option value="">All saved pitches</option>${names.map(n => `<option>${esc(n)}</option>`).join("")}</select></label>` : ""}<label id="trPhL">At <select id="trPh">${PHASES.map(p => `<option>${p}</option>`).join("")}</select></label></div><p id="trWarn" class="numschanged cmp-camwarn" hidden></p><div id="trChart"></div><p class="hint" id="trNote"></p></div><div class="card cmp-card"><table class="cmp trend-t"><thead><tr><th>Use</th><th>Pitch</th><th>Value</th></tr></thead><tbody id="trRows"></tbody></table></div>`;
   const $ = id => el.querySelector("#" + id); $("trK").value = st.k; $("trPh").value = st.ph;
   const draw = () => {
     const unit = st.k === "stride" ? "%" : st.k === "tempo" ? " s" : "°", dec = st.k === "tempo" ? 2 : 0, vals = pts.map(p => st.off.has(p) ? null : val(p.data, st.k, st.ph)), use = pts.map((p, i) => ({ p, v: vals[i] })).filter(x => x.v != null);
@@ -97,6 +98,7 @@ export function renderTrend(el, pts) {
     $("trRows").innerHTML = pts.map((p, i) => { const v = val(p.data, st.k, st.ph); return `<tr><td><input type="checkbox" data-i="${i}" aria-label="Use this pitch"${st.off.has(p) ? "" : " checked"}></td><th scope="row">${esc(p.label)}</th><td>${v == null ? "–" : v.toFixed(dec) + unit}</td></tr>` }).join("");
     $("trRows").querySelectorAll("input").forEach(c => c.onchange = () => { const p = pts[+c.dataset.i]; c.checked ? st.off.delete(p) : st.off.add(p); draw() });
   };
+  if ($("trN")) $("trN").onchange = e => { st.off = new Set(e.target.value ? pts.filter(p => p.data.name !== e.target.value) : []); draw() };
   $("trK").onchange = e => { st.k = e.target.value; draw() }; $("trPh").onchange = e => { st.ph = e.target.value; draw() };
   draw();
 }

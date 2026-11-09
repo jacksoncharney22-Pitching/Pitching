@@ -87,7 +87,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 15:40 tried, no gain: lower side-on shoulder gain (`_shGain` 1.015/1.0 with `_shGainB` raised to keep behind the same): trunk MER/BR 6.3/7.9 -> 6.5/8.1 and 6.9/8.4.
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
-- Next session (after 15:40): rebuild still blocked unless the data has arrived. (1) The camera-spot check works well; try using it elsewhere (e.g. tell a coach at upload that a new clip is from a different spot than the pitcher's earlier ones). (2) Over time doesn't filter by pitcher: names are free text, so tick boxes only; a pitcher field at upload would do it. (3) Rotation readings: scatter, not offset, is what's left (see 15:40 findings), so more gain tuning is a waste. Tomorrow's theme: speed and reliability (profile Max accuracy; phones).
+- Next session (after 15:40): rebuild still blocked unless the data has arrived. (1) The camera-spot check works well; try using it elsewhere (e.g. tell a coach at upload that a new clip is from a different spot than the pitcher's earlier ones). (2) Over time filters by exact pitch name (rename in Recent); a real pitcher field at upload would be better. (3) Rotation readings: scatter, not offset, is what's left (see 15:40 findings), so more gain tuning is a waste. Tomorrow's theme: speed and reliability (profile Max accuracy; phones).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
