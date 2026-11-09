@@ -71,6 +71,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 14:40 tried, dropped: foot strike from the 2D ankle stopping (33.9 ms now, 39-110 ms with it; a planted foot still moves in the picture on the heel). 2919 FS -83/MER -83 ms on all 5 views: that pitch itself, not a view problem (don't chase).
 - 14:40 finding: with the true tilt the throwing shoulder's position error shrinks a lot (front_3b FS-MER 14 -> 9 cm, side_back MER-BR 13 -> 7 cm), i.e. the 14.8 cm front_3b arm is the tilt, not the arm.
 
+- 14:40 finding: front-foot direction at foot strike reads 10.5° off where it can be checked, but the benchmark truth has no heel-to-toe line (all zero), so it can't be validated: don't show it until there's a truth for it. Stride direction open/closed also can't be read from one view (the app assumes the stride's 7.4° offset).
+- Next session: rebuild still blocked unless the data has arrived. Otherwise: (1) elbow FS/layback FS get worse with the true tilt: why (needs an idea, the arm lock already uses the tilted camera); (2) separation at release from behind (8-10° off, worst reading left there); (3) Tuesday-tomorrow: profile Max accuracy; check phones. Late-started clips (see Thursday list) still 11-16 views of 60 wrong.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
@@ -167,6 +170,9 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: Late-started clips read their slow motion better using the hand's speed (1/2 s late: 20 -> 11 of 60 views wrong).
+- 2026-11-09: Tempo card, leg lift to foot strike, on the results page, PDF and spreadsheet.
+- 2026-11-09: Cameras behind the pitcher: trunk at release 8.8 -> 7.9° off overall, pelvis at arm cocked 6.9 -> 6.5°.
 - 2026-11-09: Hips and shoulders turn further after foot strike: pelvis at arm cocked 9.1 -> 6.9° off, release 8.5 -> 6.4°; trunk 7.5 -> 6.3°, 10.8 -> 8.8°.
 - 2026-11-09: CSV export ends with the delivery numbers (stride, arm slot, peak separation), checked against the screen.
 - 2026-11-09: Re-opening a saved pitch says so when its numbers have changed by 3° or more since last opened, with the biggest change (once only).
