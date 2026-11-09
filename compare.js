@@ -32,7 +32,7 @@ export function renderCompare(el, A, B) {
     if (keys.length) {
       let rows = "";
       for (const k of keys) { const x = da.find(c => c.k === k), y = db.find(c => c.k === k), d = x && y ? Math.round((x.n - y.n)) : null;
-        rows += `<tr><th scope="row">${(x || y).label}</th><td>${x ? x.value : "–"}</td><td>${y ? y.value : "–"}</td><td>${d == null ? "–" : (d > 0 ? "+" : "") + d + (x || y).unit}</td></tr>` }
+        rows += `<tr><th scope="row">${(x || y).k === "stride" ? "Stride (% of height)" : (x || y).label}</th><td>${x ? x.short || x.value : "–"}</td><td>${y ? y.short || y.value : "–"}</td><td>${d == null ? "–" : (d > 0 ? "+" : "") + d + (x || y).unit}</td></tr>` }
       html += `<div class="card cmp-card"><h3>Delivery numbers</h3><table class="cmp"><thead><tr><th></th><th class="cmp-a">A</th><th class="cmp-b">B</th><th>A vs B</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     } }
   for (const ph of PHASES) {

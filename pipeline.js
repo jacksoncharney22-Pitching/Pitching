@@ -1458,9 +1458,9 @@ export function deliveryCards(D) {
   if (!m) return [];
   const ftIn = v => { const n = Math.round(v / 0.0254), f = Math.floor(n / 12); return `${f}'${n - f * 12}"` };
   const out = [];
-  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 6% of height (a bit short from behind the pitcher)." });
+  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 6% of height (a bit short from behind the pitcher)." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
-  const lowFps = (D.videoFps || D.fps) < 50;
+  const lowFps = D.fps < 50;   // the true rate: slow motion is plenty of frames even from a 30 fps file
   out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 6\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
   // real units only with the pitcher's height entered: without it the size of the body is an estimate
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
