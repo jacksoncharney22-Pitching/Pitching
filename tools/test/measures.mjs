@@ -7,7 +7,7 @@ const views=readdirSync(dir).filter(f=>f.endsWith(".raw.json.gz")).map(f=>f.repl
 const KEYS=["strideLen","strideM","armSlot","relHeight","extension","peakSep","peakSepMs"], E=Object.fromEntries(KEYS.map(k=>[k,[]])), S=Object.fromEntries(KEYS.map(k=>[k,[]])), A=Object.fromEntries(KEYS.map(k=>[k,[]])), T=Object.fromEntries(KEYS.map(k=>[k,[]]));
 const CAM={};
 for(const v of views){const raw=load(v+".raw.json.gz"),tr=load(v+".truth.json.gz"),D=analyse({...raw,heightIn:tr.height/.0254},{armLib:armLibFor(tr.sp),...(process.env.OPTS?JSON.parse(process.env.OPTS):{})}),TD=truthD(tr);
- const a=deliveryMeasures(D,tr.height),b=deliveryMeasures(TD,tr.height);
+ const a=deliveryMeasures(D,tr.height),b=deliveryMeasures(TD,tr.height,0);
  if(process.argv.includes("--views"))console.log(v,KEYS.map(k=>k+" "+(a[k]?.toFixed(2))+"/"+(b[k]?.toFixed(2))).join("  "));
  {const c=v.replace(/^\d+_\d+_/,"");(CAM[c]=CAM[c]||[]).push(a.strideM-b.strideM)}
  for(const k of KEYS){E[k].push(Math.abs(a[k]-b[k]));S[k].push(a[k]-b[k]);A[k].push(a[k]);T[k].push(b[k])}}

@@ -1434,9 +1434,11 @@ function analyseOnce(raw, opts = {}) {
 // x = toward home, y = up, z = across. Lengths need the pitcher's height entered to be in real units.
 //   strideLen   stride from the rubber to the front ankle at foot strike, as a share of height
 //   armSlot     the throwing arm's angle above horizontal, shoulder to wrist as seen from home plate, at release
+//               (averaged over the last 2/60 s up to release: 60 benchmark views 7.4 -> 6.4° off, r 0.68 -> 0.85; at the single
+//               frame it depends too much on exactly which frame the arm was caught in)
 //   relHeight   wrist height above the ground at release (m), extension: how far in front of the rubber it is (m)
 //   peakSep     largest hip-shoulder separation from just before foot strike to release, and its time after foot strike
-export function deliveryMeasures(D, heightM) {
+export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60)) {
   const ph = n => (D.phases.find(p => p.name === n) || {}).frame;
   const fs = ph("Foot strike"), br = ph("Release"), P = D.pose;
   if (fs == null || br == null || !P[fs] || !P[br]) return null;
@@ -1444,7 +1446,7 @@ export function deliveryMeasures(D, heightM) {
   const stance = (() => { const a = P.slice(0, Math.max(1, ph("Peak leg lift") ?? 1)).map(F => F[back]); const med = i => a.map(p => p[i]).sort((x, y) => x - y)[a.length >> 1]; return [med(0), med(1), med(2)] })();
   const dx = P[fs][lead][0] - stance[0], dz = P[fs][lead][2] - stance[2], strideM = Math.hypot(dx, dz);
   const ground = Math.min(P[fs][lead][1], stance[1]);
-  const s = P[br][sh], w = P[br][wr], slot = Math.atan2(w[1] - s[1], Math.abs(w[2] - s[2])) * 180 / Math.PI;
+  const s = P[br][sh], w = P[br][wr], SL = t => Math.atan2(P[t][wr][1] - P[t][sh][1], Math.abs(P[t][wr][2] - P[t][sh][2])) * 180 / Math.PI, slot = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
   return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
 }
@@ -1459,7 +1461,7 @@ export function deliveryCards(D) {
   if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 6% of height (a bit short from behind the pitcher)." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
   const lowFps = (D.videoFps || D.fps) < 50;
-  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 7\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
+  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 6\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
   // real units only with the pitcher's height entered: without it the size of the body is an estimate
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
   if (m.peakSep != null) out.push({ k: "sep", label: "Peak hip-shoulder separation", value: Math.round(m.peakSep) + "\u00B0", n: m.peakSep, unit: "\u00B0", def: "Largest gap between hips and shoulders from just before foot strike to release. Typical error about 7\u00B0." });
