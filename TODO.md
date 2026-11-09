@@ -74,6 +74,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 14:40 finding: front-foot direction at foot strike reads 10.5° off where it can be checked, but the benchmark truth has no heel-to-toe line (all zero), so it can't be validated: don't show it until there's a truth for it. Stride direction open/closed also can't be read from one view (the app assumes the stride's 7.4° offset).
 - Next session: rebuild still blocked unless the data has arrived. Otherwise: (1) elbow FS/layback FS get worse with the true tilt: why (needs an idea, the arm lock already uses the tilted camera); (2) separation at release from behind (8-10° off, worst reading left there); (3) Tuesday-tomorrow: profile Max accuracy; check phones. Late-started clips (see Thursday list) still 11-16 views of 60 wrong.
 
+- 15:40 shipped: Compare bolds a row by that reading's own measured size (`tools/test/comparecheck.mjs`, every pair of lab pitches from the same camera: 80th percentile of the error in A minus B), not a flat 10°. Most readings 8-20°, layback at release 51°, elbow at release and forward tilt at leg lift never (18% and 58% right when bold). Held-out on half the pitches: bold 50% -> 44% of rows, right 86 -> 89%. Pairs are different pitchers, same camera; same pitcher on different days is untested (no such data). Re-run `--json` after big skeleton changes.
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
