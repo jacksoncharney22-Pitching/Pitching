@@ -42,7 +42,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - Worth a look: Hackimer (speed-ramped) still reads separation -32° at foot strike (shoulders open by 32° before the hips): the mirrored reading doesn't pass there; may be foot strike timing in the ramp. Needs the video.
 - Trunk/pelvis finding: from behind/behind_3b late rotation is 10-18° under the truth (signed -10 to -18 at arm cocked/release; spread 7-11), the side views under 6. Next idea for the next session: this is depth-driven, so measure whether scaling the shoulder/hip depth from behind helps (not tried).
 
-- Next session: rebuild still blocked unless the data has arrived (check the project docs). Otherwise: (1) trunk/pelvis 10-18° under the truth late in the delivery from behind (depth); (2) `_sepMax` 100 vs 85 is a wash (elbow at release 6.5 -> 6.3, trunk FS 8.3 -> 8.5), left alone; (3) (e) throwing arm at release.
+- 12:40 shipped: failure messages for dropped downloads and out-of-memory now say what to do (trim the clip, Fast accuracy, check connection). Other errors were already written in plain words.
+- 12:40 tried, no gain: global learned-depth gain (0.85/1.15).
+- Next session (after 12:40): rebuild still blocked unless the data has arrived. Otherwise (1) front knee from behind reads too straight (FS -10.7°, MER -9.2°; side_open too bent +7): it's hip-to-ankle distance, so hip depth or the planted foot depth, not the knee; (2) pelvis late rotation from behind (-13/-11°); (3) layback at release 21°.
+- (older) Next session: rebuild still blocked unless the data has arrived (check the project docs). Otherwise: (1) trunk/pelvis 10-18° under the truth late in the delivery from behind (depth); (2) `_sepMax` 100 vs 85 is a wash (elbow at release 6.5 -> 6.3, trunk FS 8.3 -> 8.5), left alone; (3) (e) throwing arm at release.
 
 - 12:40 session shipped: (1) shoulder width read from this pitcher's own widest point foot strike -> release (clamped 0.86-1.04 of the fixed width, was fixed 0.94): trunk at release 11.4 -> 10.8° off, max layback 7.9 -> 7.5°, separation 6.8/4.9/6.4 -> 6.6/4.8/6.1°. (2) Spine lean toward/away from the camera scaled back 8% (`_spineG` 0.92): side tilt 4.9/7.7/7.6 -> 4.8/7.2/7.1, forward tilt 4.4/6.3/5.7 -> 4.3/5.8/5.6, abduction 4.2/4.4/5.4 -> 4.1/3.8/4.9, arm cm 11.5 -> 11.2. Bigger scale-back (0.7-0.75) is much better on side tilt (side_back 13.5 -> 6°) and tilts, but the arm position from behind_3b gets 1.4 cm worse (guard fails), so held at 0.92; the deadzone version didn't fix that. Don't retry either variant without a new clue.
 - 12:40 shipped: PDF angle table has pelvis/trunk rotation speeds; `perview.mjs --check` on GitHub (fails if a reading is on average >0.3° worse and 6+ views >5° worse).
@@ -117,8 +120,6 @@ whole body. Every session works on this before anything else, in order:
   honest progress.
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
-- Failure messages: every way an analysis can fail (no pitcher found, video won't play, tracker can't load)
-  should tell the user what to do next in plain words.
 
 ## Wednesday: pitching measurements
 - Measured 2026-11-09 (`node tools/test/sequence.mjs`, 60 views): pelvis peak speed timing 23 ms off, trunk 28 ms; peak speeds 91 / 129 °/s off; pelvis-before-trunk order right on 49 of 60; the pelvis-to-trunk gap averages right (41 ms vs 39) but is 34 ms off per pitch, about the size of the gap itself. So: show peak speeds and order as a rough guide only, don't show the gap in ms per pitch until it's better.
@@ -155,6 +156,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: Shoulder width from the pitcher's own delivery (trunk at release 11.4 -> 10.8° off); spine lean scaled back (side tilt 7.7 -> 7.2° at max layback); PDF rotation speeds; per-view check on GitHub; plainer failure messages.
 - 2026-11-09: Delivery numbers (stride, arm slot, hand height with height entered, peak separation) on the results page, PDF and Compare; arm slot 7.4 -> 6.4° off; warning when a clip doesn't look like a pitch; Compare fits on a phone.
 - 2026-11-09: Compare two saved pitches side by side (Recent pitches); PDF angle table has Layback; PDF/CSV check on GitHub Actions; elbow at foot strike 8.6 -> 7.8° off.
 - 2026-11-06: Throwing arm follows the best-fitting lab throws frame by frame: layback at release 39.8 -> 24.7° off,

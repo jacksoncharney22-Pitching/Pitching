@@ -282,10 +282,16 @@ async function run() {
     if (e.message === "cancelled") { show("prep"); return }
     console.error(e);
     show("prep"); $("prepErr").hidden = false;
-    $("prepErr").textContent = /WebAssembly|wasm|CompileError|instantiate/i.test(String(e))
-      ? "This browser blocked the tracking engine (WebAssembly). Open the page in Chrome, Edge or Safari on a computer."
-      : (e.message || "Something went wrong while analysing these videos.");
+    $("prepErr").textContent = friendlyError(e);
   }
+}
+// What went wrong, in words a coach can act on (the messages we throw ourselves are already written that way)
+function friendlyError(e) {
+  const m = String(e && (e.message || e));
+  if (/WebAssembly|wasm|CompileError|instantiate/i.test(m)) return "This browser blocked the tracking engine (WebAssembly). Open the page in Chrome, Edge or Safari on a computer.";
+  if (/Failed to fetch|NetworkError|Load failed|download failed|part missing|model missing|missing in download/i.test(m)) return "Part of the tracker didn't download. Check your connection and try again.";
+  if (/out of memory|allocation|Array buffer|too large/i.test(m)) return "This clip is too big for this device's memory. Trim it to just the pitch, or choose Fast accuracy, and try again.";
+  return (e && e.message) || "Something went wrong while analysing this video. Try trimming it to just the pitch, or choose Fast accuracy.";
 }
 function videoDuration(url) { return new Promise((res, rej) => { const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.onloadedmetadata = () => res(v.duration || 0); v.onerror = () => rej(new Error("One of the videos can't be played in this browser. Try MP4 (H.264).")); v.src = url }) }
 function progress(prog) {
