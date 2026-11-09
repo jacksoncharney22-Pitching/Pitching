@@ -55,7 +55,7 @@ jobs:
       - name: Install a headless browser and ffmpeg (test tools only; the website itself uses neither)
         run: |
           sudo apt-get update -q && sudo apt-get install -yq ffmpeg poppler-utils
-          pip install -q playwright && playwright install --with-deps chromium
+          pip install -q playwright numpy && playwright install --with-deps chromium
           mkdir -p "$RUNNER_TEMP/t3" && cd "$RUNNER_TEMP/t3" && npm i --silent three@0.128.0
       - name: PDF and CSV match the screen; saved pitches re-open the same
         env:
@@ -65,3 +65,4 @@ jobs:
           python3 tools/test/serve.py . 8766 &
           sleep 2
           python3 tools/test/export_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/export"
+          python3 tools/test/video_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/video"
