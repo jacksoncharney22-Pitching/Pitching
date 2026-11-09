@@ -58,6 +58,8 @@ for (const v of views) {
       const a = D.metrics[k][tr.events[e]], b = TD.metrics[k][tr.events[e]];
       if (a == null || b == null) continue;
       (row.ang[k] ??= {})[e] = ROT.has(k) ? wrap(a - b) : a - b;
+      // what the coach actually sees: the same reading at the frame the APP marked for the event (a timing miss costs degrees)
+      const s = af == null ? null : D.metrics[k][af]; if (s != null) (row.seen ??= {})[k + "|" + e] = Math.abs(ROT.has(k) ? wrap(s - b) : s - b);
     }
   }
   rows.push(row);
@@ -85,6 +87,8 @@ for (const [k, name] of Object.entries(ANGLES)) {
 }
 // signed timing: does the app mark events early or late?
 console.log(`\nevents, average signed (ms, + = app late): foot strike ${f0(mean(rows.map(r => r.ev.fs)))}, arm cocked ${f0(mean(rows.map(r => r.ev.mer)))}, release ${f0(mean(rows.map(r => r.ev.br)))}`);
+console.log("\nangle error as the coach sees it (at the frame the app marked; °)   foot strike  arm cocked  release");
+for (const [k, name] of Object.entries(ANGLES)) console.log(`${name.padEnd(28)} ${Object.keys(EVENTS).map(e => f1(mean(rows.map(r => r.seen?.[k + "|" + e]))).padStart(12)).join("")}`);
 if (perView) { console.log(""); for (const r of rows) console.log(`${r.view.padEnd(18)} joints ${f1(r.joint)} cm  arm ${f1(r.arm)} cm  events ${f0(r.ev.fs)}/${f0(r.ev.mer)}/${f0(r.ev.br)} ms`) }
 
 // ---- baseline
