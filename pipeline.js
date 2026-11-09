@@ -1239,7 +1239,7 @@ function analyseOnce(raw, opts = {}) {
   // foot strike, typically +20° to +50°). Where the shoulders read far more open than the hips there, and the shoulder
   // line leaned the other way fits, it's flipped (the arms move with their shoulders).
   if (opts.shoulderCheck !== false && !measured) {
-    const cz = unit(camDir), lo = Math.max(0, fs_ - Math.round(0.3 * fs)), hi = Math.min(T - 1, fs_ + Math.round((opts._shPost ?? 0.1) * fs));
+    const cz = unit(camDir), lo = Math.max(0, fs_ - Math.round(0.3 * fs)), hi = Math.min(T - 1, fs_ + Math.round((opts._shPost ?? 0.12) * fs));
     const head = v => { const h = unit([v[0], 0, v[2]]), f = cross([0, 1, 0], h); return Math.atan2(f[0], f[2]) * DEG };
     const wrapD = d => ((d + 180) % 360 + 360) % 360 - 180;
     const mirr = F => { const M = mid(F[11], F[12]); return [11, 12].map(j => { const v = sub(F[j], M); return add(M, sub(v, mul(cz, 2 * dot(v, cz)))) }) };
