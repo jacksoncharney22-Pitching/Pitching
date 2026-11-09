@@ -28,8 +28,16 @@ with sync_playwright() as p:
     pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1500)
     meta = pg.evaluate("() => document.querySelector('.rec-meta').textContent"); print("list says:", meta)
     if "no video" not in meta: bad.append("no 'no video' note")
+    # renaming sticks, in the list and on the results page
+    pg.once("dialog", lambda d: d.accept("Bob bullpen"))
+    pg.evaluate("() => document.querySelector('.rec-ren').click()"); pg.wait_for_timeout(600)
+    pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1000)
+    nm = pg.evaluate("() => document.querySelector('.rec-name').textContent"); print("renamed to:", nm)
+    if nm != "Bob bullpen": bad.append(f"rename: {nm}")
     pg.evaluate("() => document.querySelector('.rec-open').click()"); pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=60000); pg.wait_for_timeout(1500)
     if pg.evaluate("() => !document.getElementById('vidOv').hidden"): bad.append("overlay video offered without a video")
+    t = pg.evaluate("() => window.__lastData && window.__lastData.name")
+    if t != "Bob bullpen": bad.append(f"name on results: {t}")
     print("rows in angle table:", pg.locator("#ptable tbody tr").count())
     # the over-time view plots each saved pitch that has the reading
     pg.evaluate("""raw => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onsuccess = () => { const t = r.result.transaction('analyses', 'readwrite');

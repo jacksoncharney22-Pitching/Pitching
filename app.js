@@ -773,7 +773,7 @@ async function renderHistory() {
   items.forEach(it => {
     const li = document.createElement("li");
     const d = new Date(it.date);
-    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s${it.blob ? "" : " · no video"} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-del" aria-label="Remove">✕</button>`;
+    li.innerHTML = `<button class="rec-open"><span class="rec-name"></span><span class="rec-meta">${it.hand === "L" ? "LHP" : "RHP"} · ${(it.frames / it.fps).toFixed(1)} s${it.blob ? "" : " · no video"} · ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span></button><button class="rec-ren" aria-label="Rename" title="Rename">✎</button><button class="rec-del" aria-label="Remove">✕</button>`;
     li.querySelector(".rec-name").textContent = it.name || "Pitch";
     li.querySelector(".rec-open").onclick = async () => {
       const url = it.blob ? URL.createObjectURL(it.blob) : ""; lastRaw = it.raw;   // OpenCap files may have no video
@@ -785,6 +785,14 @@ async function renderHistory() {
         try { const d = tagResult(analyse(it.raw, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
       }
       openResults(data, url, { id: it.id, raw: it.raw, changed });
+    };
+    // file names like IMG_2041 tell a coach nothing a week later; the new name also shows on Compare, Over time and the PDF
+    li.querySelector(".rec-ren").onclick = async () => {
+      const name = (prompt("Name this pitch (for example the pitcher and the day):", it.name || "") || "").trim().slice(0, 60);
+      if (!name || name === it.name) return;
+      const rec = await tx("readonly", s => s.get(it.id)).catch(() => null);
+      if (rec) { rec.name = name; if (rec.data) rec.data.name = name; await tx("readwrite", s => s.put(rec)).catch(() => {}) }
+      renderHistory();
     };
     li.querySelector(".rec-del").onclick = async () => { await tx("readwrite", s => s.delete(it.id)).catch(() => {}); renderHistory() };
     list.append(li);

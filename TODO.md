@@ -78,6 +78,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 15:40 shipped: Recent keeps 30 pitches (was 6): newest 6 with video, older ones skeleton and numbers only ("no video" in the list, overlay download hidden). `tools/test/history_check.py`, on GitHub.
 - 15:40 shipped: "Track a reading over time" (Recent section): any angle at any event, or stride/arm slot/separation/tempo, one line across saved pitches, tick boxes to leave pitches out, note says how small a change may be the camera.
 - 15:40 finding: remaining rotation/elbow error is scatter not offset (signed averages mostly under 6° by camera, spread 7-14° per view). More overall gains tuned on this benchmark would be fitting its 8° camera; go after the wobble (worst views) or wait for the rebuild data.
+- 15:40 shipped: rename a saved pitch (pencil in Recent); name carries to Compare, Over time, PDF.
+- 15:40 finding: worst single readings: trunk at release, 3035 side-on +30 (app 155, truth 128), 2653/3222 from behind -25; several of these are the same pitch on different views, so the camera is deciding the reading there.
 - 15:33: website deploy confirmed for everything above (run for 2bcc717 succeeded; one run had hung 10 min and was replaced by the next push).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
