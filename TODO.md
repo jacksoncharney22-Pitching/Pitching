@@ -44,6 +44,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 - Next session: rebuild still blocked unless the data has arrived (check the project docs). Otherwise: (1) trunk/pelvis 10-18° under the truth late in the delivery from behind (depth); (2) `_sepMax` 100 vs 85 is a wash (elbow at release 6.5 -> 6.3, trunk FS 8.3 -> 8.5), left alone; (3) (e) throwing arm at release.
 
+- 12:40 session shipped: (1) shoulder width read from this pitcher's own widest point foot strike -> release (clamped 0.86-1.04 of the fixed width, was fixed 0.94): trunk at release 11.4 -> 10.8° off, max layback 7.9 -> 7.5°, separation 6.8/4.9/6.4 -> 6.6/4.8/6.1°. (2) Spine lean toward/away from the camera scaled back 8% (`_spineG` 0.92): side tilt 4.9/7.7/7.6 -> 4.8/7.2/7.1, forward tilt 4.4/6.3/5.7 -> 4.3/5.8/5.6, abduction 4.2/4.4/5.4 -> 4.1/3.8/4.9, arm cm 11.5 -> 11.2. Bigger scale-back (0.7-0.75) is much better on side tilt (side_back 13.5 -> 6°) and tilts, but the arm position from behind_3b gets 1.4 cm worse (guard fails), so held at 0.92; the deadzone version didn't fix that. Don't retry either variant without a new clue.
+- 12:40 tried, dropped: locking the hip line to the video (`lockHips`, incl. self-calibrated hip width): pelvis at release 8.5 -> 7.7° but separation mer/br 4.8/6.0 -> 6.0/6.9. Pelvis late rotation still -13/-11° from behind.
+- 12:40 finding: trunk tilt errors are consistent per view (side_back side tilt +13, front_3b forward +14): spine depth overstated. If the behind_3b arm position issue can be solved the 0.7 setting is worth 1.5° of side tilt.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):

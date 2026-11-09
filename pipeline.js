@@ -1300,6 +1300,19 @@ function analyseOnce(raw, opts = {}) {
     // release: where the matched lab throws release the ball (unless it was set by hand)
     if (tmpl && opts.matchRel !== false && !(opts.phases && opts.phases.release != null)) rel = clamp(rel + Math.round(tmpl.relShift), fs_ + 1, T - 2);
   }
+  // How far the spine leans toward or away from the camera is the one thing the picture can't show, and the learned depth
+  // overstates it. Scaling that lean back by 8% (the whole upper body moved together, so the arm's own angles aren't touched)
+  // brings the trunk tilts closer to motion capture: 60 benchmark views, side tilt 4.9/7.7/7.6 -> 4.8/7.2/7.1° off at foot
+  // strike/max layback/release, forward tilt 4.4/6.3/5.7 -> 4.3/5.8/5.6°, shoulder abduction 4.2/4.4/5.4 -> 4.1/3.8/4.9°, throwing
+  // arm position 11.5 -> 11.2 cm. A bigger scale-back (25%) fixes side tilt more (side_back 13.5 -> 6°) but makes the arm position
+  // from behind toward third base 1.4 cm worse: not shipped.
+  if (opts.spineDepth !== false && !measured) {
+    const cz = unit(camDir), g = opts._spineG ?? 0.92;
+    for (let t = 0; t < T; t++) {
+      const F = P[t], d = mul(cz, (g - 1) * dot(sub(mid(F[11], F[12]), mid(F[23], F[24])), cz));
+      for (let j = 0; j <= 22; j++) F[j] = add(F[j], d);
+    }
+  }
 
   // ---- final glitch guard, on every skeleton whatever the video: the zero-phase low-pass filter biomechanics labs run
   // on motion-capture data (about 12 Hz for the body, 20 Hz for the throwing arm, which really does move that fast).
