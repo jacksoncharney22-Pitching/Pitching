@@ -1438,6 +1438,9 @@ function analyseOnce(raw, opts = {}) {
     for (let t = lo; t <= hi; t++) { let v = ((M.throwER[t] % 360) + 540) % 360 - 180; if (w.length) v = w[w.length - 1] + (((v - w[w.length - 1]) % 360) + 540) % 360 - 180; w.push(v) }
     const md = median(w), sh = md < -90 ? 360 : md > 270 ? -360 : 0;
     M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
+  // Arm cocked is the moment of most layback, so read it off the layback itself: the hand being highest over the shoulder is only
+  // close to it (60 lab views against motion capture: 27 -> 11 ms off). Nudged by at most 1/30 s: a wider search reaches 5 ms on the lab views but moves Maher by 0.07 s, which needs his video to judge.
+  if (opts._merSnap !== false && !(opts.phases && opts.phases.armCocked != null)) { const a = Math.round(0.034 * fs), b = a; let best = cock; for (let t = Math.max(contactF + 1, cock - a); t <= Math.min(rel - 1, cock + b); t++) if ((M.throwER[t] ?? -999) > (M.throwER[best] ?? -999)) best = t; cock = best }
 
   // ---- mirror left-handers back for display
   // the tracked points drawn over the video get the same treatment as the skeleton: each part held to how fast it can
