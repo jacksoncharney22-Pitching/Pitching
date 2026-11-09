@@ -148,10 +148,6 @@ whole body. Every session works on this before anything else, in order:
   arm path takes). Full clips are all right (240 of 240).
 
 ## Friday: coaching report and finish
-- Saved history across app updates: a pitch saved before an update re-opens with the new skeleton maths (by design);
-  show a small note when its numbers changed since it was saved? (Look change: screenshots to Jackson first.)
-- PDF: the angle table has no rotation speeds; the screen does.
-- Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
 ## Ideas (free rein from Jackson, 2026-11-09: take these on when the day's project is done or blocked)
 - Graded coaching report: Jackson said on 2026-11-06 he does NOT want it back. report.js and tools/test/reportcheck.mjs
@@ -159,6 +155,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: Re-opening a saved pitch says so when its numbers have changed by 3° or more since last opened, with the biggest change (once only).
 - 2026-11-09: Video downloads checked (`tools/test/video_check.py`, also on GitHub): right length, and every picture of the overlay video is the exact source frame its skeleton was computed for (Maher, Staumont, Hackimer's slow motion: 0 wrong frames). No bug found.
 - 2026-11-09: Shoulder width from the pitcher's own delivery (trunk at release 11.4 -> 10.8° off); spine lean scaled back (side tilt 7.7 -> 7.2° at max layback); PDF rotation speeds; per-view check on GitHub; plainer failure messages.
 - 2026-11-09: Delivery numbers (stride, arm slot, hand height with height entered, peak separation) on the results page, PDF and Compare; arm slot 7.4 -> 6.4° off; warning when a clip doesn't look like a pitch; Compare fits on a phone.

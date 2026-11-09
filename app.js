@@ -657,6 +657,8 @@ function renderDeliveryStrip(data) {
   el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b></div>`).join("");
 }
 function openResults(data, url, meta = {}) {
+  { const n = $("numsChanged"), c = meta.changed; n.hidden = !c;
+    if (c) n.innerHTML = `<b>These numbers have changed since this pitch was last opened</b>, because the app's measurements were improved. The biggest change: ${c.label} at ${c.ev.toLowerCase()}, ${Math.round(c.was)}° → ${Math.round(c.now)}°.` }
   if (viewer) { viewer.stop(); viewer = null }
   lastResult = { data, url, meta }; window.__lastData = data;
   const mount = $("viewerMount"); mount.innerHTML = ""; mount.append($("viewerTpl").content.cloneNode(true));
@@ -668,7 +670,7 @@ function openResults(data, url, meta = {}) {
   const onPhases = meta.raw ? (phases, frame) => {
     const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data); d2.userPhases = phases;   // kept for re-opening
     if (meta.id != null) updateHistory(meta.id, d2);
-    openResults(d2, url, { ...meta, startFrame: frame });
+    openResults(d2, url, { ...meta, changed: null, startFrame: frame });
   } : null;
   $("phaseEditNote").hidden = !!onPhases;
   viewer = window.startViewer(data, url, { onPhases, startFrame: meta.startFrame });
@@ -765,18 +767,37 @@ async function renderHistory() {
     li.querySelector(".rec-name").textContent = it.name || "Pitch";
     li.querySelector(".rec-open").onclick = async () => {
       const url = it.blob ? URL.createObjectURL(it.blob) : ""; lastRaw = it.raw;   // OpenCap files may have no video
-      let data = it.data;
+      let data = it.data, changed = null;
       if (it.raw) {                     // rebuild with the current skeleton engine (tracking is reused, so it's instant)
         await armLibReady();
         // events the user moved by hand stay where they put them
         const up = it.data && it.data.userPhases, o = { hand: it.hand || "auto", ...(up ? { phases: up } : {}) };
-        try { const d = tagResult(analyse(it.raw, o), it.data); data = d; updateHistory(it.id, d) } catch (e) { }
+        try { const d = tagResult(analyse(it.raw, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
       }
-      openResults(data, url, { id: it.id, raw: it.raw });
+      openResults(data, url, { id: it.id, raw: it.raw, changed });
     };
     li.querySelector(".rec-del").onclick = async () => { await tx("readwrite", s => s.delete(it.id)).catch(() => {}); renderHistory() };
     list.append(li);
   });
+}
+// When a saved pitch re-opens, the skeleton is rebuilt with the newest maths, so a number can differ from what the coach wrote
+// down last time. Say so once, with the biggest change, instead of leaving them to wonder (it stays hidden under 3°, normal noise).
+const CHANGE_LABELS = { throwElbow: "Elbow flexion", throwAbd: "Shoulder abduction", throwER: "Layback", leadKnee: "Front knee", pelvisRot: "Pelvis rotation", trunkRot: "Trunk rotation", separation: "Hip-shoulder separation", trunkFwd: "Forward trunk tilt", trunkLat: "Side trunk tilt" };
+function biggestChange(old, now) {
+  if (!old || !old.metrics || !old.phases || !now || !now.metrics || !now.phases) return null;
+  const at = (d, name) => (d.phases.find(p => p.name === name) || {}).frame;
+  let best = null;
+  for (const ev of ["Foot strike", "Arm cocked", "Release"]) {
+    const fo = at(old, ev), fn = at(now, ev);
+    if (fo == null || fn == null) continue;
+    for (const k in CHANGE_LABELS) {
+      const a = old.metrics[k]?.[fo], b = now.metrics[k]?.[fn];
+      if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+      const d = Math.abs(((b - a + 180) % 360 + 360) % 360 - 180);
+      if (d >= 3 && (!best || d > best.d)) best = { d, label: CHANGE_LABELS[k], ev, was: a, now: b };
+    }
+  }
+  return best;
 }
 // ---- compare two saved pitches (rebuilt from their saved tracking, so both are measured with the current maths)
 const savedLabel = it => `${it.name || "Pitch"} (${new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })})`;
