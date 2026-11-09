@@ -21,7 +21,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 9:40 session: elbow bias re-measured with the two shipped fixes: FS -6.8° (MER -2.6, BR +1.0), so what's left is foot strike only. Cause on the worst views: one arm bone (upper arm on 3228 behind_3b, forearm on 3228 side_open) on the wrong side of the picture for the ~10 frames before foot strike. Tried: scoring the 4 toward/away combinations by the matched lab arm's elbow bend: no gain (FS 8.6 -> 8.7, MER/BR unchanged), dropped: the lab arm's bend is itself 25-35° off there (the lab arm bends about 5 frames later than 3228's). Don't retry without a new clue.
 - 9:40 session: Maher layback "219° at foot strike" no longer reproduces (now -43° max / -11° fast): item closed, but -43° at foot strike still looks odd, worth a look with the video.
 - Shipped 9:40: side-by-side compare of two saved pitches (compare.js, Recent section); PDF angle table now has Layback.
-- Next session: pick from follow-on (c)/(d)/(e) above, or another Idea.
+- Shipped 9:40: arm 2D smoothing lighter (`_armSig` 0.6 -> 0.3): elbow at foot strike 8.6 -> 7.8° off, wobble 6.4 -> 6.7 (truth 5.8). Sweeps with no gain, don't repeat: `_fcCore` 16/20 (separation worse), `_shSig` 0.5 (separation worse), `_hipSig` 1, `_fcLimb` 16, `_lPre` 0.5/0.9.
+- Finding: layback at foot strike is -43° on Maher (max) and 110° on Staumont; the 12 lab pitchers are -11 to 64°. The benchmark says 5.6° off, so these real clips behave differently from the lab views: needs the videos to judge (Maher's video is on the wait list).
+- PDF/CSV check now runs on GitHub Actions on every push (`exports` job).
+- Next session: follow-on (c) Fast flip after release, (d) trunk rotation, (e) throwing arm at release; or the Wednesday kinematic sequence (peak pelvis, trunk, arm speeds and order, checked vs truth).
 
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
@@ -88,8 +91,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 ## Friday: coaching report and finish
 - Saved history across app updates: a pitch saved before an update re-opens with the new skeleton maths (by design);
   show a small note when its numbers changed since it was saved? (Look change: screenshots to Jackson first.)
-- Run `tools/test/export_check.py` on GitHub Actions too (needs Playwright + a local three.js there).
-- PDF: the angle table has no layback row and no speeds; the screen does. Offer Jackson a screenshot of a PDF with them.
+- PDF: the angle table has no rotation speeds; the screen does.
 - Video export: check the skeleton/overlay MP4 frames line up with the screen (frame count, events) with a test tool.
 - Look-and-feel changes go to Jackson as screenshots for approval first; push only after he says yes.
 
@@ -99,6 +101,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-09: Compare two saved pitches side by side (Recent pitches); PDF angle table has Layback; PDF/CSV check on GitHub Actions; elbow at foot strike 8.6 -> 7.8° off.
 - 2026-11-06: Throwing arm follows the best-fitting lab throws frame by frame: layback at release 39.8 -> 24.7° off,
   elbow at max layback 12.7 -> 9.7°, shoulder abduction at max layback 7.1 -> 5.1°.
 - 2026-11-06: PDF * for blurred throwing-arm values; PDF/CSV checked against the screen (`tools/test/export_check.py`);

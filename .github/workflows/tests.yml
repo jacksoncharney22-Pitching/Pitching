@@ -36,3 +36,26 @@ jobs:
           node-version: "22"
       - name: Accuracy scorecard vs motion capture (fails only if a camera angle gets clearly worse)
         run: node tools/test/bench.mjs
+  exports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install a headless browser and ffmpeg (test tools only; the website itself uses neither)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+          pip install -q playwright && playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/t3" && cd "$RUNNER_TEMP/t3" && npm i --silent three@0.128.0
+      - name: PDF and CSV match the screen; saved pitches re-open the same
+        env:
+          ORBIT_JS: tools/test/orbit_stub.js
+        run: |
+          export THREE_JS="$RUNNER_TEMP/t3/node_modules/three/build/three.min.js"
+          python3 tools/test/serve.py . 8766 &
+          sleep 2
+          python3 tools/test/export_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/export"
