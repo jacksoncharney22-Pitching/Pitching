@@ -42,8 +42,31 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   second-order track and a faster Viterbi step did not help.
 - Layback at release is mostly unfixable from one camera (elbow nearly straight, forearm spin ambiguous).
 
+## TOP PRIORITY: the rebuild (Jackson's decision, 2026-11-09)
+
+Jackson wants the glitches gone for good: limbs jumping/shaking, body flips/twists, the throwing arm not following
+the real motion, wrong timing/numbers. Decision: rebuild the core on a cloud GPU with a whole-delivery 3D model
+(GVHMR, already wired up as "Ultra": `ultra/app.py`, deployed by `.github/workflows/ultra.yml`), instead of
+per-frame browser tracking plus fixes. Every session works on this before anything else, in order:
+
+1. **Unblock the model** (waiting on Jackson): he is signing up at smpl-x.is.tue.mpg.de and will put his login in
+   the Modal secret `smplx` (`SMPLX_USER`, `SMPLX_PW`) himself. Never ask for or print the values. Once he says it's
+   done, run `.github/workflows/ultra-test.yml` and confirm "SMPL-X downloaded OK" in the logs.
+2. **Prove it on real clips**: run Ultra on the clip library (Maher, Hackimer, Staumont, Ohtani, Flaherty, Joyce,
+   McKenzie, Helsley, Rodon, two-angle pair) and compare with the current app: frame-by-frame jumps of each joint,
+   left/right flips, throwing-arm path through layback and release (frame strips), event times. Report to Jackson
+   with strips side by side.
+3. **Rebuild the analysis on top of it**: a new path in `pipeline.js` that takes the cloud's whole-delivery 3D joints
+   directly (no per-frame fixes), finds the events and measures the angles from that; scored with
+   `tools/test/bench.mjs`-style checks against motion capture where possible, and the regression clips.
+4. **Make it the default**: "Analyze" sends the clip to the cloud (clear consent line: the clip goes to our server
+   for processing and is deleted after); the browser tracker stays as the offline/fallback "Quick" mode. Show
+   progress and a clear message if the cloud is busy or down. Watch GPU cost per clip and report it.
+5. **Retire the patches** the new path no longer needs (left/right flip fixes, arm-blur matching, etc.) once the
+   cloud path beats them on every test, so there's less code to go wrong.
+
 ## Waiting on Jackson
-- Ultra mode (GVHMR cloud 3D body model): needs Jackson's SMPL-X account (smpl-x.is.tue.mpg.de) before it can be finished.
+- SMPL-X account for the rebuild (step 1 above): Jackson signing up, then adding his login to the Modal secret `smplx`.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
 - Clips needed for the items marked "(Needs clip…)": the Cooper Maher video, a few net / batting-cage / chain-link
   clips, one crowd-background clip (Sale, Ohtani, Flaherty, McKenzie or Joyce) and, ideally, a real left-hander. The
