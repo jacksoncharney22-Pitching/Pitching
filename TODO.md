@@ -88,7 +88,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 ## Thursday: testing and validation
 - Add `perview.mjs` to the GitHub checks (compare with the previous commit, fail on many views >5° worse).
-- Video export check (see Friday) and a saved-pitch check for the new Delivery numbers (same numbers on re-open).
+- Video export check (see Friday).
 - Net cleaning: test on more net/fence clips (chain-link, batting cage, diagonal nets) and confirm crowd/fence
   clips keep the net check off (Sale, Ohtani, Flaherty, McKenzie, Joyce). (Needs clips.)
 - Regression tests: add a fixture for a crowd-background clip so the net check is guarded too (left-handed part done

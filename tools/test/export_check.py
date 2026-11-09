@@ -49,6 +49,8 @@ with sync_playwright() as p:
         pg.evaluate("() => document.querySelector('.rec-open').click()"); pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=60000); pg.wait_for_timeout(1500)
         return pg.evaluate("""() => [...document.querySelectorAll('#ptable tr')].map(tr => [...tr.children].map(td => td.firstChild ? (td.firstChild.textContent || '').trim() : ''))""")
     t1 = open_saved(3000)
+    strip = lambda: pg.evaluate("() => document.getElementById('delStrip').innerText.replace(/\\s+/g, ' ').trim()")
+    s1 = strip()
     pg.screenshot(path=os.path.join(out, "screen.png"))
     phases = pg.evaluate("() => window.__lastData.phases.filter(p => !['Start','Finish'].includes(p.name)).map(p => [p.name, p.frame])")
     with pg.expect_download(timeout=120000) as d: pg.click("#pdfBtn")
@@ -56,7 +58,9 @@ with sync_playwright() as p:
     with pg.expect_download(timeout=30000) as d: pg.click("#csvBtn")
     csvp = os.path.join(out, f"{name}.csv"); d.value.save_as(csvp)
     t0 = open_saved(0, slow=True)
+    s0 = strip()
     t2 = open_saved(3000)                # re-open: the saved record now holds the rebuilt result
+    s2 = strip()
     # move foot strike 3 frames later by hand, then re-open: the hand-set foot strike must still be there
     pg.evaluate("() => document.querySelectorAll('#ptable th[data-f]')[1].click()"); pg.wait_for_timeout(300)
     pg.evaluate("() => document.activeElement && document.activeElement.blur()")
@@ -78,6 +82,8 @@ for r in t1:
     scr[(grp, r[0])] = r[1:]
 if t0 != t1: bad.append("opening a saved analysis straight away on a slow connection gave different numbers")
 if t1 != t2: bad.append("re-opening the saved analysis changed the angle table")
+if not s1: bad.append("Delivery numbers missing on the results page")
+if len({s0, s1, s2}) != 1: bad.append(f"Delivery numbers changed on re-opening: {s1} / {s0} / {s2}")
 fs_auto = dict(phases)["Foot strike"]
 print(f"foot strike: found at frame {fs_auto}, moved by hand to {fs_set}, after re-opening {fs_back}")
 if fs_set != fs_auto + 3: bad.append(f"moving foot strike by hand didn't take (frame {fs_auto} -> {fs_set}, wanted {fs_auto + 3})")
