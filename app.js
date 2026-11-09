@@ -12,6 +12,7 @@ import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";
 import { downloadPDF } from "./pdf.js";
+import { renderCompare } from "./compare.js";
 import { createEditor } from "./editor.js";
 import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
@@ -20,7 +21,7 @@ import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
 
 const $ = id => document.getElementById(id);
-const views = ["home", "prep", "progress", "results"];
+const views = ["home", "compare", "prep", "progress", "results"];
 function show(v) { views.forEach(x => $(x).hidden = x !== v); window.scrollTo({ top: 0 }); document.body.dataset.view = v }
 const fmtTime = s => `${s.toFixed(2)} s`;
 const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn: null, velo: null, weightLb: null };
@@ -740,6 +741,7 @@ async function renderHistory() {
   const list = $("recent"); let items = [];
   try { items = (await tx("readonly", s => s.getAll())) || [] } catch (e) {}
   items.sort((a, b) => b.date - a.date);
+  fillComparePicker(items);
   $("recentWrap").hidden = !items.length; list.innerHTML = "";
   items.forEach(it => {
     const li = document.createElement("li");
@@ -761,6 +763,30 @@ async function renderHistory() {
     list.append(li);
   });
 }
+// ---- compare two saved pitches (rebuilt from their saved tracking, so both are measured with the current maths)
+const savedLabel = it => `${it.name || "Pitch"} (${new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })})`;
+function fillComparePicker(items) {
+  const pick = $("cmpPick"); pick.hidden = items.length < 2; if (items.length < 2) return;
+  const fill = (sel, idx) => { sel.innerHTML = ""; items.forEach((it, i) => { const o = document.createElement("option"); o.value = it.id; o.textContent = savedLabel(it); o.selected = i === idx; sel.append(o) }) };
+  fill($("cmpA"), 0); fill($("cmpB"), 1);
+}
+$("cmpGo").onclick = async () => {
+  const ids = [+$("cmpA").value, +$("cmpB").value];
+  const go = $("cmpGo"), was = go.textContent; go.disabled = true; go.textContent = "Comparing…";
+  try {
+    await armLibReady();
+    const load = async id => {
+      const it = await tx("readonly", s => s.get(id));
+      let data = it.data;
+      if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(analyse(it.raw, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
+      return { data, label: savedLabel(it) };
+    };
+    const [A, B] = [await load(ids[0]), await load(ids[1])];
+    renderCompare($("cmpBody"), A, B); show("compare");
+  } catch (e) { alert("Those two pitches could not be compared. Try opening each one from Recent first.") }
+  go.disabled = false; go.textContent = was;
+};
+$("cmpBack").onclick = () => show("home");
 renderHistory();
 show("home");
 // start downloading the default model in the background so the first analysis begins sooner

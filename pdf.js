@@ -133,11 +133,11 @@ export async function downloadPDF(data, url, onStatus = () => {}) {
   need(250);                                  // heading and table stay together
   text("Key angles at each phase", 13, { bold: true, gap: 6 });
   const M_ = data.metrics, rows = [
-    ["Throwing elbow flexion", "throwElbow"], ["Throwing shoulder abduction", "throwAbd"], ["Glove arm abduction", "gloveAbd"],
+    ["Throwing elbow flexion", "throwElbow"], ["Throwing shoulder abduction", "throwAbd"], ["Layback", "throwER"], ["Glove arm abduction", "gloveAbd"],
     ["Lead knee flexion", "leadKnee"], ["Lead hip flexion", "leadHip"], ["Back knee flexion", "backKnee"],
     ["Pelvis rotation", "pelvisRot"], ["Trunk rotation", "trunkRot"], ["Hip-shoulder separation", "separation"],
     ["Trunk forward tilt", "trunkFwd"], ["Trunk side tilt", "trunkLat"], ["Pelvis tilt", "pelvisTilt"]];
-  const ARM = new Set(["throwElbow", "throwAbd"]), relF = (data.phases.find(p => p.name === "Release") || {}).frame ?? -9;
+  const ARM = new Set(["throwElbow", "throwAbd", "throwER"]), relF = (data.phases.find(p => p.name === "Release") || {}).frame ?? -9;
   const colW = [CW * 0.36, ...PH.map(() => CW * 0.64 / PH.length)];
   need(20 + rows.length * 16);
   doc.setFillColor(0); doc.rect(M, y, CW, 18, "F"); doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);

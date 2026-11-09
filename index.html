@@ -86,6 +86,27 @@ h1 { font-family: var(--display); font-weight: 700; font-size: clamp(38px, 6vw, 
 .rec-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .rec-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap }
 .rec-del { padding: 8px 11px; color: var(--muted) }
+/* long pitch names wrap instead of pushing the whole home page wider than a phone */
+.home, .fold, #recent, #recent li { min-width: 0 }
+@media (max-width: 560px) { .rec-open { flex-wrap: wrap; row-gap: 2px } .rec-name { flex: 1 1 100%; white-space: normal; overflow-wrap: anywhere } .rec-meta { white-space: normal } }
+
+/* compare two pitches */
+.cmp-pick { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px }
+.cmp-pick label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); flex: 1 1 180px; min-width: 0 }
+.cmp-pick select { width: 100%; min-width: 0; background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; font-size: 14px }
+.cmp-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; align-items: start }
+.cmp-key, .cmp-body > .hint { grid-column: 1 / -1 }
+.cmp-key { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px }
+.cmp-key span { min-width: 0; overflow-wrap: anywhere }
+.cmp-key i { font-style: normal; font-family: var(--mono); font-weight: 500; margin-right: 6px }
+.card.cmp-card h3 { font-family: var(--display); font-size: 20px; font-weight: 600; margin: 0 0 8px }
+table.cmp { width: 100%; min-width: 0; border-collapse: collapse; font-size: 14px }
+table.cmp th, table.cmp td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; font-weight: 400; white-space: nowrap }
+table.cmp th[scope=row], table.cmp thead th:first-child { text-align: left; white-space: normal; color: #d9d9d9 }
+table.cmp td { font-family: var(--mono); font-size: 13px }
+table.cmp .cmp-g th { text-align: left; color: var(--muted); font-size: 12px; padding-top: 10px; text-transform: uppercase; letter-spacing: .04em }
+table.cmp .cmp-big th, table.cmp .cmp-big td { font-weight: 600; color: #fff }
+.cmp-a { color: var(--throw) } .cmp-b { color: var(--trunk) }
 
 /* prep */
 .prepgrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start }
@@ -483,8 +504,19 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
         <summary>Recent pitches</summary>
         <p class="hint">Saved in this browser only.</p>
         <ul id="recent"></ul>
+        <div id="cmpPick" class="cmp-pick" hidden>
+          <label>Pitch A <select id="cmpA"></select></label>
+          <label>Pitch B <select id="cmpB"></select></label>
+          <button type="button" id="cmpGo">Compare these two</button>
+        </div>
       </details>
     </div>
+  </section>
+
+  <!-- COMPARE -->
+  <section id="compare" class="view" hidden>
+    <div class="reshead"><div><span class="eyebrow">Side by side</span><h1>Compare two pitches</h1></div><button type="button" id="cmpBack">Back</button></div>
+    <div id="cmpBody" class="cmp-body"></div>
   </section>
 
   <!-- PREP -->
@@ -605,21 +637,22 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794233110",
-  "./fuse.js": "./fuse.js?v=1794233110",
-  "./multiview.js": "./multiview.js?v=1794233110",
-  "./rtm.js": "./rtm.js?v=1794233110",
-  "./pdf.js": "./pdf.js?v=1794233110",
-  "./editor.js": "./editor.js?v=1794233110",
-  "./lifter.js": "./lifter.js?v=1794233110",
-  "./armzoom.js": "./armzoom.js?v=1794233110",
-  "./net.js": "./net.js?v=1794233110",
-  "./opencap.js": "./opencap.js?v=1794233110",
-  "./ultra.js": "./ultra.js?v=1794233110",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794233110"
+  "./pipeline.js": "./pipeline.js?v=1794235890",
+  "./fuse.js": "./fuse.js?v=1794235890",
+  "./multiview.js": "./multiview.js?v=1794235890",
+  "./rtm.js": "./rtm.js?v=1794235890",
+  "./pdf.js": "./pdf.js?v=1794235890",
+  "./compare.js": "./compare.js?v=1794235890",
+  "./editor.js": "./editor.js?v=1794235890",
+  "./lifter.js": "./lifter.js?v=1794235890",
+  "./armzoom.js": "./armzoom.js?v=1794235890",
+  "./net.js": "./net.js?v=1794235890",
+  "./opencap.js": "./opencap.js?v=1794235890",
+  "./ultra.js": "./ultra.js?v=1794235890",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794235890"
 }}
 </script>
-<script src="viewer.js?v=1794233110" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794233110"></script>
+<script src="viewer.js?v=1794235890" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794235890"></script>
 </body>
 </html>
