@@ -91,7 +91,9 @@ export function renderTrend(el, pts) {
     const th = SIG[st.k + "|" + EV[st.ph]];
     let far = 0; for (const u of use) far = Math.max(far, camGap(use[0].p.data, u.p.data) ?? 0);
     $("trWarn").hidden = far < CAM_APART; if (far >= CAM_APART) $("trWarn").innerHTML = camWarn(far).replace("<p class=\"numschanged cmp-camwarn\">", "").replace("</p>", "").replace("These were", "Some of these were").replace("the differences below", "this line unless you untick those pitches");
+    const quals = new Set(use.map(u => u.p.data.quality).filter(Boolean)), mixN = quals.size > 1 ? " Some of these were read at different accuracy settings, and the same pitch can read differently between settings." : "";
     $("trNote").textContent = isDel(st.k) ? "Film from the same spot each time: a different camera angle moves these numbers too." : th == null ? "One camera can't show real differences on this reading, so treat this line as noise." : `A change smaller than about ${th}° may be the camera rather than the pitcher. Film from the same spot each time.`;
+    $("trNote").textContent += mixN;
     $("trRows").innerHTML = pts.map((p, i) => { const v = val(p.data, st.k, st.ph); return `<tr><td><input type="checkbox" data-i="${i}" aria-label="Use this pitch"${st.off.has(p) ? "" : " checked"}></td><th scope="row">${esc(p.label)}</th><td>${v == null ? "–" : v.toFixed(dec) + unit}</td></tr>` }).join("");
     $("trRows").querySelectorAll("input").forEach(c => c.onchange = () => { const p = pts[+c.dataset.i]; c.checked ? st.off.delete(p) : st.off.add(p); draw() });
   };

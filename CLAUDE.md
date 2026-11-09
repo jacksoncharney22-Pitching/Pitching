@@ -32,6 +32,7 @@ picture or numbers from a real clip rather than describing a change.
 | `net.js` | Detects a net/backstop between camera and pitcher and cleans it out of the frames the tracker reads (never out of what the user sees). |
 | `multiview.js` | Combines 2–3 camera angles of the same pitch. |
 | `editor.js` | Trim editor. |
+| `compare.js` | Compare two saved pitches, and one reading over time. Bold limits come from `tools/test/comparecheck.mjs --json`. |
 | `report.js`, `pdf.js` | Coaching report and PDF export. |
 | `opencap.js` | Imports OpenCap `.trc` marker files as a skeleton. |
 | `ultra.js` + `ultra/` | "Ultra" mode: sends the clip to a Modal GPU service running GVHMR (SMPL-X). `ultra/app.py` is the Modal app. Waiting on the owner's SMPL-X account; credentials live only in GitHub repo secrets and the Modal secret `smplx` (never print or ask for their values). |
