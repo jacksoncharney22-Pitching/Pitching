@@ -28,6 +28,14 @@ for (const v of views) {
   if (MER != null) push("fs-mer", (MER - FS) / vf / 0.125);
   const m = d.metrics, rate = (arr, a, b, s) => { let best = 0; for (let t = a; t < b; t++) { const g = Math.abs(arr[t + s] - arr[t]) * vf / s; if (g > best) best = g } return best };
   if (m && m.trunkRot) { push("trunkVel", 1000 / rate(m.trunkRot, Math.max(0, FS - 6), Math.min(T - 3, R + 4), 2)); push("pelvVel", 650 / rate(m.pelvisRot, Math.max(0, FS - 10), Math.min(T - 3, R + 4), 2)) }
+  // raw tracker points, unsmoothed (scale exactly with slow motion): 2D wrist and shoulder-line speed in body heights/s
+  { const F = raw.frames, W = raw.width, Hh = raw.height, wj = d.throwHand === "L" ? 15 : 16;
+    const bh = f => { const ys = f.img.map(p => p[1] * Hh); return Math.max(...ys) - Math.min(...ys) };
+    const B = F[FS] ? bh(F[FS]) : 1; let w2 = 0, s2 = 0, e2 = 0;
+    for (let t = FS; t < Math.min(F.length - h, R + h); t++) { const a = F[t], b = F[t + h]; if (!a || !b) continue;
+      w2 = Math.max(w2, Math.hypot((a.img[wj][0] - b.img[wj][0]) * W, (a.img[wj][1] - b.img[wj][1]) * Hh) / B * vf / h);
+      const ej = wj - 2; e2 = Math.max(e2, Math.hypot((a.img[ej][0] - b.img[ej][0]) * W, (a.img[ej][1] - b.img[ej][1]) * Hh) / B * vf / h) }
+    push("raw2Dwrist", 10 / w2); push("raw2Delbow", 5 / e2) }
   // whole-body: front knee / hip speed during the stride
   const Hp = d.throwHand === "L" ? 24 : 23; let hv = 0; for (let t = Math.max(0, FS - 10); t < FS; t++) { const p = P[t][Hp], q = P[t + 1][Hp]; hv = Math.max(hv, Math.hypot(p[0] - q[0], p[2] - q[2]) / H * vf) } push("hipStride", 1.6 / hv);
   // time from release to trunk flexion peak / finish
