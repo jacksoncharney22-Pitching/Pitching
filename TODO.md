@@ -69,6 +69,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   should tell the user what to do next in plain words.
 
 ## Wednesday: pitching measurements
+- Measured 2026-11-09 (`node tools/test/sequence.mjs`, 60 views): pelvis peak speed timing 23 ms off, trunk 28 ms; peak speeds 91 / 129 °/s off; pelvis-before-trunk order right on 49 of 60; the pelvis-to-trunk gap averages right (41 ms vs 39) but is 34 ms off per pitch, about the size of the gap itself. So: show peak speeds and order as a rough guide only, don't show the gap in ms per pitch until it's better.
 - Kinematic sequence: pelvis, trunk, arm peak rotation speeds and their timing order (pelvis → trunk → arm),
   checked against the benchmark truth.
 - Stride: stride length (% of height), stride direction (open/closed), front-foot angle at foot strike.
