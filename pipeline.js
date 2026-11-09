@@ -530,7 +530,13 @@ function lockArms(P, img, scale, rot, cam, BL, unseen, K, fs, opts = {}, tmpl = 
     // frames the camera lost to blur: the matched lab arm itself
     const tw = new Array(T).fill(0);
     if (tv) for (let t = 0; t < T; t++) if (tv[t]) {
-      const lost = unseen[12] && unseen[12][t], w = tmpl.wt[t] * (lost ? (opts._tmplFill ?? 1) : (opts._tmplAll ?? 0.5));
+      // The upper arm: how much the matched lab arm counts depends on how the bone lies to the camera. Lying flat in the
+      // picture, the video shows it well; pointing at or away from the camera it's only a short stub on screen and its
+      // direction in the picture is mostly tracker noise, so the lab arm counts more. 60 benchmark views vs motion
+      // capture: elbow at foot strike 9.5 -> 8.6° off, layback and shoulder abduction unchanged. (A flat 50% lab arm
+      // pulled every elbow toward the typical lab arm, which reads about 4° straighter than these pitchers at landing.)
+      const gw = b === 14 && opts._tmplAll == null ? 0.8 * (1 - norm(ip[t]) / L) : (opts._tmplAll ?? 0.5);
+      const lost = unseen[12] && unseen[12][t], w = tmpl.wt[t] * (lost ? (opts._tmplFill ?? 1) : gw);
       tw[t] = tmpl.wt[t] * (opts._tmplFill ?? 1);
       if (w > 0) VS[t] = add(mul(unit(VS[t]), L * (1 - w)), mul(tv[t], L * w));
     }
