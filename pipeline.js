@@ -1,3 +1,4 @@
+import { bodyFit } from "./bodyfit.js";
 // Charney Pitching — analysis pipeline (runs in the browser, no DOM).
 // Input: per-frame pose landmarks from MediaPipe Pose Landmarker (image + world).
 // Output: the viewer's data object: a video-anchored 3D skeleton with constant bone lengths,
@@ -655,7 +656,35 @@ export function detectSlowFactor(raw) {
   return { factor, estimate: est, basis };
 }
 
+// angles on a finished (right-handed, internal) pose
+function finalMetrics(P, fs_, rel) {
+  const T = P.length, M = computeMetrics(P);
+  M.throwHorz = M.throwHorz.map((v, t) => M.throwAbd[t] > 50 ? v : null);
+  // layback is only measured from foot strike to just after release: unwrap within that window only (before it the
+  // forearm can swing all the way round, which would otherwise add whole turns), then put it in the usual range
+  { const lo = Math.max(0, fs_ - 2), hi = Math.min(T - 1, rel + 3), w = [];
+    for (let t = lo; t <= hi; t++) { let v = ((M.throwER[t] % 360) + 540) % 360 - 180; if (w.length) v = w[w.length - 1] + (((v - w[w.length - 1]) % 360) + 540) % 360 - 180; w.push(v) }
+    const md = median(w), sh = md < -90 ? 360 : md > 270 ? -360 : 0;
+    M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
+  return M;
+}
+
+// The whole body fitted to real lab deliveries (bodyfit.js) when a library is given and the option is on: legs, hips and
+// trunk from the fit, arms as the app read them. Off unless opts.bodyLib && opts.bodyFit.
 export function analyse(raw, opts = {}) {
+  const out = analyseCore(raw, opts);
+  if (!opts.bodyLib || !opts.bodyFit) return out;
+  let F = null; try { F = bodyFit(raw, out, opts.bodyLib, opts.bodyFitOpts || {}) } catch (e) { F = null }
+  if (!F) { out.bodyFit = false; return out }
+  const r4 = v => Math.round(v * 1e4) / 1e4, rd1 = v => v == null || !Number.isFinite(v) ? null : Math.round(v * 10) / 10;
+  const L = out.throwHand === "L", Pi = L ? F.pose.map(Fr => Fr.map((_, j) => { const p = Fr[mir(j)]; return [p[0], p[1], -p[2]] })) : F.pose;
+  const rel = (out.phases.find(p => p.name === "Release") || {}).frame;
+  const M = finalMetrics(Pi, out.fsReach, rel), metrics = {}; for (const k in M) metrics[k] = M[k].map(rd1);
+  out.pose = F.pose.map(Fr => Fr.map(p => p.map(r4))); out.metrics = metrics; out.bodyFit = { window: F.window };
+  return out;
+}
+
+function analyseCore(raw, opts = {}) {
   if (opts.faithful === false || opts.footRepair === false || opts._inner) return analyseOnce(raw, opts);
   const first = analyseOnce(raw, { ...opts, _inner: true });
   const fsF = first.fsReach ?? first.phases.find(p => p.name === "Foot strike").frame, W = raw.width, H = raw.height;
@@ -1430,14 +1459,7 @@ function analyseOnce(raw, opts = {}) {
         for (const j of [a, b]) { const dx = P[t][j][0] - m[0], dz = P[t][j][2] - m[2], nx = m[0] + c * dx - s * dz, nz = m[2] + s * dx + c * dz, sx = nx - P[t][j][0], sz = nz - P[t][j][2]; P[t][j] = [nx, P[t][j][1], nz];
           (ARM[j] || []).forEach(k => { P[t][k] = [P[t][k][0] + sx, P[t][k][1], P[t][k][2] + sz] }) } } };
     turn(23, 24, hG); turn(11, 12, sG, sB) }
-  const M = computeMetrics(P);
-  M.throwHorz = M.throwHorz.map((v, t) => M.throwAbd[t] > 50 ? v : null);
-  // layback is only measured from foot strike to just after release: unwrap within that window only (before it the
-  // forearm can swing all the way round, which would otherwise add whole turns), then put it in the usual range
-  { const lo = Math.max(0, fs_ - 2), hi = Math.min(T - 1, rel + 3), w = [];
-    for (let t = lo; t <= hi; t++) { let v = ((M.throwER[t] % 360) + 540) % 360 - 180; if (w.length) v = w[w.length - 1] + (((v - w[w.length - 1]) % 360) + 540) % 360 - 180; w.push(v) }
-    const md = median(w), sh = md < -90 ? 360 : md > 270 ? -360 : 0;
-    M.throwER = M.throwER.map((_, t) => t >= lo && t <= hi ? w[t - lo] + sh : null) }
+  const M = finalMetrics(P, fs_, rel);
   // Arm cocked is the moment of most layback, so read it off the layback itself: the hand being highest over the shoulder is only
   // close to it (60 lab views against motion capture: 27 -> 11 ms off). Nudged by at most 1/30 s: a wider search reaches 5 ms on the lab views but moves Maher by 0.07 s, which needs his video to judge.
   if (opts._merSnap !== false && !(opts.phases && opts.phases.armCocked != null)) { const a = Math.round(0.034 * fs), b = a; let best = cock; for (let t = Math.max(contactF + 1, cock - a); t <= Math.min(rel - 1, cock + b); t++) if ((M.throwER[t] ?? -999) > (M.throwER[best] ?? -999)) best = t;

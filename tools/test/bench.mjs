@@ -32,11 +32,13 @@ const ANGLES = { throwElbow: "throwing elbow", throwAbd: "shoulder abduction", t
 const ROT = new Set(["pelvisRot", "trunkRot", "separation", "throwER"]);
 const EVENTS = { fs: "Foot strike", mer: "Arm cocked", br: "Release" };
 
+// BODYFIT=1: the whole-body fit to lab deliveries (bodyfit.js), with the library built WITHOUT the benchmark athletes
+const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(join(dir, "bodylib_holdout.json"), "utf8")) : null;
 const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz") && f.startsWith(only)).map(f => f.replace(".raw.json.gz", "")).sort();
 const rows = [];
 for (const v of views) {
   const raw = load(v + ".raw.json.gz"), tr = load(v + ".truth.json.gz"), TD = truthD(tr);
-  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { ...(noLib ? {} : { armLib: armLibFor(tr.sp) }), ...(process.env.OPTS ? JSON.parse(process.env.OPTS) : {}) });
+  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { ...(noLib ? {} : { armLib: armLibFor(tr.sp) }), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}), ...(process.env.OPTS ? JSON.parse(process.env.OPTS) : {}) });
   const T = Math.min(D.pose.length, tr.P.length), fps = D.fps;
   // the app's left-hander output is mirrored back for display; the truth is compared in the same orientation
   const hip = F => [0, 1, 2].map(k => (F[23][k] + F[24][k]) / 2);

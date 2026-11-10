@@ -8,16 +8,18 @@ const R = resolve(dirname(fileURLToPath(import.meta.url)), "../.."), O = resolve
 const dir = R + "/tools/test/bench/", L = f => JSON.parse(gunzipSync(readFileSync(dir + f)));
 const KEYS = ["throwElbow", "throwAbd", "throwER", "leadKnee", "pelvisRot", "trunkRot", "separation", "trunkFwd", "trunkLat"];
 const wrap = d => ((d + 180) % 360 + 360) % 360 - 180;
-async function run(root) {
+// BODYFIT=1: this checkout runs with the whole-body fit (holdout library), so `BODYFIT=1 perview.mjs .` compares fit vs no fit
+const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(dir + "bodylib_holdout.json", "utf8")) : null;
+async function run(root, bf) {
   const { analyse } = await import(root + "/pipeline.js"), { truthD, armLibFor } = await import(root + "/tools/test/truth.mjs"), out = {};
   for (const f of readdirSync(dir).filter(f => f.endsWith(".raw.json.gz"))) {
     const v = f.replace(".raw.json.gz", ""), raw = L(f), tr = L(v + ".truth.json.gz"), T = truthD(tr);
-    const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp) });
+    const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp), ...(bf && BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
     for (const k of KEYS) for (const e of ["fs", "mer", "br"]) { const t = tr.events[e], a = D.metrics[k]?.[t], b = T.metrics[k]?.[t]; if (a != null && b != null) out[`${v}|${k}|${e}`] = Math.abs(wrap(a - b)) }
   }
   return out;
 }
-const now = await run(R), was = await run(O), G = {};
+const now = await run(R, true), was = await run(O), G = {};
 for (const key in now) { if (was[key] == null) continue; const [v, k, e] = key.split("|"), g = G[k + " at " + e] ??= []; g.push([now[key] - was[key], v, now[key]]) }
 const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
 console.log("reading                  avg change   views >5° worse   >5° better   worst single view");
