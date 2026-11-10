@@ -880,9 +880,10 @@ function idb() {
 async function tx(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, mode), s = t.objectStore(STORE); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error("storage write cut off")) }) }
 let pendingSpot = null, pendingSave = "";
 // Saving must never stand between the coach and the results: a full phone or storage that never answers used to either lose
-// the pitch without a word or leave the page on "Building" for good. Now it gives up after 10 s, and the results open with a note.
+// the pitch without a word or leave the page on "Building" for good. Now it gives up after 6-45 s, and the results open with a note.
 async function saveHistory(data, blob) {
-  const out = await Promise.race([saveHistoryNow(data, blob), new Promise(r => setTimeout(() => r({ id: null, note: "<b>This pitch couldn't be saved to Recent</b>: this browser's storage didn't answer. The results below are fine; download the PDF or CSV to keep them." }), 10000))]);
+  // (45 s: writing a long 4K video on a phone can take a while, and a write that does finish later still lands in Recent)
+  const out = await Promise.race([saveHistoryNow(data, blob), new Promise(r => setTimeout(() => r({ id: null, note: "<b>This pitch may not be saved to Recent</b>: this browser's storage is very slow to answer. The results below are fine; download the PDF or CSV to keep them." }), 45000))]);
   pendingSave = window.__saveNote = out.note;
   return out.id;
 }
@@ -900,7 +901,15 @@ async function saveHistoryNow(data, blob) {
     try { return { id: await tx("readwrite", s => s.add(rec)), note: "" } }
     catch (e) {
       if (!blob) throw e;
-      // usually the phone's storage is full and the video is what doesn't fit: keep the skeleton and numbers without it
+      // usually the phone's storage is full and the video is what doesn't fit. The newest video matters most to a coach, so
+      // first make room by dropping the oldest saved videos (their skeleton and numbers stay); only then save this one without
+      // (unless even removing every old video couldn't make room for this one: then keep them all)
+      let dropped = 0, old = all.slice(0, HIST_KEEP - 1).filter(x => x.blob).reverse();
+      try { const est = await navigator.storage.estimate(), free = est.quota - est.usage + old.reduce((t, x) => t + (x.blob.size || 0), 0); if (blob.size > free) old = [] } catch (e2) {}
+      for (const x of old) {
+        x.blob = null; await tx("readwrite", s => s.put(x)); dropped++;
+        try { const id = await tx("readwrite", s => s.add(rec)); return { id, note: `<b>Storage was full</b>: to save this video, the video of your ${dropped === 1 ? "oldest saved pitch was" : dropped + " oldest saved pitches were"} removed (${dropped === 1 ? "its skeleton and numbers are" : "their skeletons and numbers are"} kept under Recent).` } } catch (e2) {}
+      }
       const id = await tx("readwrite", s => s.add({ ...rec, blob: null }));
       return { id, note: "<b>Saved to Recent without its video</b>: this browser's storage is full. The skeleton and numbers are kept; remove old pitches under Recent to make room for videos." };
     }
