@@ -489,6 +489,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   [0.3,0.3] bench slot 4.60; [0.6,0.6] no effect. The result depends on the window choice by 2-3 deg on Maher max, so it
   just moves the sensitivity. Maher fast's separation spread has another cause (not bone lengths): next look there
   (which stage moves the peak: `_snap`), and the plate direction (`fmax` widest stride frame) and `bodyH`.
+- 16:40 FINDING (Maher fast separation spread, follow-up to the trim lead): ending the trim 0.4 s after release instead of
+  the clip end moves the app's foot strike 95 -> 96 (one frame) and then trunk rotation at FS+3/FS+6 reads -17/9 vs -12/24
+  deg (peak separation 21.2 -> 17.9). `_snap` shows every skeleton stage up to `lock` identical within ~1 deg (shoulder and
+  hip line yaw), so the jump comes AFTER lock, from the foot-strike-keyed steps (the mirrored shoulder reading
+  `_sepNear`/`_shPost` window after FS, or the late trunk steps). Next: run analyse with `opts.phases.footStrike` fixed at
+  95 and 96 on the full clip to confirm, then find which post-lock step switches on the FS frame and make it fade in/out
+  instead of an on/off at a frame (scratch sep.mjs / snap.mjs recipes: slice fixture, analyse with `_snap`, compare yaw).
+- **Next session (after 16:40):** (1) the FS-keyed trunk jump above (concrete, measurable with trimspread.mjs: goal Maher
+  fast sep spread < 2 deg without bench/perview loss); (2) Tuesday list: real 20 s trim through Fast tracking in the page;
+  (3) unusual-set `measures.mjs` with the new slot (lab data via tests.yml steps). All 16:40 work is live; tests green for
+  the long-trim and slot commits (the to-do/tool commits' runs were still going at wrap-up).
 - 16:40: item "(1) Max's MediaPipe calls into the pose worker" is ALREADY DONE (trackMax uses poseModels with IMAGE/VIDEO
   specs since the overnight sessions); removed from the Tuesday list.
 
