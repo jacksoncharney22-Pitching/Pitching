@@ -259,6 +259,11 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   upload and ~1 s at each pitch-finder step in headless Chromium, but the same happens on a 4 s 720p clip: it's MediaPipe's
   GPU readback (`glReadPixels`, software GL here), not clip size. Real-device check (phone) still needed; moving the pitch
   finder's pose model to a worker would remove the freezes (big job).
+- 23:40 shipped (look, long clips): the pitch finder now says roughly how long it has left ("13% · about 8 min left",
+  timed from its first progress step so model start-up doesn't skew it) and, when that's over 30 s, that you needn't wait:
+  drag the trim and press Build skeleton (which already skipped waiting once you trim yourself). Checked on a 60 s 4K clip
+  at 1280 and 390 wide, no page errors. Also checked: a junk/unplayable file gets the plain "can't play" message; this
+  sandbox's headless Chromium DOES play H.264 now (CLAUDE.md said it didn't).
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,

@@ -500,7 +500,14 @@ function showPitches() {
   const box = $("pitchFind"), msg = $("pitchFindMsg"), chips = $("pitchChips");
   if (!scan) { box.hidden = true; return }
   box.hidden = false; chips.innerHTML = "";
-  if (scan.state === "busy") { msg.innerHTML = `Finding the pitch in this clip… <small>${Math.round(100 * (scan.prog || 0))}%</small>`; return }
+  if (scan.state === "busy") {
+    // a long clip (a whole bullpen on a phone) can take minutes to scan: say roughly how long, and that you needn't wait
+    // (timed from the first progress step, so the model's start-up isn't counted as scanning speed)
+    const f = scan.prog || 0, now = performance.now(); if (f > 0 && !scan.p1) scan.p1 = [now, f];
+    const df = scan.p1 ? f - scan.p1[1] : 0, left = df >= 0.015 ? (now - scan.p1[0]) / 1000 / df * (1 - f) : null;
+    const eta = left != null && left > 8 ? ` · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.round(left / 5) * 5 + " s"} left` : "";
+    const skip = left != null && left > 30 ? `<br><small>No need to wait: drag the trim to the pitch yourself and press Build skeleton.</small>` : "";
+    msg.innerHTML = `Finding the pitch in this clip… <small>${Math.round(100 * f)}%${eta}</small>${skip}`; return }
   const P = scan.pitches || [], nc = (scan.cuts || []).length;
   if (!P.length) { msg.innerHTML = `Couldn't spot a single pitch automatically${nc ? ` (the camera cuts ${nc} time${nc > 1 ? "s" : ""})` : ""}, so the whole clip will be analysed. For the smoothest skeleton, drag the trim to just one pitch.`; return }
   if (scan.sel == null && P.length) msg.innerHTML = `<b>Using your trim.</b> The pitch finder also spotted ${P.length === 1 ? "a pitch" : P.length + " pitches"}; tap one to use it instead.`;
