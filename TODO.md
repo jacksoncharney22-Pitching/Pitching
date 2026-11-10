@@ -170,7 +170,12 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   or scale the throwing arm's depth around release. NOTE: `_tmplAll: 1` (lab arm at full weight) changes NOTHING at the
   release frame. The match windows DO cover release (0.10 s / 0.22 s after it, line ~406/1414), so check what tmpl.wt
   actually is at release (add wt to `_dbgMatch`), and whether a later step (combining the two matches, guard, the 20 Hz
-  arm smoothing) replaces the arm there; score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
+  arm smoothing) replaces the arm there. 10:40 probe (temporary hook, not committed): tmpl.wt = 1.00 at the truth release
+  on behind views and the app's forearm equals the lab template's there, but the TEMPLATE points less toward the plate than
+  the truth (forearm x: 1612 truth 0.58 / tmpl 0.16, 2653 0.54/0.16, 2734 0.58/0.36, 2935 0.24/-0.43). So the matched
+  lab throws are behind in their motion at release (timing of the template vs the clip, or the match fits the wrong
+  phase from behind). Look at the template's own release time vs the app's release (tau at t=rel should be ~0 + shift);
+  score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
   (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
   (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
   (3) slot side_back (+10.9 on benchmark only); (4) side tilt/pelvis flattening with the fit (needs an idea).
