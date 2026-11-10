@@ -10,6 +10,14 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 
 ## Today (2026-11-10, Tuesday: speed and reliability; Monday notes below)
 - Code chat 8:05: (Code chat working on this, 8:05 ET) phone check: open the app as an iPhone/Android in headless Chromium, upload a clip, Fast to results, Recent, PDF; list what breaks or is cramped at phone width, fix what is clear.
+- **7:40 session: Recent's pitch-only video is ON by default (6d67bd9).** The 6:40 "noisy clip stalled" was not the keeper:
+  the same 31 MB noisy synthetic clip (5.6 s, ffmpeg noise=alls=12, 25 Mb/s) runs Fast to results in 226 s without the keeper
+  (`FLAGS=keepclip=0 keepclip_run.py`) and 229 s with it; saved video 31 MB -> 1.1 MB, re-opened pictures match (diff 0.15-0.35/255).
+  The 6:40 stall was most likely CPU contention (2 cores, other browser runs). FIXED a real bug found while checking: on a re-opened
+  pitch-only video, moving an event by hand rebuilt the skeleton in the upload's time (start 1.31 s instead of 0), sliding it off the
+  video; keepclip_run.py now checks that (start 0 -> 0). Writer now waits up to 2 s if it falls behind and gives up (whole upload
+  saved) if still >24 frames behind. `keepclip_check.py` on GitHub (testsrc2 clip). `?keepclip=0` = old behaviour.
+  Still worth a real-phone look (iPhone Safari VideoEncoder H.264): if it can't write video it silently saves the whole upload.
 Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40); each picks up here and leaves this section up to date.
 - **Big project: the throwing elbow reads ~7° too straight from late stride through max layback** (signed error -7.4° at foot
   strike, -6.0° at max layback, -2.6° at release; 2D matches the truth within 1°, so it happens in the 3D arm lock `lockArms`). Steps:
@@ -518,9 +526,6 @@ whole body. Every session works on this before anything else, in order:
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
-- Recent keeps the whole uploaded video for the newest 6 pitches (a 60 s 4K phone clip is 300 MB+, Safari caps a site at
-  ~1 GB on some iPhones): keep only the trimmed pitch window (re-record it with MediaRecorder from the video, or keep the
-  original only when it's small). Check the overlay video export and Recent re-open still work.
 - Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
   (the worker only does VIDEO mode today: add a mode to init).
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
@@ -559,6 +564,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10: Recent keeps only the analysed pitch as a small video (default ON; 31 MB test upload -> 1.1 MB), hand-moved events stay lined up on re-opened pitches.
 - 2026-11-10 (1:40): Skeleton build and saved-pitch re-reads run in a background worker (`analysisworker.js`, identical results; build freeze 2.1 s -> 0 on Hackimer); High accuracy's tracker in the pose worker (byte-identical output); website deploy blockage (stuck deployment) found and cleared.
 - 2026-11-10: Pitch finder and Fast tracker run their pose model in a background worker (`poseworker.js`): page freezes while scanning 98 -> 3, while tracking 223 -> 2; identical readings.
 - 2026-11-10 (23:40 Mon session): analysis after tracking 42% faster with identical results (24 test clips 9.5 -> 5.5 s); Over time/Compare instant on second open; pitch finder shows time left on long clips; `samecheck.mjs`.
