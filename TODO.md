@@ -430,6 +430,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   with the real time). RESULT (slow-device item CLOSED): CPU slowed 3x, Fast, 2 s 60 fps clip: tracking 196 s; the
   "about N left" was within 0.8-1.4x of the real time from 8% on (worst after 25%: x1.36, then x1.66 only at "5 s left").
   Honest enough; nothing to fix. (Before 25% it rounds to whole minutes: "3 min" for 2.3 min.)
+- 15:40 FINDING (long video, closes the "Long and large videos" item for the finder): a 60 s 1080p 30 fps clip (33 MB test
+  pattern) through the pitch finder headless: 6 min, JS memory flat at 45-50 MB the whole time (peak 107 MB at load), the
+  "about N left" counted down honestly, no page errors. 4K portrait 1.5 s also fine (badclip_check).
+- 15:40 FINDING (pose worker dying mid-run): stub poseworker that quits after 6 frames (scratch posedie.py, route like
+  anastall_check): the finder waits one 20 s per-frame timeout, then carries on on the page (`__poseFellBack` "worker timed
+  out"), finished in 46 s vs 21 s normal, no page errors. Acceptable; not changed. A silent INIT waits 60 s (model start-up
+  on a phone can legitimately take long) — leave it.
+- **Next session (after 15:40):** Tuesday list: (1) Max's MediaPipe calls into the pose worker (IMAGE mode; trackMax),
+  check with maxworker_check.py; (2) the pose-worker-quits check above turned into a CI test (finder only, testsrc clip,
+  ~1 min); (3) odd-codec (HEVC) upload if ffmpeg has libx265. Accuracy leads from 14:40 still open (glove abduction FS
+  camera bias, side_back slot +10.5). All 15:40 work is live and green (0001318, d8853c8; 58fbdd4 to-do only).
 
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
@@ -980,8 +991,8 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
-- Long and large videos (phone 4K, 60 s clips): make sure they don't run out of memory or freeze the tab; show
-  honest progress.
+- Long and large videos: finder on 60 s 1080p and 4K portrait checked 15:40 (memory flat, honest progress). Still open: a
+  long TRIM (e.g. 20 s) through Fast tracking + build: memory of the raw frames and the analysis.
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
 
