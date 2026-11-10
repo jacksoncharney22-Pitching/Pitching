@@ -266,6 +266,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   sandbox's headless Chromium DOES play H.264 now (CLAUDE.md said it didn't).
 - 23:40 built `tools/test/samecheck.mjs` (save full results on old code, check bit-identical on new; prints time). This
   session's speed work in total, same 24 clips: 9.5 -> 5.5 s (42% faster), all results identical.
+- 23:40 tried, no gain (samecheck, identical results, timing within noise or worse): despike on flat Float64Arrays (median
+  over typed subarrays is slower: 5.2 -> 5.9 s); caching fixSwaps' per-frame labellings (5.3-5.4 vs 5.4-5.8, noise). Timing
+  noise on this sandbox is ~±10%: repeat runs alternately (git stash) before believing a small gain.
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
   can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:
