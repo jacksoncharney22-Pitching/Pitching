@@ -69,8 +69,12 @@ jobs:
         run: |
           pip install -q numpy pandas
           cd "$RUNNER_TEMP"
-          curl -sSL -o lab.zip https://github.com/drivelineresearch/openbiomechanics/releases/download/dataset-v1/pitching_landmarks.zip
-          echo "efcc078d5d8e77ed1fbf0b9f6a78f750c57a624165f71f30e34142b74db7ec22  lab.zip" | sha256sum -c -
+          # GitHub's download sometimes comes back cut short (checksum mismatch, 2026-11-10): try up to 4 times
+          for i in 1 2 3 4; do
+            curl -sSL --retry 3 -o lab.zip https://github.com/drivelineresearch/openbiomechanics/releases/download/dataset-v1/pitching_landmarks.zip || true
+            echo "efcc078d5d8e77ed1fbf0b9f6a78f750c57a624165f71f30e34142b74db7ec22  lab.zip" | sha256sum -c - && break
+            [ $i = 4 ] && exit 1; sleep 15
+          done
           python3 -c "import zipfile; zipfile.ZipFile('lab.zip').extractall('lab')"
           curl -sSL -o lab/metadata.csv https://raw.githubusercontent.com/drivelineresearch/openbiomechanics/main/baseball_pitching/data/metadata.csv
           cd "$GITHUB_WORKSPACE"
