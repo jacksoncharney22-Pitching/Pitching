@@ -71,5 +71,6 @@ jobs:
           python3 tools/test/export_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/export"
           python3 tools/test/video_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/video"
           python3 tools/test/history_check.py tools/test/fixtures/maher_fast.json.gz
+          python3 tools/test/storage_check.py
           python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
           python3 tools/test/anaworker_check.py tools/test/fixtures/*.json.gz

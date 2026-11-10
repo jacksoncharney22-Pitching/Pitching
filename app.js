@@ -777,8 +777,8 @@ function renderDeliveryStrip(data) {
 }
 function openResults(data, url, meta = {}) {
   $("vidOv").hidden = !url;   // older saved pitches keep only their numbers: no video to draw the skeleton on
-  { const n = $("numsChanged"), c = meta.changed, s = pendingSpot; pendingSpot = null; n.hidden = !c && !s;
-    const parts = [];
+  { const n = $("numsChanged"), c = meta.changed, s = pendingSpot, sv = pendingSave; pendingSpot = null; pendingSave = ""; n.hidden = !c && !s && !sv;
+    const parts = sv ? [sv] : [];
     if (c) parts.push(`<b>These numbers have changed since this pitch was last opened</b>, because the app's measurements were improved. The biggest change: ${c.label} at ${c.ev.toLowerCase()}, ${Math.round(c.was)}° → ${Math.round(c.now)}°.`);
     if (s) parts.push(`<b>This clip looks filmed from a different spot than ${esc(s.who)}'s last saved pitch</b> (about ${Math.round(s.gap / 5) * 5}° around the pitcher, from ${new Date(s.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}). The numbers are still right for this clip, but Compare and Over time will partly show the camera moving. Film from the same spot to track a change.`);
     n.innerHTML = parts.join("<br>") }
@@ -870,15 +870,23 @@ const DB_NAME = "charney-pitching", STORE = "analyses", HIST_KEEP = 30, HIST_VID
 function idb() {
   return new Promise((res, rej) => {
     try {
-      const r = indexedDB.open(DB_NAME, 1);
+      // some phones' storage never answers (the database just doesn't open): give up after 6 s rather than wait forever
+      const r = indexedDB.open(DB_NAME, 1), to = setTimeout(() => rej(new Error("storage did not answer")), 6000);
       r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
-      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      r.onsuccess = () => { clearTimeout(to); res(r.result) }; r.onerror = () => { clearTimeout(to); rej(r.error) };
     } catch (e) { rej(e) }
   });
 }
-async function tx(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, mode), s = t.objectStore(STORE); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error) }) }
-let pendingSpot = null;
+async function tx(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, mode), s = t.objectStore(STORE); const out = fn(s); t.oncomplete = () => res(out && out.result !== undefined ? out.result : out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error("storage write cut off")) }) }
+let pendingSpot = null, pendingSave = "";
+// Saving must never stand between the coach and the results: a full phone or storage that never answers used to either lose
+// the pitch without a word or leave the page on "Building" for good. Now it gives up after 10 s, and the results open with a note.
 async function saveHistory(data, blob) {
+  const out = await Promise.race([saveHistoryNow(data, blob), new Promise(r => setTimeout(() => r({ id: null, note: "<b>This pitch couldn't be saved to Recent</b>: this browser's storage didn't answer. The results below are fine; download the PDF or CSV to keep them." }), 10000))]);
+  pendingSave = window.__saveNote = out.note;
+  return out.id;
+}
+async function saveHistoryNow(data, blob) {
   try {
     const all = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => b.date - a.date);
     // A new clip from a different spot than this pitcher's last one: say so now, before the coach reads a camera move as a change in the delivery.
@@ -888,8 +896,15 @@ async function saveHistory(data, blob) {
     // tracking (enough to re-open the skeleton and numbers, and to compare), up to 30 pitches, so a coach can look back weeks.
     for (const x of all.slice(HIST_KEEP - 1)) await tx("readwrite", s => s.delete(x.id));
     for (const x of all.slice(HIST_VIDEOS - 1, HIST_KEEP - 1)) if (x.blob) { x.blob = null; await tx("readwrite", s => s.put(x)) }
-    return await tx("readwrite", s => s.add({ date: Date.now(), name: data.name, hand: data.throwHand, frames: data.frames, fps: data.fps, data, blob, raw: lastRaw }));
-  } catch (e) { return null }
+    const rec = { date: Date.now(), name: data.name, hand: data.throwHand, frames: data.frames, fps: data.fps, data, blob, raw: lastRaw };
+    try { return { id: await tx("readwrite", s => s.add(rec)), note: "" } }
+    catch (e) {
+      if (!blob) throw e;
+      // usually the phone's storage is full and the video is what doesn't fit: keep the skeleton and numbers without it
+      const id = await tx("readwrite", s => s.add({ ...rec, blob: null }));
+      return { id, note: "<b>Saved to Recent without its video</b>: this browser's storage is full. The skeleton and numbers are kept; remove old pitches under Recent to make room for videos." };
+    }
+  } catch (e) { return { id: null, note: "<b>This pitch couldn't be saved to Recent</b> (this browser's storage isn't available, e.g. a private window). The results below are fine; download the PDF or CSV to keep them." } }
 }
 window.__saveHistory = saveHistory;   // for tools/test/history_check.py
 async function updateHistory(id, data) { try { const rec = await tx("readonly", s => s.get(id)); if (rec) { rec.data = data; await tx("readwrite", s => s.put(rec)) } } catch (e) {} }
