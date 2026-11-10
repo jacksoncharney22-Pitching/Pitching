@@ -294,6 +294,16 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Maher pitches, longest freeze 0.9 -> 0.1 s, but total 4 -> 5 s on this 2-core sandbox with another browser test running
   (worth re-timing on a quiet machine; if it's really slower, run the re-reads for Over time on the page in one go and only
   the single re-opens in the worker).
+- 1:40 checked: HIGH in the pose worker: tracker output byte-identical to the page (synthetic Staumont figure clip trimmed
+  1.0-2.3 s, 77 frames x 2 passes, `raw_high.json` cmp identical), same time (591 s both, headless), no fallback warning.
+  Shipped: High now runs in the worker by default (the `?highworker=1` gate is gone; `?poseworker=0` still forces the page).
+  Freeze reduction for High not measured separately (Fast's was 223 -> 2 freezes over 0.3 s). `window.__poseFellBack` is set
+  if the worker fails mid-run (for tests). Tip: a full untrimmed High run takes 25+ min here; trim to ~1.3 s around the pitch.
+- 1:40 shipped: the "Rebuilding the 3D skeleton" step counts seconds while it works (now that the page can update during it).
+- **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (1) Max accuracy's MediaPipe calls into the pose worker
+  (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
+  raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
+  on a quiet sandbox (1:40 measured 4 -> 5 s total under load); (3) analysis memory/GC (typed arrays, samecheck.mjs).
 - **NEXT SESSION (after 0:40):** (1) check run for b59b363 (and later) passed and the site deployed; (2) High in the
   worker: a 0:40 test was left running (`?highworker=1`, synthetic 2.2 s clip; results not read): redo it, see Tuesday
   list; (3) then the skeleton analysis in a worker (biggest freeze left, ~20 s headless), then Max's MediaPipe.
@@ -422,12 +432,8 @@ whole body. Every session works on this before anything else, in order:
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
-- High accuracy's tracker in the pose worker: run `clip_run.py high` with APP_URL `...?highworker=1` and without on the
-  same clip; ship (drop the `{ page: high }` gate) only if `raw_high.json` is byte-identical.
 - Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
   (the worker only does VIDEO mode today: add a mode to init).
-- The skeleton analysis after tracking freezes the page ~20 s headless (pipeline `analyse` on the main thread): run it in
-  a worker too (pipeline.js has no DOM, so it can be imported in a module worker as-is); check identical results.
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
@@ -464,6 +470,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10 (1:40): Skeleton build and saved-pitch re-reads run in a background worker (`analysisworker.js`, identical results; build freeze 2.1 s -> 0 on Hackimer); High accuracy's tracker in the pose worker (byte-identical output); website deploy blockage (stuck deployment) found and cleared.
 - 2026-11-10: Pitch finder and Fast tracker run their pose model in a background worker (`poseworker.js`): page freezes while scanning 98 -> 3, while tracking 223 -> 2; identical readings.
 - 2026-11-10 (23:40 Mon session): analysis after tracking 42% faster with identical results (24 test clips 9.5 -> 5.5 s); Over time/Compare instant on second open; pitch finder shows time left on long clips; `samecheck.mjs`.
 - 2026-11-09 (17:40): Event timing from the lab's own gaps: arm cocked 11 -> 6 ms off motion capture, foot strike 23 -> 14 ms; as the coach sees it layback at foot strike 25 -> 15°, at arm cocked 11 -> 7°, trunk at arm cocked 15 -> 10°; tempo 24 -> 15 ms.

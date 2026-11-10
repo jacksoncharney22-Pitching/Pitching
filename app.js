@@ -42,6 +42,12 @@ const offPage = (op, pageFn) => async (raw, o = {}) => {
   window.__anaWhere = "page"; return pageFn(raw, o);
 };
 const analyseAsync = offPage("analyse", analyse);
+// while the skeleton builds off the page, the step line counts the seconds, so a coach on a slow phone sees it's still working
+async function buildTicking(raw, o) {
+  const t0 = performance.now(), el = document.querySelector("#stBuild small"), base = el ? el.textContent : "";
+  const iv = setInterval(() => { const s = Math.round((performance.now() - t0) / 1000); if (el && s >= 2) el.textContent = `${base} · ${s} s` }, 1000);
+  try { return await analyseAsync(raw, o) } finally { clearInterval(iv) }
+}
 const slowFactorAsync = offPage("slow", raw => detectSlowFactor(raw));
 // A saved pitch re-read from its tracking gives the same result every time during one visit, so it's kept in memory:
 // opening "Over time" again, or comparing a pitch already compared or opened, no longer re-reads all of them (30 saved
@@ -290,7 +296,7 @@ async function run() {
       catch (e) { console.warn("learned 3D model unavailable", e); raw.l3 = null }
       step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
       lastRaw = raw; window.__lastRaw = raw;
-      const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+      const data = await buildTicking(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
       data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
       if (data.learned) data.quality += " · learned 3D";
@@ -321,7 +327,7 @@ async function run() {
     raw.fps = views[0].fps; raw.videoFps = views[0].fps; raw.start = S; raw.heightIn = opts.heightIn || null;
     { const sl = await resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
     lastRaw = raw; window.__lastRaw = raw;
-    const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+    const data = await buildTicking(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
     data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
     data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
@@ -364,7 +370,7 @@ async function runUltraPitch(S, E) {
   const raw = ultraToRaw(res); raw.heightIn = opts.heightIn || null;
   const sl = await resolveSlow(raw); raw.fps = res.fps * sl.factor; raw.slowNote = sl.note;
   lastRaw = raw; window.__lastRaw = raw;
-  const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+  const data = await buildTicking(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
   data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
   data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
   bar(1); step("stBuild", "done", "Done"); releaseWake();
@@ -393,7 +399,7 @@ async function trackSimple(q, src) {
   step("stModel", "doing", `Downloading the ${MODELS[q].label} tracking model (first time only)`);
   closeTrackers();                                   // fresh trackers per video: timestamps and tracking state start clean
   runModels.forEach(m => m.close());
-  const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1, { page: high && !/[?&]highworker=1/.test(location.search) });   // High in the worker: not yet checked (?highworker=1 to test)
+  const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1);   // High too: its tracker output in the worker was byte-identical to the page (2026-11-10)
   step("stModel", "done", "Ready");
   const v = await openVideo(src.url);
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
@@ -487,7 +493,7 @@ async function poseModels(q, n = 1, { page = false } = {}) {
     });
     for (let k = 0; k < n; k++) { const bytes = (await modelBytes(q)).slice(); await ask({ type: "init", key: k, base: BASE(), bytes }, [bytes.buffer]) }
     let broken = false; const live = new Set();
-    const fail = e => { if (!broken) { console.warn("pose worker, carrying on with the page:", e); broken = true; poseWorkerOk = false; try { w.terminate() } catch (_) {} } };
+    const fail = e => { if (!broken) { console.warn("pose worker, carrying on with the page:", e); window.__poseFellBack = String(e); broken = true; poseWorkerOk = false; try { w.terminate() } catch (_) {} } };
     return Array.from({ length: n }, (_, k) => {
       let fb = null; live.add(k);
       const api = {
