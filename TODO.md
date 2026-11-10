@@ -174,7 +174,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   on behind views and the app's forearm equals the lab template's there, but the TEMPLATE points less toward the plate than
   the truth (forearm x: 1612 truth 0.58 / tmpl 0.16, 2653 0.54/0.16, 2734 0.58/0.36, 2935 0.24/-0.43). So the matched
   lab throws are behind in their motion at release (timing of the template vs the clip, or the match fits the wrong
-  phase from behind). Look at the template's own release time vs the app's release (tau at t=rel should be ~0 + shift);
+  phase from behind). Follow-up probe: around release the forearm swings from pointing back (x -0.9) to forward (+1.0)
+  in 2 frames (33 ms); the template matches the truth at -2 and +1/+2 frames and lags only ~1/3 frame AT release
+  (1612: truth -0.40/0.58/1.00, tmpl -0.70/0.16/0.90). So one-frame extension is hopelessly timing-sensitive (a few ms
+  = 10-30 cm). Better idea: define extension at a moment read from the arm's own motion, e.g. hand position when the
+  forearm passes a fixed angle (interpolated between frames), calibrated on the lab truth so it matches the lab's
+  release-frame extension on average; or the hand's forward reach 1 frame after release (forearm ~fully forward, stable)
+  minus a lab offset. Score with measures.mjs (bench + BENCHDIR unusual); the report shows extension as "rough" today.
   score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
   (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
   (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
