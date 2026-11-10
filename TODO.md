@@ -556,7 +556,7 @@ Jackson wants the glitches gone for good: limbs jumping/shaking, body flips/twis
 the real motion, wrong timing/numbers. Decision: **fit the whole delivery to real motion-capture pitches** instead of
 building the body frame by frame and patching it. The output is always a believable pitching motion; the video
 decides how this pitcher differs. Runs in the browser (free, private, no accounts). Feole is free/personal, so the
-non-commercial OpenBiomechanics data is fine. (The cloud/SMPL-X route was dropped; Ultra stays parked.)
+non-commercial OpenBiomechanics data is fine. (Ultra is back on the list as a separate, optional cloud mode: see "Ultra" below; the rebuild stays the default path.)
 
 The arm already works this way (`armlib.json`, "lab throws"), which is why layback improved most. Extend it to the
 whole body. Every session works on this before anything else, in order:
@@ -578,8 +578,21 @@ whole body. Every session works on this before anything else, in order:
 5. **Make it the default** once it wins, show Jackson frame strips old vs new on the real clips, then **retire the
    patches** it replaces (flip fixes, per-frame smoothing tricks, separate arm matching) so there's less to go wrong.
 
+## Ultra (optional cloud mode, back on the list 2026-11-10)
+Jackson wants Ultra. It sends the clip to a GPU on Modal running GVHMR (SMPL-X body) and returns the skeleton; everything else stays
+free and on the device. Built so far: `ultra.js` (58 lines, URL via `?ultra=` / `ULTRA_DEFAULT_URL` empty) and `ultra/app.py` (Modal app).
+Doable now, without the account (any session, Tuesday/Thursday themes fit):
+1. Read `ultra.js`/`ultra/app.py` end to end; write down exactly what is missing to run one clip (weights, secrets, deploy step, URL).
+2. Make the Ultra button honest: if no service URL is set, say "Ultra isn't switched on yet" instead of failing; show that the clip
+   leaves the device and roughly how long it takes, before upload.
+3. A dry-run test (`tools/test/ultra_check.py`): fake Ultra service in Playwright returning a saved skeleton; app shows results, saves to
+   Recent, PDF/CSV match (like export_check).
+4. Plan to score it: run Ultra output through `bench.mjs` on the lab views once it works, next to Fast/Max and the lab-matched body.
+Blocked on Jackson (see Waiting on Jackson): the SMPL-X account and the cost OK. Then: deploy the Modal app, measure seconds and cost per
+clip, score on the benchmark, and only show Ultra if it beats Max on the lab views.
+
 ## Waiting on Jackson
-- Ultra mode (GVHMR cloud): parked by Jackson's choice (2026-11-09); no SMPL-X account needed.
+- Ultra mode (GVHMR cloud): BACK ON by Jackson (2026-11-10). Needs from him: (1) a free SMPL-X account (smpl-x.is.tue.mpg.de, he must accept the licence himself) and its login saved as the Modal secret `smplx` / GitHub repo secrets (never print or ask for the values; he enters them); (2) OK on the per-clip GPU cost once measured.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
 - Clips needed for the items marked "(Needs clip…)": the Cooper Maher video, a few net / batting-cage / chain-link
   clips, one crowd-background clip (Sale, Ohtani, Flaherty, McKenzie or Joyce) and, ideally, a real left-hander. The
