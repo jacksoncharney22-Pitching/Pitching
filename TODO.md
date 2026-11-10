@@ -156,7 +156,18 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   lab-throw arm's depth more at release when the camera is behind; read extension over a short window around release
   matched to the lab hand path instead of one frame. Scripts were scratch (`ext*.mjs`: deliveryMeasures at app vs truth
   release frame; wrist-minus-shoulder x by camera; `_snap` per stage).
-- **Next session (after 9:40):** (1) DONE 10:40 (see above) release 2-4 frames late from behind on unusual deliveries (see finding above;
+- 10:40 SHIPPED (ddc3313): fit guard limit 7% -> 6% of body height. After 9be43a9, Hackimer's fit missed 6.6% (was 8.4%)
+  and got used, with 75 deg separation at foot strike (impossible): CI's fitguard went red on 9be43a9. Now refused again;
+  benchmark 60 and unusual 70 views all still use the fit (max miss 2.9% / 2.6%), Maher/Staumont 3.7-4.2% used.
+- 10:40 tried, no gain (drop): forearm leaning on the lab-throw arm more when it points at/away from the camera (same
+  rule as the upper arm, `0.8..4 * (1 - screen/len)`): benchmark slot/extension/joints unchanged to 0.01: at release the
+  lab arm's weight (tmpl.wt) is small or later steps redo the arm; the behind-camera extension deficit is elsewhere.
+- **Next session (after 10:40):** (1) extension from behind (finding above): find which step leaves the arm pointing
+  less toward the plate at release from behind (`_snap` stages, wrist-minus-shoulder along the camera axis vs truth);
+  (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
+  (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
+  (3) slot side_back (+10.9 on benchmark only); (4) side tilt/pelvis flattening with the fit (needs an idea).
+- (old) **Next session (after 9:40):** (1) DONE 10:40 (see above) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
   background FIRST, then time passes 2/3/arm zoom; (3) slot: side_back reads 10.9 deg high on all 12 benchmark pitchers; full-weight geometric slot if behind_3b can be fixed;
   (4) side tilt/pelvis flattening with the fit (needs an idea).
