@@ -677,9 +677,9 @@ export function detectSlowFactor(raw) {
   // can land on the follow-through (the arm swinging back up as he fields his position, or a camera zoom) and make
   // a normal-speed clip look slowed down. A release found well inside a short window is the real one; if the
   // fastest hand is at the end of the window the arm is still speeding up (slow motion), so look further.
-  let d, ph;
+  let d, ph; const prep = {};          // the part of the analysis that is the same for every window, worked out once
   for (const w of [0.5, 1, 2, 4, 60]) {
-    try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: w, armBridge: false, depop: false, _noGaps: true }) } catch (e) { return { factor: 1, basis: "none" } }
+    try { d = analyseOnce({ ...raw, fps: vf, videoFps: vf }, { _inner: true, relWindow: w, armBridge: false, depop: false, _noGaps: true, _prep: prep }) } catch (e) { return { factor: 1, basis: "none" } }
     ph = Object.fromEntries(d.phases.map(p => [p.name, p.frame]));
     if ((ph["Release"] - ph["Foot strike"]) / vf < 0.75 * w) break;
   }
@@ -782,7 +782,10 @@ function analyseCore(raw, opts = {}) {
   out.footRepair = { traded, held };
   return out;
 }
-function analyseOnce(raw, opts = {}) {
+// Everything up to the release search: labels, gaps, learned depth, smoothing, hand, 3D lift, turning the stride onto +x.
+// It doesn't depend on where release is looked for, so the slow-motion reader (which tries up to five release windows
+// on the same clip) works it out once (opts._prep) and hands each try its own copy.
+function prepOnce(raw, opts) {
   // a frame with any broken number is treated as not tracked (filled from its neighbours)
   raw = { ...raw, frames: raw.frames.map(f => f && f.img && f.world && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])) && f.world.every(p => p.every(Number.isFinite)) ? f : null) };
   const fs = raw.fps, W = raw.width, H = raw.height, K = fs / 30;   // K scales frame-count constants to the sampling rate
@@ -837,6 +840,18 @@ function analyseOnce(raw, opts = {}) {
   const rot = p => tipBy(rot0(p), th0), unrot = p => unrot0(tipBy(p, -th0));
   P = P.map(F => F.map(rot));
   const camDir = rot([0, 0, 1]);
+  return { raw, fs, W, H, K, tracked, swaps, l3, frames, learned, slowF, faithful, measured, T, hand, fk, Pc, imgSmooth, liftScale, P, fmax, smax, sd, ang, c, s, rot0, unrot0, th0, ax0, tipBy, rot, unrot, camDir };
+}
+const dcopy = v => Array.isArray(v) ? v.map(dcopy) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, dcopy(x)])) : v;
+function copyPrep(p) {
+  const q = { ...p, raw: { ...p.raw, frames: dcopy(p.raw.frames), l3: dcopy(p.raw.l3) }, frames: dcopy(p.frames), Pc: dcopy(p.Pc), P: dcopy(p.P), imgSmooth: dcopy(p.imgSmooth), liftScale: dcopy(p.liftScale), l3: dcopy(p.l3) };
+  q.tracked = q.raw.frames; return q;
+}
+function analyseOnce(raw, opts = {}) {
+  const cache = opts._prep, pre = cache && cache.v ? copyPrep(cache.v) : prepOnce(raw, opts);
+  if (cache && !cache.v) cache.v = copyPrep(pre);
+  let { fs, W, H, K, tracked, swaps, l3, frames, learned, slowF, faithful, measured, T, hand, fk, Pc, imgSmooth, liftScale, P, fmax, smax, sd, ang, c, s, rot0, unrot0, th0, ax0, tipBy, rot, unrot, camDir } = pre;
+  raw = pre.raw;
 
   if (opts._snap) opts._snap("rot", P, { imgSmooth, liftScale, rot, camDir });
   // ---- phases (auto, or given)

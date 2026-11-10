@@ -244,6 +244,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   analysis on 4 saved clips + 20 benchmark views 9.3-9.9 -> 7.3-7.7 s (~23% faster), results bit-for-bit identical
   (pose, events, all metrics). Only ~half the frames per timing get skipped because the misfit is an average; a bigger cut
   needs an approximate search (coarse grid then refine), which would change results: bench it if anyone tries.
+- 23:40 shipped (speed): the slow-motion reader works out the part of the analysis that doesn't depend on its release
+  window once (`prepOnce`, opts._prep, each try gets a deep copy) instead of up to 5 times: Hackimer speed reading 1.1 ->
+  0.65 s; with the arm-match change the whole analysis on the 24-clip check is 10.4 -> 7.7 s. Bit-identical (pose,
+  events, metrics, speed estimate), regress passes, `slowmo.mjs` 240 of 240.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
