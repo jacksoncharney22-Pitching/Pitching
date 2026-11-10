@@ -162,7 +162,21 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 10:40 tried, no gain (drop): forearm leaning on the lab-throw arm more when it points at/away from the camera (same
   rule as the upper arm, `0.8..4 * (1 - screen/len)`): benchmark slot/extension/joints unchanged to 0.01: at release the
   lab arm's weight (tmpl.wt) is small or later steps redo the arm; the behind-camera extension deficit is elsewhere.
-- **Next session (after 10:40):** (1) (11:40 session working on this, 11:42 ET) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
+- **11:40 SHIPPED (620f90b): extension read steadily + camera correction** (deliveryMeasures/`releaseReach` in pipeline.js;
+  truthD now has `truth: true` so motion capture is read as-is). Finding: per-camera bias of the release-frame extension is
+  the SAME on the benchmark and the unusual set (behind -0.46/-0.43 m, behind_3b -0.40/-0.36, front_3b 0.04/0.00, side_back
+  -0.08/0.00, side_open -0.15/-0.15), so it's transferable. Read = hand x when the forearm points 60% toward the plate
+  (interpolated, within 4 frames of release) - 0.03 + 0.375*behindness (max(0,-cameraDir x)); fit on each set and tested on
+  the other gave the same numbers. Benchmark extension 0.232 -> 0.124 m (r 0.22 -> 0.55), unusual 0.230 -> 0.124 (r 0.55 -> 0.76).
+  BUT a constant guess (everyone = average) is 0.123 on the benchmark (0.194 unusual): on ordinary pitchers it still can't
+  tell them apart, so NO extension card yet (and report.js, which uses it, isn't in the app: Jackson doesn't want it).
+  Tried (scratch ext.mjs/fit.mjs): other moments (wrist 1-3 frames after release, shoulder, upper-arm crossings) all
+  0.13-0.15 after correction; fx0.6/0.8 best.
+- **11:40 SHIPPED (4ae2d92): stride card x1.04** (skeleton read strides ~4% short on both sets): benchmark error 4.9 -> 3.3% of
+  height, unusual 5.3 -> 4.8%; card says "typical error about 4%". Camera-dependent stride correction adds nothing (behind is
+  -0.115 m on both sets but other cameras disagree). Tried, no gain: arm slot minus its +2.5 deg bias (same on both sets):
+  5.53 -> 5.48 / 7.93 -> 7.78, not worth it. Hand height: no bias to fix.
+- **Next session (after 10:40):** (1) DONE 11:40 (see above) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
   at the truth's release, 12 behind views): -19 cm already at the first 3D lift ("rot"), -23/-26 through armDepth..depop,
   -16 after guard, final -16; side_open ~0 throughout. So the learned depth / first lift under-reads how far the hand
   reaches toward the plate (away from a behind camera) and nothing later fixes it. Try: at release with a behind camera,
