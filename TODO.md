@@ -36,7 +36,33 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
       interpolated), test at 2x first.
   (e) Delete the old `wip-max-worker` branch (everything is on main). 7:40: deleting a branch is blocked for these sessions
       (permission), so leave it; it does no harm. (Its parallel re-read pool shipped 7:40, 1153829.)
-- Next session: continue the big project at whichever step is open below; claim it in this list first.
+- **8:15 session progress (big project):** step 1 DONE: `tools/test/unusual_make.py` (14 unusual lab pitchers not in the
+  benchmark: 2 each sidearm-ish, very high slot, short stride, long stride, quick leg lift, big side tilt, lefty; truth put in
+  the benchmark frame via a donor benchmark pitch (lab->truth fit 0-0.9 cm), tracker points = true projection through the
+  donor view's fitted camera + the donor view's OWN tracker error at the same moment of the delivery (2D, world, learned
+  depth)); validated with `--selftest` (benchmark pitches remade from another pitch's noise: app joints 9.9 -> 10.6 cm,
+  angles 6.8 -> 7.8: slightly harder than the real views, same picture). `node tools/test/unusual.mjs <dir> <lib>` scores
+  app vs fit, signed, plus "keeps % of the pitcher's own difference" (slope of reading vs truth). Lab data download steps:
+  rebuild section; `python3 tools/bodylib_build.py <landmarks> <metadata> --exclude <dir>/exclude_users.txt <out.json>`
+  makes the library without them. Also works on the real benchmark: `node tools/test/unusual.mjs tools/test/bench tools/test/bench/bodylib_holdout.json`.
+  Step 2 SHIPPED (trial flag): FINDING: the fit flattened unusual pitchers toward the lab average (front knee kept 31-44%
+  of his difference vs app 80%, worse error than the app alone 8.4 vs 6.6 deg; trunk turn late 49-56% vs 86-88%;
+  separation 54-63% vs 86-93%). Fix: after the fit, knees/feet move fully and hips/shoulders half-way toward the tracker's
+  2D point in the picture plane (depth stays the fit's; per frame, clipped 4%, smoothed 20 ms): unusual front knee
+  8.4/7.4/8.2 -> 6.1/5.0/5.3, separation 6.1/6.6/6.8 -> 5.5/5.7/5.8; benchmark joints 7.9 -> 7.6 cm, arm 8.8 -> 8.5,
+  knee 5.3/5.1/6.5 -> 5.0/4.4/4.8, separation 4.7/3.6/4.7 -> 4.1/3.3/4.0 (d64d205, 1022b80). Weaker prior (lam 0.15/0.3)
+  barely helps (knee 8.4 -> 8.0); full share on shoulders makes benchmark trunk at arm cocked noisier.
+  Step 3 DROPPED as a screen note: the fit's distance from the library average barely separates the unusual pitchers
+  (mean 9.2 vs 8.5 for the benchmark's, camera-to-camera spread +-2-3), so it can't tell a coach "unusual".
+  Step 4: fit 2.8x faster, bit-identical (f508209, 0.40 -> 0.14 s per clip); fit refused when its median 2D miss > 7% of
+  body height (8c7ca8e; lab 1.6-4.1%, Maher/Staumont 3.7-4.2%, scrambled clips 9-37%, Hackimer 8.4% -> app body;
+  `tools/test/fitguard.mjs` on GitHub).
+  Still open from the big project: side tilt with the fit on the extremes (1393/1729 big tilt read 7-10 deg too small,
+  2905 tiny tilt +7): fit keeps 72-75% at MER/BR vs app ~100%; pelvis late 54-61% (app 55-65%: both low). Stride with the
+  fit keeps 58% (app 64%). App alone (not the fit): arm slot keeps 80% (sidearm reads +13-14 deg high, very high slots
+  -3 to -9), shoulder abduction at MER/BR only 51-55%, layback 60-63% (the lab-throw arm match is what keeps them that
+  high: without it 26-39%): worth a Monday/Saturday look.
+- Next session: (1) side tilt flattening with the fit (above); (2) follow-on (c) visible trial switch; then (a), (b), (d), (e).
 - 7:40 session (ran 7:41-8:25, before the plan): shipped pitch-only Recent video ON by default + hand-moved-event fix, and
   the parallel re-read pool (details in the session log). Tests and deploy passed for 6d67bd9; 1153829's run was still going at wrap-up:
   check it. Big project step 1 not started.
