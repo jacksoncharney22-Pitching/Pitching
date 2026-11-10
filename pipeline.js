@@ -266,9 +266,10 @@ function injectLearnedDepth(frames, l3, only = null, opts = {}) {
       return [p[0], p[1], z(par) + hz + (old[j] - old[par])];
     });
     // shoulders: how far in front/behind each other they are (trunk turn) comes from the learned model, but where the
-    // shoulder line sits in depth relative to the hips comes from the tracker's own 3D (benchmark: side tilt at arm cocked
-    // 7.2 -> 4.5 deg, forward tilt 5.8 -> 3.2, joints 9.9 -> 9.0 cm). `_shMean` 0 = learned model for both (old way).
-    const shw = opts._shMean ?? 1;
+    // shoulder line sits in depth relative to the hips comes 3/4 from the tracker's own 3D (benchmark: side tilt at arm
+    // cocked 7.2 -> 5.5 deg, forward tilt 5.8 -> 3.9, joints 9.9 -> 9.2 cm; all the way (1) is a bit better on tilt but
+    // opened the trunk early at foot strike on some side views). `_shMean` 0 = learned model for both (old way).
+    const shw = opts._shMean ?? 0.75;
     if (shw && (!only || (only.has(11) && only.has(12)))) {
       const a = f.world[11][2], b = f.world[12][2], dL = (b - a) / 2, lM = (a + b) / 2, mM = (old[11] + old[12]) / 2;
       const m = lM + shw * (mM - lM);
