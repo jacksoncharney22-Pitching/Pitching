@@ -162,8 +162,12 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 10:40 tried, no gain (drop): forearm leaning on the lab-throw arm more when it points at/away from the camera (same
   rule as the upper arm, `0.8..4 * (1 - screen/len)`): benchmark slot/extension/joints unchanged to 0.01: at release the
   lab arm's weight (tmpl.wt) is small or later steps redo the arm; the behind-camera extension deficit is elsewhere.
-- **Next session (after 10:40):** (1) extension from behind (finding above): find which step leaves the arm pointing
-  less toward the plate at release from behind (`_snap` stages, wrist-minus-shoulder along the camera axis vs truth);
+- **Next session (after 10:40):** (1) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
+  at the truth's release, 12 behind views): -19 cm already at the first 3D lift ("rot"), -23/-26 through armDepth..depop,
+  -16 after guard, final -16; side_open ~0 throughout. So the learned depth / first lift under-reads how far the hand
+  reaches toward the plate (away from a behind camera) and nothing later fixes it. Try: at release with a behind camera,
+  take the forearm/upper-arm depth (along the camera axis) from the matched lab throws (tmpl.u/f) instead of the lift,
+  or scale the throwing arm's depth around release; score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
   (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
   (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
   (3) slot side_back (+10.9 on benchmark only); (4) side tilt/pelvis flattening with the fit (needs an idea).
