@@ -689,6 +689,9 @@ export function analyse(raw, opts = {}) {
   // (60 lab views: 4.9% of height off vs 6.9% with the fitted front foot), the fit is about the body's shape
   const fsF = (out.phases.find(p => p.name === "Foot strike") || {}).frame, la = out.pose[fsF]?.[L ? 28 : 27];
   if (la) out.strideFoot = { frame: fsF, p: la.slice() };
+  // arm slot too: the fit hangs the app's arm on the fitted trunk, which tilts it with the trunk (60 lab views: slot
+  // 6.2 -> 7.6 deg off), so the slot is read from the app's own shoulder-to-wrist direction around release
+  if (rel != null) { const sh = L ? 11 : 12, wr = L ? 15 : 16, o = {}; for (let t = Math.max(0, rel - 4); t <= rel; t++) if (out.pose[t]) o[t] = [out.pose[t][sh].slice(), out.pose[t][wr].slice()]; out.slotArm = o }
   out.pose = F.pose.map(Fr => Fr.map(p => p.map(r4))); out.metrics = metrics; out.bodyFit = { window: F.window };
   return out;
 }
@@ -1550,7 +1553,7 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   const stance = (() => { const a = P.slice(0, Math.max(1, ph("Peak leg lift") ?? 1)).map(F => F[back]); const med = i => a.map(p => p[i]).sort((x, y) => x - y)[a.length >> 1]; return [med(0), med(1), med(2)] })();
   const LA = D.strideFoot && D.strideFoot.frame === fs ? D.strideFoot.p : P[fs][lead], dx = LA[0] - stance[0], dz = LA[2] - stance[2], strideM = Math.hypot(dx, dz);
   const ground = Math.min(P[fs][lead][1], stance[1]);
-  const s = P[br][sh], w = P[br][wr], SL = t => Math.atan2(P[t][wr][1] - P[t][sh][1], Math.abs(P[t][wr][2] - P[t][sh][2])) * 180 / Math.PI, slot = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
+  const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
   return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
 }
