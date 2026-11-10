@@ -248,6 +248,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   window once (`prepOnce`, opts._prep, each try gets a deep copy) instead of up to 5 times: Hackimer speed reading 1.1 ->
   0.65 s; with the arm-match change the whole analysis on the 24-clip check is 10.4 -> 7.7 s. Bit-identical (pose,
   events, metrics, speed estimate), regress passes, `slowmo.mjs` 240 of 240.
+- 23:40 shipped (speed): saved pitches re-read for Compare, Over time and Recent are kept in memory for the visit
+  (`reanalyse` in app.js, keyed by pitch id + options + which libraries loaded, copies handed out, 30 kept): Over time with
+  10 saved Maher pitches, headless: first open 4.4 -> 4.0 s, second open 3.9 -> 0.2 s. history_check and export_check pass.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
