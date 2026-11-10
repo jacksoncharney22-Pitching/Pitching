@@ -28,7 +28,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 4. Speed/reliability of the fit (Tuesday): it adds 0.4-0.7 s per analysis; profile and cut it (samecheck-identical),
    and make sure a fit that fails or produces junk can never break a build (fallback to the app's body, page-error check).
 - Follow-on items (in order, any session):
-  (a) (9:40 session working on this, 9:45 ET) Analysis memory/GC: typed arrays in the hottest loops (despike tried, slower: try `lift`/`oePass`), samecheck-identical.
+  (a) DONE/closed 9:40 (no gain, see below) Analysis memory/GC: typed arrays in the hottest loops (despike tried, slower: try `lift`/`oePass`), samecheck-identical.
   (b) Max accuracy profile on the synthetic clip: where do the minutes go (tracker passes, arm-zoom, net, learned 3D)?
   (c) A visible "Lab-matched body (trial)" switch on the trim screen instead of the URL flag (look change, screenshots
       at desktop and phone width), so Jackson can try it without editing the address.
@@ -70,6 +70,29 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   keeps 77% vs 75%: the remaining tilt flattening is depth (side-on cameras), not the picture plane.
 - 8:15 tried, no gain (drop): (d) late-started slow motion, wrist speed over an exact fraction of foot strike -> release
   (interpolated, not rounded): `slowmo.mjs --late 20` 227 -> 227 of 240, `--late 30` 229 -> 229. The window rounding isn't it.
+- **9:40 session FINDING (arm slot, next session's best item):** from a camera straight behind (or in front), the plain
+  2D picture angle of shoulder->wrist around release reads the true arm slot far better than the app's 3D arm: unusual set
+  (14 pitchers incl. 2 sidearm, 2 very high slot) behind view: 2D picture slot -1.4 deg bias, 3.4 deg spread, keeps 100% of
+  the pitcher's difference; the app's 3D slot from the same view is 9.0 deg off (sidearm 1562 +15, short-strider 2923 -45).
+  Benchmark behind view: 2D 0.3 bias, 4.8 spread, keeps 99%. 45-degree views (behind_3b/front_3b): 2D keeps 115-118%,
+  bias +3/+9 (usable with a correction); side views: 2D is useless (54-128%, 9-11 spread), as expected (slot is depth there).
+  App 3D slot |err| by view on the unusual set: behind 9.0, behind_3b 10.2, front_3b 8.5, side_open 8.8, side_back 15.0.
+  NEXT: in analyse (where `out.slotArm` is set, pipeline.js ~743) also store the picture slot for the 3 frames to release
+  and how face-on the camera is to the plate line (angle between image x (`rot([1,0,0])`-style) and the throwing
+  direction); in deliveryMeasures blend: weight w = cos^2(angle off face-on) toward the 2D slot. Score with
+  `node tools/test/unusual.mjs <dir> tools/test/bench/bodylib_holdout.json` (slot column, "keeps %" arm slot row) AND
+  `node tools/test/measures.mjs` (benchmark slot 6.4 deg off). Script used: per view, truth slot vs
+  atan2(-dy*H, |dx|*W) of img[12]->img[16] over br-2..br (lab data: download steps in the rebuild section, ~1 min;
+  `python3 tools/test/unusual_make.py landmarks.csv metadata.csv <dir>` makes the set in 14 s).
+- 9:40 tried, no gain (drop, don't repeat): despike with flat Float64Arrays and an index-based median (no iterator):
+  samecheck identical, but 5.7-6.3 s vs 5.4-5.9 s before (despike self time 0.77 -> 0.59 s, noise eats it). Analysis
+  speed is now 0.23 s per clip in Node; more micro-tuning isn't worth a session: item (a) closed.
+- 9:40 partial (b) Max profile: synthetic 30-frame figure clip, headless 2 cores, worker path: model ready 6 s, then Pass 1
+  (full picture, stronger tracker RTMPose on the processor) ~8 s PER FRAME (frame 3 at 54 s, frame 24 at 229 s; it
+  estimated 25-29 min for this angle). So the first pass alone is most of Max; passes 2/3 and arm zoom not reached in the
+  session. Next: time passes 2/3/arm zoom separately (`maxworker_check.py ... --only worker`, run in the background at
+  session start, ~30 min), and check whether pass 1 runs RTMPose twice per frame (plain + mirrored) and whether the
+  mirrored look could be skipped where the plain one is confident.
 - 9:40 session: deploy checked: run 207 (70141cc, carries the tick box and results line) succeeded; 205/206 were cancelled by newer pushes. Done.
 - (old) FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
 - Next session: (1) (a) analysis memory/GC (typed arrays in `lift`/`oePass`, samecheck-identical); (2) (b) Max profile on the
