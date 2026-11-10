@@ -26,6 +26,8 @@ jobs:
         run: node tools/test/robust.mjs
       - name: A long trim (pitcher standing around before/after the pitch) gives the same events and delivery numbers
         run: node tools/test/longtrim.mjs
+      - name: Moving events by hand (same events = same numbers; foot strike moves the separation smoothly)
+        run: node tools/test/handevents.mjs
   slow-motion:
     runs-on: ubuntu-latest
     steps:
