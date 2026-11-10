@@ -129,6 +129,16 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 
 ## TOP PRIORITY: the pitching-aware rebuild (Jackson's decision, 2026-11-09)
 
+**UNBLOCKED (2026-11-10): the lab data CAN be downloaded from a cloud session.** It's a GitHub Release asset, not in
+the git tree (that's why `full_sig/landmarks` was never found). This worked (33 MB, checksum matches the lab repo's
+`scripts/release_checksums.sha256`):
+`curl -sSL -o pitching_landmarks.zip https://github.com/drivelineresearch/openbiomechanics/releases/download/dataset-v1/pitching_landmarks.zip`
+then `sha256sum` must be `efcc078d5d8e77ed1fbf0b9f6a78f750c57a624165f71f30e34142b74db7ec22`. It holds one file,
+`landmarks.csv` (110 MB, joint centres for every pitch, with event times joined in). Keep it OUTSIDE the repo (never
+commit it: the repo is the public website). Metadata (`baseball_pitching/data/metadata.csv`) is in the git tree:
+`git clone --depth 1 https://github.com/drivelineresearch/openbiomechanics`. Note: in auto mode, unzipping the
+downloaded archive was refused once as "code from external"; if that happens, tell Jackson he needs to allow it.
+
 Jackson wants the glitches gone for good: limbs jumping/shaking, body flips/twists, the throwing arm not following
 the real motion, wrong timing/numbers. Decision: **fit the whole delivery to real motion-capture pitches** instead of
 building the body frame by frame and patching it. The output is always a believable pitching motion; the video
