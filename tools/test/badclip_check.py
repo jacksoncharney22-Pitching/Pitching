@@ -11,6 +11,7 @@ finder, presses Build skeleton (Fast) and waits for either the results or a mess
   short      0.3 s test pattern
   noperson   2 s test pattern at 60 fps (nobody in it)
   portrait4k 1.5 s portrait 2160x3840 test pattern
+  hevc       2 s iPhone-style HEVC .mov (needs ffmpeg with libx265; not in the default list)
 Prints, per file: what the finder said, how the build ended (results / message / still busy at the limit), the
 message text, seconds, page errors. FAIL if a page error, a message with programmer words, or still busy at the limit.
 THREE_JS / ORBIT_JS as for export_check.py if the CDNs are blocked. Takes several minutes (Fast tracking is slow headless).
@@ -22,12 +23,13 @@ out = sys.argv[1]; os.makedirs(out, exist_ok=True)
 pick = sys.argv[2:]
 FF = ["ffmpeg", "-loglevel", "error", "-y"]
 def make(name):
-    p = os.path.join(out, name + (".mp4" if name == "notvideo" else ".webm"))
+    p = os.path.join(out, name + {"notvideo": ".mp4", "hevc": ".mov"}.get(name, ".webm"))
     if name == "notvideo": open(p, "wb").write(os.urandom(200000))
     elif name == "audio": subprocess.run(FF + ["-f", "lavfi", "-i", "sine=frequency=440:duration=3", "-c:a", "libopus", p], check=True)
     elif name == "short": subprocess.run(FF + ["-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=0.3", "-c:v", "libvpx-vp9", "-b:v", "1M", "-deadline", "realtime", p], check=True)
     elif name == "noperson": subprocess.run(FF + ["-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=60:duration=2", "-c:v", "libvpx-vp9", "-b:v", "2M", "-deadline", "realtime", p], check=True)
     elif name == "portrait4k": subprocess.run(FF + ["-f", "lavfi", "-i", "testsrc2=size=2160x3840:rate=30:duration=1.5", "-c:v", "libvpx-vp9", "-b:v", "8M", "-deadline", "realtime", "-cpu-used", "8", p], check=True)
+    elif name == "hevc": subprocess.run(FF + ["-f", "lavfi", "-i", "testsrc2=size=1920x1080:rate=30:duration=2", "-c:v", "libx265", "-tag:v", "hvc1", "-x265-params", "log-level=error", p], check=True)
     return p
 NAMES = pick or ["notvideo", "audio", "short", "noperson", "portrait4k"]
 URL = os.environ.get("APP_URL", "http://127.0.0.1:8766/index.html")

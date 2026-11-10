@@ -438,7 +438,8 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   out"), finished in 46 s vs 21 s normal, no page errors. Acceptable; not changed. A silent INIT waits 60 s (model start-up
   on a phone can legitimately take long) — leave it.
 - **Next session (after 15:40):** Tuesday list: (1) Max's MediaPipe calls into the pose worker (IMAGE mode; trackMax),
-  check with maxworker_check.py; (2) DONE 15:40 posestall_check.py on GitHub (pose worker quits mid-finder -> page carries on, 45 s); (3) odd-codec (HEVC) upload if ffmpeg has libx265. Accuracy leads from 14:40 still open (glove abduction FS
+  check with maxworker_check.py; (2) DONE 15:40 posestall_check.py on GitHub (pose worker quits mid-finder -> page carries on, 45 s); (3) DONE 15:40 HEVC .mov (iPhone-style, `badclip_check.py <out> hevc`): this Chromium can't play it and says so at once
+  ("can't play that video file... MP4 (H.264)... Safari"), Build stays off. Real-device check of HEVC in Chrome on Windows/Mac (which can) still open. Accuracy leads from 14:40 still open (glove abduction FS
   camera bias, side_back slot +10.5). All 15:40 work is live and green (0001318, d8853c8; 58fbdd4 to-do only).
 
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
@@ -979,8 +980,7 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
 ## Tuesday: speed and reliability
 - DONE 15:40 (badclip_check.py, d8853c8) Browser-level odd uploads through the real page.
 - New: a 60 s phone clip (1080p, 30 fps) through the pitch finder: memory and time (badclip-style test pattern, `-t 60`).
-- New: odd-codec video (HEVC .mov from iPhone) in Chromium: does it say "can't play" at once? (needs an HEVC sample; ffmpeg
-  libx265 can make one if installed.)
+- DONE 15:40 odd-codec video (HEVC .mov) in Chromium: "can't play" at once (badclip_check hevc).
 - Worker failure paths: analysis worker DONE 15:40 (anastall_check.py: silent/quits/broken/slow, identical numbers).
   Still open: the POSE worker (Fast/High tracking) dying mid-run: it has a 20 s per-frame timeout; check the page carries
   on from that frame with the same tracking (a poseworker stub like anastall's, through clip_run on a short clip).
