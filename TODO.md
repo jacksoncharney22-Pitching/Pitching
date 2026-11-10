@@ -87,6 +87,14 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   (2923 behind +10 frames). A late release ruins the slot there (2923 behind reads -14 deg: arm already past release,
   pointing down; truth 34). Caveat: the tracker noise is borrowed from another pitcher's view lined up by delivery phase,
   so check whether the donor's noise (not the delivery) causes it before tuning events (remake with another donor).
+  9:40 follow-up: the borrowed noise is NOT the cause (`unusual_make.py --selftest`, ordinary pitches with another view's
+  noise: release >=2 frames 0 of 60, foot strike >=3 1 of 60). But the foot strike "misses" are 2923_4 on all 5 views
+  (+8-10 frames) and that is the LAB's event being odd, not the app: the truth ankle is still moving 4.8 m/s forward and
+  dropping at the lab's force-plate foot strike (frame 53) and stops at 61, where the app puts it. Don't tune foot strike
+  on 2923_4 (drop it from event scoring). Also tried: widening the foot strike <-> arm cocked gap limit `_fsGapMax`
+  0.183 -> 0.25/0.35 (lab: 3.5% of 403 pitches have a gap over 0.183 s): unusual set no change, benchmark FS 13.9 -> 14.4 ms
+  (worse): keep 0.183. Remaining real item: release read 2-4 frames late on 4 behind/behind_3b views (1393, 2907, 2923,
+  2993); a late release ruins slot and release angles there.
 - 9:40 tried, no gain (drop, don't repeat): despike with flat Float64Arrays and an index-based median (no iterator):
   samecheck identical, but 5.7-6.3 s vs 5.4-5.9 s before (despike self time 0.77 -> 0.59 s, noise eats it). Analysis
   speed is now 0.23 s per clip in Node; more micro-tuning isn't worth a session: item (a) closed.
@@ -96,6 +104,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   session. Next: time passes 2/3/arm zoom separately (`maxworker_check.py ... --only worker`, run in the background at
   session start, ~30 min), and check whether pass 1 runs RTMPose twice per frame (plain + mirrored) and whether the
   mirrored look could be skipped where the plain one is confident.
+- **Next session (after 9:40):** (1) release 2-4 frames late from behind on unusual deliveries (see finding above;
+  lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
+  background FIRST, then time passes 2/3/arm zoom; (3) slot from 45-degree cameras (geometric picture correction);
+  (4) side tilt/pelvis flattening with the fit (needs an idea).
 - 9:40 session: deploy checked: run 207 (70141cc, carries the tick box and results line) succeeded; 205/206 were cancelled by newer pushes. Done.
 - (old) FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
 - Next session: (1) (a) analysis memory/GC (typed arrays in `lift`/`oePass`, samecheck-identical); (2) (b) Max profile on the
