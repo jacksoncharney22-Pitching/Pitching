@@ -274,6 +274,14 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `?finderworker=0` forces the page). Headless, 12 s clip: page froze 98 times over 0.25 s (longest 4.7 s, ~0.8 s every
   look) -> 3 times (longest 0.43 s); same total time (74 s). Synthetic figure clip (`tools/test/finder_check.py`, draws a
   filled-in body on a fixture's 2D points; not real footage): 136 freezes (longest 5.6 s) -> 1 (0.28 s); 98 vs 104 s.
+- 0:40 shipped (live, tests + deploy passed, Jackson notified): the finder change above. Then the Fast/High tracker's
+  MediaPipe models moved into the same worker (renamed `poseworker.js`, several models per worker by key; `?poseworker=0`
+  forces the page, `?finderworker=0` still works): tracker output on the synthetic clip byte-identical to the page path
+  (`raw_fast.json` cmp), same time (302 s both). Page freezes during a Fast build: 223 over 0.3 s -> 2 (the one long freeze
+  left, ~20 s headless, is the skeleton analysis itself after tracking, on the page in both). HIGH stays on the page
+  (`{ page: high }` in trackSimple) until someone runs a High clip both ways and gets identical raw output. Note: `finder_check.py --compare` can differ by one look between runs on
+  EITHER path (WebM seek timing), so re-run once before believing a mismatch. Not moved: Max accuracy's MediaPipe
+  (`trackMax`, finder.detect/full.detectForVideo) and RTMPose (already async onnxruntime).
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
   can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:

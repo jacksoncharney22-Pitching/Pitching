@@ -9,7 +9,7 @@ filled-in figure (shirt, pants, face) on the fixture's 2D tracker points (not re
 loads it, lets the pitch finder scan it and prints where the model ran, how long it took and the page's longest
 freeze. Fails if the model didn't run in the worker, the finder saw no body, there were page errors, or the page
 froze for over 1 s (it froze ~0.8-1.3 s at EVERY look when the model ran on the page). With --compare it also runs
-with ?finderworker=0 and fails unless the stride/leg-lift readings are identical (on WebM a look can come out
+with ?poseworker=0 and fails unless the stride/leg-lift readings are identical (on WebM a look can come out
 differently from run to run on EITHER path, seek timing, so one mismatch is worth a re-run before believing it).
 """
 import gzip, json, sys, os, subprocess, time, shutil
@@ -71,7 +71,7 @@ seen = sum(x is not None for x in w['stride'])
 print(f"worker: model ran on the {w['where']}, {w['secs']} s, body seen in {seen}/{len(w['stride'])} looks, longest page freeze {w['freeze']} ms, {w['slow']} freezes over 0.3 s, errors {w['errors']}")
 ok = w['where'] == 'worker' and seen > len(w['stride']) * 0.5 and not w['errors'] and w['freeze'] < 1000
 if COMPARE:
-    p_ = scan(vid, '?finderworker=0')
+    p_ = scan(vid, '?poseworker=0')
     print(f"page:   model ran on the {p_['where']}, {p_['secs']} s, longest page freeze {p_['freeze']} ms, {p_['slow']} freezes over 0.3 s")
     json.dump({'worker': w, 'page': p_}, open(os.path.join(OUT, 'finder_readings.json'), 'w'))
     same = p_['stride'] == w['stride'] and p_['lift'] == w['lift']

@@ -358,12 +358,13 @@ async function openVideo(url) {
   await once(v, "loadeddata", 15000);
   return v;
 }
+let runModels = [];                                    // the tracker's pose models for the current run
 async function trackSimple(q, src) {
   const high = q === "high", say = progress(src.prog);
   step("stModel", "doing", `Downloading the ${MODELS[q].label} tracking model (first time only)`);
   closeTrackers();                                   // fresh trackers per video: timestamps and tracking state start clean
-  const lmA = await makeTracker(q);
-  const lmB = high ? await makeTracker(q) : null, lmC = high ? await makeTracker(q) : null;
+  runModels.forEach(m => m.close());
+  const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1, { page: high });   // High in the worker: not yet checked, so on the page for now
   step("stModel", "done", "Ready");
   const v = await openVideo(src.url);
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
@@ -380,7 +381,7 @@ async function trackSimple(q, src) {
     if (cancelled) throw new Error("cancelled");
     await seekTo(i, lastBox);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
-    const r = lmA.detectForVideo(S, Math.round(i * 1000 / sampleFps) + 1);
+    const r = await lmA.detect(S, Math.round(i * 1000 / sampleFps) + 1);
     lastBox = r.landmarks && r.landmarks[0] ? poseBox({ img: r.landmarks[0].map(p => [p.x, p.y]) }, W, H) : null;
     frames.push(r.landmarks && r.landmarks[0] ? { img: r.landmarks[0].map(p => [p.x, p.y, p.visibility ?? 1]), world: r.worldLandmarks[0].map(p => [p.x, p.y, p.z]) } : null);
     if (i % 3 === 0 || i === N - 1) say(`pass 1 of ${passes}: frame ${i + 1} of ${N}`, (i + 1) / N * (high ? 0.33 : 1));
@@ -406,7 +407,7 @@ async function trackSimple(q, src) {
       ga.setTransform(sc, 0, 0, sc, -sx * sc, -sy * sc); ga.drawImage(S, 0, 0, W, H);
       gb.setTransform(1, 0, 0, 1, 0, 0); gb.fillStyle = "#000"; gb.fillRect(0, 0, CS, CS);
       gb.setTransform(-sc, 0, 0, sc, CS + sx * sc, -sy * sc); gb.drawImage(S, 0, 0, W, H);
-      const rb = lmB.detectForVideo(cropA, ts), rc = lmC.detectForVideo(cropB, ts);
+      const rb = await lmB.detect(cropA, ts), rc = await lmC.detect(cropB, ts);
       const pb = rb.landmarks && rb.landmarks[0], pc = rc.landmarks && rc.landmarks[0];
       if (pb || pc) frames[i].img = frames[i].img.map((p0, j) => {
         const c = [];
@@ -418,6 +419,7 @@ async function trackSimple(q, src) {
       if (i % 2 === 0 || i === N - 1) say(`pass 2 of 2 (zoomed, mirrored): frame ${i + 1} of ${N}`, 0.33 + (i + 1) / N * 0.67);
     }
   }
+  runModels.forEach(m => m.close()); runModels = [];                    // frees the worker and its models
   const nReal = N - dupS.filter(Boolean).length, found = frames.filter(Boolean).length;
   if (found < nReal * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${nReal} frames of one angle. Use clips where his whole body stays in view.`);
   return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal, diffs };
@@ -431,24 +433,22 @@ async function trackSimple(q, src) {
 let scan = null;                                                           // { forUrl, promise, pitches, cuts }
 function clk2(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, "0")}` }
 function fmtClock(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(1).padStart(4, "0")}` }
-// The pitch finder's pose model: in a background worker when the browser allows it (the page stays responsive while
-// it scans), otherwise on the page as before. Same model and settings either way. `?finderworker=0` forces the page.
-let finderWorkerOk = !/[?&]finderworker=0/.test(location.search) && typeof Worker !== "undefined" && typeof createImageBitmap === "function";
-async function finderModel() {
-  const onPage = async () => {
-    let t = await makeTracker("fast", { mode: "VIDEO" });
+// Pose models in a background worker when the browser allows it (the page stays responsive while they run), otherwise
+// on the page as before. Same model and settings either way; `?poseworker=0` forces the page. poseModels(q, n) gives n
+// models, each { where, detect(picture, ts) -> MediaPipe-style result, reset(), close() }; if the worker breaks mid-run
+// the rest of the run carries on with models on the page.
+let poseWorkerOk = !/[?&](pose|finder)worker=0/.test(location.search) && typeof Worker !== "undefined" && typeof createImageBitmap === "function";
+async function poseModels(q, n = 1, { page = false } = {}) {
+  const pageModel = async () => {
+    let t = await makeTracker(q, { mode: "VIDEO" });
     const drop = () => { try { t.close() } catch (e) {} trackers = trackers.filter(x => x !== t) };
-    return {
-      where: "page",
-      async detect(v, ts) { const r = t.detectForVideo(v, ts), L = r.landmarks && r.landmarks[0]; return L ? L.map(q => [q.x, q.y]) : null },
-      async reset() { drop(); t = await makeTracker("fast", { mode: "VIDEO" }) },
-      close: drop,
-    };
+    return { where: "page", async detect(v, ts) { return t.detectForVideo(v, ts) }, async reset() { drop(); t = await makeTracker(q, { mode: "VIDEO" }) }, close: drop };
   };
-  if (!finderWorkerOk) return onPage();
+  const onPage = async () => { const out = []; for (let k = 0; k < n; k++) out.push(await pageModel()); return out };
+  if (!poseWorkerOk || page) return onPage();
   let w;
   try {
-    w = new Worker(new URL("finderworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    w = new Worker(new URL("poseworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
     let seq = 0; const wait = new Map();
     w.onmessage = ({ data }) => { const f = wait.get(data.id); if (f) { wait.delete(data.id); data.ok ? f[0](data) : f[1](new Error(data.err)) } };
     w.onerror = e => { for (const f of wait.values()) f[1](new Error(e.message || "worker failed")); wait.clear() };
@@ -456,22 +456,28 @@ async function finderModel() {
       const id = ++seq; wait.set(id, [res, rej]); w.postMessage({ ...m, id }, tr || []);
       setTimeout(() => { if (wait.has(id)) { wait.delete(id); rej(new Error("worker timed out")) } }, m.type === "init" ? 60000 : 20000);
     });
-    const bytes = (await modelBytes("fast")).slice();
-    await ask({ type: "init", base: BASE(), bytes }, [bytes.buffer]);
-    let fallback = null;                                     // if the worker breaks mid-scan, finish on the page
-    const api = {
-      where: "worker",
-      async detect(v, ts) {
-        if (fallback) return fallback.detect(v, ts);
-        try { const bm = await createImageBitmap(v); return (await ask({ type: "detect", bitmap: bm, ts }, [bm])).L }
-        catch (e) { console.warn("pitch finder worker, finishing on the page:", e); finderWorkerOk = false; try { w.terminate() } catch (_) {} fallback = await onPage(); api.where = "page"; return fallback.detect(v, ts) }
-      },
-      async reset() { if (fallback) return fallback.reset(); try { await ask({ type: "reset" }) } catch (e) { finderWorkerOk = false; try { w.terminate() } catch (_) {} fallback = await onPage(); api.where = "page" } },
-      close() { if (fallback) fallback.close(); try { w.terminate() } catch (e) {} },
-    };
-    return api;
+    for (let k = 0; k < n; k++) { const bytes = (await modelBytes(q)).slice(); await ask({ type: "init", key: k, base: BASE(), bytes }, [bytes.buffer]) }
+    let broken = false; const live = new Set();
+    const fail = e => { if (!broken) { console.warn("pose worker, carrying on with the page:", e); broken = true; poseWorkerOk = false; try { w.terminate() } catch (_) {} } };
+    return Array.from({ length: n }, (_, k) => {
+      let fb = null; live.add(k);
+      const api = {
+        where: "worker",
+        async detect(v, ts) {
+          if (!fb && !broken) {
+            try { const bm = await createImageBitmap(v); return (await ask({ type: "detect", key: k, bitmap: bm, ts }, [bm])).r }
+            catch (e) { fail(e) }
+          }
+          if (!fb) { fb = await pageModel(); api.where = "page" }
+          return fb.detect(v, ts);
+        },
+        async reset() { if (fb) return fb.reset(); if (broken) return; try { await ask({ type: "reset", key: k }) } catch (e) { fail(e) } },
+        close() { if (fb) fb.close(); live.delete(k); if (!live.size) try { w.terminate() } catch (e) {} },
+      };
+      return api;
+    });
   } catch (e) {
-    console.warn("pitch finder worker unavailable, using the page:", e); finderWorkerOk = false;
+    console.warn("pose worker unavailable, using the page:", e); poseWorkerOk = false;
     try { w && w.terminate() } catch (_) {}
     return onPage();
   }
@@ -480,7 +486,7 @@ async function findPitches(url, onProgress) {
   const v = await openVideo(url), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
   if (!(dur > 0)) return { pitches: [], cuts: [] };
   const sf = Math.min(8, Math.max(5, 400 / dur)), n = Math.max(2, Math.floor(dur * sf));
-  const tr = await finderModel();
+  const [tr] = await poseModels("fast");
   const S = []; let prev = null, k0 = 0;
   for (let i = 0; i < n; i++) {
     if (scan && scan.forUrl !== url) break;                                 // another clip was chosen
@@ -490,8 +496,8 @@ async function findPitches(url, onProgress) {
     const recent = S.slice(-5).map(x => x.dif).sort((p, q) => p - q), med = recent.length ? recent[recent.length >> 1] : 0;
     const cut = dif > 16 && dif > 3.5 * Math.max(med, 2);
     if (cut) { await tr.reset(); k0 = i }
-    const L = await tr.detect(v, Math.round((i - k0) * 1000 / sf) + 1);
-    S.push({ t: (i + 0.5) / sf, cut, dif, p: L ? L.map(q => [q[0] * W, q[1] * H]) : null });
+    const r = await tr.detect(v, Math.round((i - k0) * 1000 / sf) + 1), L = r.landmarks && r.landmarks[0];
+    S.push({ t: (i + 0.5) / sf, cut, dif, p: L ? L.map(q => [q.x * W, q.y * H]) : null });
     if (onProgress && i % 5 === 0) onProgress(i / n);
   }
   tr.close();
