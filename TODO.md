@@ -269,7 +269,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 12:40 tried, not shipped: the general "small hint" blend in `lift` (0.25 of bone length, all bones) at 0.15 (worse almost
   everywhere) and 0.35 (side tilt 5.5/5.8 -> 5.4/5.5, unusual joints 9.4 -> 9.3, BUT behind_3b arm 9.5 -> 10.0 cm, slot
   5.61 -> 5.74). Same arm-from-behind trade as the spine softness: that's the thing to understand.
-- (13:40 session working on: spine softness vs arm-from-behind, 13:41 ET)
+- **13:40 SHIPPED (fb46678): shoulders no longer "lean into" the camera.** Finding (scratch armsplit.mjs: shoulder-centre
+  error vs hip centre, split into along-camera part): on EVERY camera the shoulder centre sat 0.5-8 cm too near the camera
+  (behind +0.5, behind_3b +2.8, front_3b +8.1, side_back +7.7, side_open +4.5; same on the unusual set), both with the old
+  sign choice and with the pure hint. That is why the spine softness traded arm-from-behind against side views. Fix in
+  `lift`: spine depth hint moved away from the camera by 8% of spine length (`_spOff` 0.08, 0 = old) and soft spine 0.5 -> 1.
+  Benchmark joints 9.2 -> 8.7 cm, arm 9.8 -> 8.4 (every camera better), angles 6.5 -> 6.2, forward tilt FS/AC/BR
+  3.6/3.9/4.3 -> 2.9/2.7/3.7, side tilt 4.3/5.5/5.8 -> 3.4/3.6/4.6, slot 5.6 -> 4.9, hand height 6.4 -> 5.7 cm; unusual
+  set joints 9.4 -> 9.1, arm 11.0 -> 9.3, angles 6.4 -> 6.2. Cost: shoulder abduction at FS 3.2 -> 3.6. Tried 0.12/0.16/0.2
+  of spine (0.12 a bit better on the benchmark but layback at release worse on 14 views: perview --check failed), 0.12 with
+  soft 0.5 (same), 0.05 (less gain). regress, measures --check, slowmo 240/240, comparecheck, fitguard, export_check ok;
+  baselines re-recorded. Maher fast/max side tilt at release -0/-6 -> 2/-1.
 - **Next session (after 12:40):** (1) Tuesday: Max pass-3 skip still needs a real clip; long/4K video check (synthetic clip,
   memory + honest progress) is the doable speed/reliability item; (2) accuracy leads above (spine softness vs arm from
   behind; side tilt before foot strike from side_back; side_back slot +10.5); (3) extension card only if it beats a
