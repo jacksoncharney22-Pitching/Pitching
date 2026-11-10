@@ -282,6 +282,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   (`{ page: high }` in trackSimple) until someone runs a High clip both ways and gets identical raw output. Note: `finder_check.py --compare` can differ by one look between runs on
   EITHER path (WebM seek timing), so re-run once before believing a mismatch. Not moved: Max accuracy's MediaPipe
   (`trackMax`, finder.detect/full.detectForVideo) and RTMPose (already async onnxruntime).
+- **NEXT SESSION (after 0:40):** (1) check run for b59b363 (and later) passed and the site deployed; (2) High in the
+  worker: a 0:40 test was left running (`?highworker=1`, synthetic 2.2 s clip; results not read): redo it, see Tuesday
+  list; (3) then the skeleton analysis in a worker (biggest freeze left, ~20 s headless), then Max's MediaPipe.
+  Synthetic test clip: `tools/test/finder_check.py` writes `finder_mannequin.webm` into its outdir (no real clips in the cloud).
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
   can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:
@@ -403,7 +407,12 @@ whole body. Every session works on this before anything else, in order:
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
-- Pitch finder off the main thread (Web Worker): the page freezes briefly at each finder step on slow GPUs (found 2026-11-10).
+- High accuracy's tracker in the pose worker: run `clip_run.py high` with APP_URL `...?highworker=1` and without on the
+  same clip; ship (drop the `{ page: high }` gate) only if `raw_high.json` is byte-identical.
+- Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
+  (the worker only does VIDEO mode today: add a mode to init).
+- The skeleton analysis after tracking freezes the page ~20 s headless (pipeline `analyse` on the main thread): run it in
+  a worker too (pipeline.js has no DOM, so it can be imported in a module worker as-is); check identical results.
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
@@ -440,6 +449,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10: Pitch finder and Fast tracker run their pose model in a background worker (`poseworker.js`): page freezes while scanning 98 -> 3, while tracking 223 -> 2; identical readings.
 - 2026-11-10 (23:40 Mon session): analysis after tracking 42% faster with identical results (24 test clips 9.5 -> 5.5 s); Over time/Compare instant on second open; pitch finder shows time left on long clips; `samecheck.mjs`.
 - 2026-11-09 (17:40): Event timing from the lab's own gaps: arm cocked 11 -> 6 ms off motion capture, foot strike 23 -> 14 ms; as the coach sees it layback at foot strike 25 -> 15°, at arm cocked 11 -> 7°, trunk at arm cocked 15 -> 10°; tempo 24 -> 15 ms.
 - 2026-11-09: Foot strike 34 -> 23 ms off motion capture; arm cocked 27 -> 11 ms; as the coach sees it, layback at arm cocked 33.9 -> 11.1° off. Pitcher box and different-spot note.

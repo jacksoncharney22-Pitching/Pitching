@@ -364,7 +364,7 @@ async function trackSimple(q, src) {
   step("stModel", "doing", `Downloading the ${MODELS[q].label} tracking model (first time only)`);
   closeTrackers();                                   // fresh trackers per video: timestamps and tracking state start clean
   runModels.forEach(m => m.close());
-  const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1, { page: high });   // High in the worker: not yet checked, so on the page for now
+  const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1, { page: high && !/[?&]highworker=1/.test(location.search) });   // High in the worker: not yet checked (?highworker=1 to test)
   step("stModel", "done", "Ready");
   const v = await openVideo(src.url);
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
