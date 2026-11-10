@@ -479,6 +479,16 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   fixture + 10 bench views at 4-5 trims, report the spread of slot/sep/stride/tilts; goal: spread < 2 deg), then try
   taking those statistics from a fixed window around the delivery (e.g. leg lift -> release + 0.3 s, from a first pass,
   like the long-trim crop in `analyse`).
+- 16:40 built `tools/test/trimspread.mjs` (10 s; each fixture at 9 ordinary trims, spread of slot / peak separation / stride /
+  hand height and event times; `--max <deg>` to guard later). Today: Maher fast slot 18.1-20.1, sep 17.9-21.9, hand height
+  0.93-1.03 m; Maher max slot 19.8-22.7, sep 26.1-32.4; Staumont slot 49.7-51.1, sep 31.7-34.0; events identical (FS 17 ms once).
+  16:40 tried, NOT shipped: bone lengths in `lift` from a window around the delivery found by a first pass (`_statWin` =
+  [leg lift - X s, release + Y s]; patch was ~10 lines: in lift's LIFT_TREE loop iterate t over the window; in `analyse`
+  a first analyseCore pass for the events). [0.3,0.4]: Maher max sep spread 6.3 -> 0.2, slot 2.9 -> 1.1, BUT Maher fast sep
+  spread unchanged (4.3), bench slot 4.39 -> 4.49; [0.2,0.4]: bench sep 5.67 -> 5.54, slot 4.44, Maher max sep 24.3-24.9;
+  [0.3,0.3] bench slot 4.60; [0.6,0.6] no effect. The result depends on the window choice by 2-3 deg on Maher max, so it
+  just moves the sensitivity. Maher fast's separation spread has another cause (not bone lengths): next look there
+  (which stage moves the peak: `_snap`), and the plate direction (`fmax` widest stride frame) and `bodyH`.
 - 16:40: item "(1) Max's MediaPipe calls into the pose worker" is ALREADY DONE (trackMax uses poseModels with IMAGE/VIDEO
   specs since the overnight sessions); removed from the Tuesday list.
 
