@@ -1700,7 +1700,7 @@ export function deliveryCards(D) {
   // (34 ms off a 21 ms spread), so it isn't shown here. Left out when the clip starts about at leg lift: the true top of the lift may be missing.
   { const fr = n => (D.phases.find(p => p.name === n) || {}).frame, ll = fr("Peak leg lift"), fs = fr("Foot strike");
     if (ll != null && fs != null && ll >= 0.1 * D.fps && fs > ll) { const sec = (fs - ll) / D.fps; out.push({ k: "tempo", label: "Leg lift to foot strike", value: sec.toFixed(2) + " s", n: sec * 1000, unit: " ms", def: "Time from the top of the leg lift to the front foot landing. Typical error about 0.03 s; use it to compare a pitcher with himself or to spot a rushed or slow tempo." }) } }
-  if (m.peakSep != null) out.push({ k: "sep", label: "Peak hip-shoulder separation", value: Math.round(m.peakSep) + "\u00B0", n: m.peakSep, unit: "\u00B0", def: "Largest gap between hips and shoulders from just before foot strike to release. Typical error about 7\u00B0." });
+  if (m.peakSep != null) out.push({ k: "sep", label: "Peak hip-shoulder separation", value: Math.round(m.peakSep) + "\u00B0", n: m.peakSep, unit: "\u00B0", def: "Largest gap between hips and shoulders from just before foot strike to release. Typical error about 6\u00B0." });
   return out;
 }
 
