@@ -111,7 +111,7 @@ const opts = { hand: "auto", slow: "auto", quality: "max", level: "hs", heightIn
 try { const sv = JSON.parse(localStorage.getItem("fp-pitcher") || "{}"); if (sv.level) opts.level = sv.level; if (sv.heightIn) opts.heightIn = sv.heightIn; if (sv.weightLb) opts.weightLb = sv.weightLb } catch (e) {}
 const keepPitcher = () => { try { localStorage.setItem("fp-pitcher", JSON.stringify({ level: opts.level, heightIn: opts.heightIn, weightLb: opts.weightLb })) } catch (e) {} };
 // carry the pitcher's details onto a freshly analysed result
-const tagResult = (d, from) => { d.name = from.name; if (from.pitcher) d.pitcher = from.pitcher; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; if (from.userPhases) d.userPhases = from.userPhases; return d };
+const tagResult = (d, from) => { d.name = from.name; if (from.pitcher) d.pitcher = from.pitcher; if (from.quality) d.quality = from.quality; if (from.cameras) { d.cameras = from.cameras; d.agreeCm = from.agreeCm } d.level = from.level || opts.level; d.heightIn = from.heightIn ?? opts.heightIn; d.weightLb = from.weightLb ?? opts.weightLb; d.velo = from.velo ?? null; d.slowNote = from.slowNote || ""; if (from.userPhases) d.userPhases = from.userPhases; if (from.autoRel != null) d.autoRel = from.autoRel; return d };
 let current = null;      // {file|blob, url, name}
 let viewer = null, lastResult = null, lastRaw = null;
 
@@ -837,7 +837,7 @@ function renderDeliveryStrip(data) {
   const warn = $("notPitch"); if (warn) warn.hidden = !(data.pitchCheck && !data.pitchCheck.ok);
   const items = deliveryCards(data);
   el.hidden = !items.length;
-  el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b></div>`).join("");
+  el.innerHTML = items.map(c => `<div class="dcard" title="${c.def.replace(/"/g, "&quot;")}"><span>${c.label}</span><b>${c.value}</b>${c.note ? `<small>${esc(c.note)}</small>` : ""}</div>`).join("");
 }
 function openResults(data, url, meta = {}) {
   $("vidOv").hidden = !url;   // older saved pitches keep only their numbers: no video to draw the skeleton on
@@ -861,6 +861,8 @@ function openResults(data, url, meta = {}) {
     const btn = $("phaseSet"); if (btn) { if (btn.disabled) return; btn.disabled = true }   // re-built off the page: one at a time
     let d2; try { d2 = tagResult(await analyseAsync(meta.raw, { hand: data.throwHand, phases }), data) } finally { if (btn) btn.disabled = false }
     d2.userPhases = phases;   // kept for re-opening
+    // the app's own release, kept so the slot card can say when it was read at a hand-set release (one frame moves it a lot)
+    if (d2.autoRel == null) { const r = (data.phases || []).find(p => p.name === "Release"); if (r) d2.autoRel = r.frame }
     if (meta.id != null) updateHistory(meta.id, d2);   // saved in the upload's time, like every saved pitch
     // a re-opened pitch-only video starts at the trimmed window (see Recent): shift the rebuilt skeleton the same way
     const shown = meta.clipStart != null ? { ...d2, start: (d2.start || 0) - meta.clipStart } : d2;

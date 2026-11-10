@@ -1786,7 +1786,10 @@ export function deliveryCards(D) {
   if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 4% of height; best for comparing pitches filmed from the same spot." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
   const lowFps = D.fps < 50;   // the true rate: slow motion is plenty of frames even from a 30 fps file
-  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 4\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
+  // release moved by hand (the app keeps its own as autoRel): the arm swings over the top in about two frames at 60 fps, so
+  // the slot changes 10-25 deg per frame of release (motion capture too, ~6 deg): say so on the card
+  const relF = (D.phases.find(p => p.name === "Release") || {}).frame, relNote = D.autoRel != null && relF != null && relF !== D.autoRel ? " Read at the release you set by hand: moving release one frame can change it by 10\u00B0 or more." : "";
+  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: ("Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 4\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") ) + relNote, ...(relNote ? { note: "at the release you set: 1 frame moves it a lot" } : {})});
   // real units only with the pitcher's height entered: without it the size of the body is an estimate
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
   // tempo: the one timing that held up (60 lab views: 24 ms off, against a 74 ms spread between pitchers, r 0.92). Foot strike to release didn't
