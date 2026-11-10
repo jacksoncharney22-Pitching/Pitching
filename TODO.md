@@ -269,6 +269,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 23:40 tried, no gain (samecheck, identical results, timing within noise or worse): despike on flat Float64Arrays (median
   over typed subarrays is slower: 5.2 -> 5.9 s); caching fixSwaps' per-frame labellings (5.3-5.4 vs 5.4-5.8, noise). Timing
   noise on this sandbox is ~±10%: repeat runs alternately (git stash) before believing a small gain.
+- 23:40 shipped: if you press Build skeleton while the pitch finder is still going, the first step now shows its live progress and time left (was a still "Finding the pitch in this clip"). Checked at phone width, history_check passes.
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
   can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:

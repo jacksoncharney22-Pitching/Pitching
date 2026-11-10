@@ -238,7 +238,10 @@ async function run() {
   ["stModel", "stTrack", "stBuild"].forEach(s => step(s, "todo", ""));
   try {
     if (!angles.length) throw new Error("Choose a pitching video first.");
-    if (!userTrimmed && scan && scan.state === "busy" && scan.promise) { step("stModel", "doing", "Finding the pitch in this clip"); await scan.promise.catch(() => {}) }
+    if (!userTrimmed && scan && scan.state === "busy" && scan.promise) {
+      // waiting on the pitch finder: keep its progress (and time left) on screen rather than a still line
+      const sc = scan, tick = () => step("stModel", "doing", `Finding the pitch in this clip… ${Math.round(100 * (sc.prog || 0))}%${finderEta(sc)}`);
+      tick(); const iv = setInterval(tick, 1000); await sc.promise.catch(() => {}); clearInterval(iv) }
     const q = opts.quality, K = angles.length, S = +$("trimStart").value, E = Math.max(S + 0.4, +$("trimEnd").value);
     if (q === "ultra") return await runUltraPitch(S, E);
     await holdWake();
@@ -496,16 +499,19 @@ async function findPitches(url, onProgress) {
   try { window.__finderDbg = { t: S.map(x => +x.t.toFixed(2)), stride: stride.map(v => v == null ? null : +v.toFixed(3)), lift: lift.map(v => v == null ? null : +v.toFixed(3)), cand, cuts } } catch (e) {}
   return { pitches, cuts };
 }
+// rough time left for the pitch finder, timed from its first progress step so the model's start-up isn't counted
+function finderEta(sc) {
+  const f = sc.prog || 0, now = performance.now(); if (f > 0 && !sc.p1) sc.p1 = [now, f];
+  const df = sc.p1 ? f - sc.p1[1] : 0, left = df >= 0.015 ? (now - sc.p1[0]) / 1000 / df * (1 - f) : null; sc.left = left;
+  return left != null && left > 8 ? ` · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.round(left / 5) * 5 + " s"} left` : "";
+}
 function showPitches() {
   const box = $("pitchFind"), msg = $("pitchFindMsg"), chips = $("pitchChips");
   if (!scan) { box.hidden = true; return }
   box.hidden = false; chips.innerHTML = "";
   if (scan.state === "busy") {
     // a long clip (a whole bullpen on a phone) can take minutes to scan: say roughly how long, and that you needn't wait
-    // (timed from the first progress step, so the model's start-up isn't counted as scanning speed)
-    const f = scan.prog || 0, now = performance.now(); if (f > 0 && !scan.p1) scan.p1 = [now, f];
-    const df = scan.p1 ? f - scan.p1[1] : 0, left = df >= 0.015 ? (now - scan.p1[0]) / 1000 / df * (1 - f) : null;
-    const eta = left != null && left > 8 ? ` · about ${left > 90 ? Math.ceil(left / 60) + " min" : Math.round(left / 5) * 5 + " s"} left` : "";
+    const f = scan.prog || 0, eta = finderEta(scan), left = scan.left;
     const skip = left != null && left > 30 ? `<br><small>No need to wait: drag the trim to the pitch yourself and press Build skeleton.</small>` : "";
     msg.innerHTML = `Finding the pitch in this clip… <small>${Math.round(100 * f)}%${eta}</small>${skip}`; return }
   const P = scan.pitches || [], nc = (scan.cuts || []).length;
