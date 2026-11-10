@@ -823,6 +823,9 @@ function openResults(data, url, meta = {}) {
   $("resName").textContent = data.name || "Pitch";
   const dur = data.frames / data.fps;
   $("resMeta").textContent = `${data.pitcher ? data.pitcher + " · " : ""}${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
+  // the lab-matched body trial: say when it was used, and when it was turned on but didn't line up with this video
+  if (data.bodyFit) $("resMeta").textContent += " · lab-matched body (trial)";
+  else if (data.bodyFit === false && BODYFIT) $("resMeta").textContent += " · lab-matched body not used: it didn't line up with this video";
   renderDeliveryStrip(data);
   show("results");
   const onPhases = meta.raw ? async (phases, frame) => {
