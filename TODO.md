@@ -104,7 +104,16 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   session. Next: time passes 2/3/arm zoom separately (`maxworker_check.py ... --only worker`, run in the background at
   session start, ~30 min), and check whether pass 1 runs RTMPose twice per frame (plain + mirrored) and whether the
   mirrored look could be skipped where the plain one is confident.
-- 9:40 tried, promising but NOT shipped (one camera worse): "geometric" slot: turn the app's 3D shoulder->wrist so its
+- **9:40 SHIPPED (6c6e973): half of the "geometric" slot below, on every camera** (on top of the face^12 blend):
+  benchmark slot 5.8 -> 5.4 deg off, every camera better or equal (behind 4.6->4.5, behind_3b 4.1->4.0, front_3b 5.1->3.9,
+  side_open 4.3->3.6, side_back 10.9->10.9); unusual 10.2 -> 9.5 (behind_3b 10.1 -> 10.6, the only one worse); measures.mjs
+  6.21 -> 5.39, r 0.85 -> 0.88. Compare slot limit 9 -> 8 (comparecheck), card "about 5 deg". Real clips: Maher fast/max
+  29.0/27.6 -> 23.7/19.9 (fast vs max now 3.8 apart, was 1.4: check by eye when Maher's video arrives), Hackimer 15.5 -> -4.8
+  (he's a low-slot reliever; confirm with his video), Staumont 65.4 -> 64.4. Weight `globalThis.__slotGeo` (default 0.5)
+  for experiments. perview: no skeleton angle changed; regress, export_check (Maher max, Staumont) ok.
+  Benchmark side_back still reads slot 10.9 HIGH on every pitcher (bias = error): worth a look (depth of the throwing hand
+  from that camera).
+- 9:40 tried (full weight), promising but NOT shipped (one camera worse): "geometric" slot: turn the app's 3D shoulder->wrist so its
   picture direction matches the tracker's 2D one, keep its depth (along the camera axis), then read the slot (every view,
   replaces the face^12 blend). Benchmark (unusual.mjs on tools/test/bench) 5.8 -> 5.6 deg, keeps 94 -> 98%; unusual set
   10.2 -> 9.7, keeps 82 -> 91%; side_open 4.3 -> 3.1 / 8.8 -> 8.4, front_3b 5.1 -> 4.4 / 8.7 -> 8.2, side_back 15.0 -> 12.1
@@ -114,7 +123,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   from horizontal cameraDir, sign from the app's own projection, in-picture length kept).
 - **Next session (after 9:40):** (1) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
-  background FIRST, then time passes 2/3/arm zoom; (3) slot: the geometric version above (fix behind_3b, then ship);
+  background FIRST, then time passes 2/3/arm zoom; (3) slot: side_back reads 10.9 deg high on all 12 benchmark pitchers; full-weight geometric slot if behind_3b can be fixed;
   (4) side tilt/pelvis flattening with the fit (needs an idea).
 - 9:40 session: deploy checked: run 207 (70141cc, carries the tick box and results line) succeeded; 205/206 were cancelled by newer pushes. Done.
 - (old) FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
