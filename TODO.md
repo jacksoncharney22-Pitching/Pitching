@@ -237,6 +237,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   from his OTHER side (a lefty's "side_open" camera sees his back). Fix in unusual_make.py: for a lefty, borrow the noise
   from the donor's opposite side view mirrored (side_open <- donor side_back), or mirror the lefty into a righty first.
   Until then, score side views of the unusual set on righties only.
+- (12:40 session working on (1) shoulder mean depth / Maher Max, 12:45 ET)
 - **Next session (after 11:40):** (1) shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
   benchmark slot 5.53 -> 5.81 blocks it); (2) fix unusual_make.py
   lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on
