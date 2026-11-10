@@ -354,6 +354,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   robust.mjs also runs the lab-matched body and odd typed heights (0 / 700 in / text): 96/96 ok, ~1.5 min;
   Recent: a saved record with no skeleton gives a plain message instead of an empty results page (checked headless with
   damaged records: before "undefined frames · NaN fps" + page error). export_check (Staumont, Maher fast) + history_check ok.
+- 14:40 tests note: the fps commit's run went red ONLY because the unusual job's lab download came back cut short
+  (checksum mismatch; every other job green); tests.yml now retries that download up to 4 times.
+- **Next session (after 14:40):** (1) Tuesday items at the top of the Tuesday list (browser-level damaged clips through the
+  real page; worker killed mid-run: today a dead analysis worker that never errors stalls 180 s before the page takes over;
+  CPU-throttled Fast timing); (2) accuracy leads still open: glove abduction FS camera bias (behind +5, side_back -6, same on
+  the unusual set), glove elbow at arm cocked from front_3b -11.6; side_back slot +10.5; 2653 side_back side tilt pre-FS.
+  Lab data for the unusual set: tests.yml steps (local copy: unusual_make.py into the scratchpad, ~1 min).
 - Still open (accuracy): before foot strike, side tilt on 2653 side_back reads +2 vs truth -21 in every version (the
   pitcher leans toward 1B/3B in the stride and the app misses it from that camera); side_back arm slot still +10.5 high.
 - (old) **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
