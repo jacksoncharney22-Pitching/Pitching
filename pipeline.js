@@ -364,6 +364,11 @@ function lift(frames, W, H, fs, opts = {}) {
     out.push(F.map(p => sub(p, h)));
   }
   if (!opts.measured) for (let j = 0; j < 33; j++) { const z = gauss(out.map(F => F[j][2]), fs / 30); for (let t = 0; t < T; t++) out[t][j][2] = z[t] }
+  // the depth models put the ankles and feet 6-13 cm too far from the camera (relative to the hips) on every camera
+  // angle, benchmark and unusual lab deliveries alike: feet moved toward the camera by 20% of the shin, knees half that
+  // (`_footZ`, 0 = old). A shift of both feet together leaves the stride direction (and so the plate line) as it was;
+  // changing the shin's depth hint instead also moved the pelvis/trunk turn at foot strike (2026-11-10)
+  { const k = (opts._footZ ?? -0.2) * L["25,27"]; for (const F of out) for (const j of [27, 28, 29, 30, 31, 32]) F[j][2] += k; for (const F of out) for (const j of [25, 26]) F[j][2] += k / 2 }
   return { P: out, imgSmooth: img, scale: s };
 }
 
@@ -1637,7 +1642,8 @@ function analyseOnce(raw, opts = {}) {
 // there (60 fps), so the plain release-frame position swings 10-30 cm with a few ms of timing, and from behind the
 // pitcher the 3D arm under-reads how far the hand reaches toward the plate. So: the hand's position at the moment the
 // forearm points 60% toward the plate (interpolated between frames, found within 4 frames of release), with a fixed
-// correction for the camera angle (from straight behind it reads ~37 cm short, from the side and front about right).
+// correction for the camera angle (from straight behind it reads ~30 cm short, from the side and front about right;
+// refitted 2026-11-10 when the feet moved toward the camera: 0.03 + 0.375 behindness -> 0.02 + 0.3).
 // 60 benchmark views: extension 23 -> 13 cm off (r 0.22 -> 0.55); 70 unusual lab deliveries 23 -> 13 cm (r 0.55 -> 0.76),
 // each set checked with the correction fitted on the other one. Motion-capture truth (D.truth) is read as-is.
 export function releaseReach(D) {
@@ -1649,7 +1655,7 @@ export function releaseReach(D) {
   const fx = t => { const d = sub(P[t][wr], P[t][el]), n = Math.hypot(d[0], d[1], d[2]); return n > 1e-9 ? d[0] / n : null };
   for (let t = br - 4; t < br + 4; t++) {
     if (!P[t] || !P[t + 1]) continue; const a = fx(t), b = fx(t + 1);
-    if (a != null && b != null && a < 0.6 && b >= 0.6) return P[t][wr][0] + (P[t + 1][wr][0] - P[t][wr][0]) * (0.6 - a) / (b - a) - 0.03 + 0.375 * bh;
+    if (a != null && b != null && a < 0.6 && b >= 0.6) return P[t][wr][0] + (P[t + 1][wr][0] - P[t][wr][0]) * (0.6 - a) / (b - a) - 0.02 + 0.3 * bh;
   }
   return P[br][wr][0] + 0.05 + 0.40 * bh;   // no clean crossing: release frame with the same camera correction
 }

@@ -1,9 +1,9 @@
 {
- "strideLen": 0.0332,
+ "strideLen": 0.0333,
  "strideM": 0.0612,
- "armSlot": 4.9466,
- "relHeight": 0.0571,
- "extension": 0.1136,
- "peakSep": 5.6307,
- "peakSepMs": 30
+ "armSlot": 4.968,
+ "relHeight": 0.0605,
+ "extension": 0.1175,
+ "peakSep": 5.697,
+ "peakSepMs": 29.7222
 }
