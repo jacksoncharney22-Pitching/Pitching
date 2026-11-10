@@ -28,10 +28,10 @@ function score(D, tr, TD) {
   let se = 0, n = 0, ae = 0, an = 0; const { fs, br } = tr.events, arm = D.throwHand === "L" ? [11, 13, 15] : [12, 14, 16];
   for (let t = 0; t < T; t++) { const A = D.pose[t], B = tr.P[t], ha = hip(A), hb = hip(B);
     for (const j of JOINTS) { const e = Math.hypot(...[0, 1, 2].map(k => (A[j][k] - ha[k]) - (B[j][k] - hb[k]))); se += e; n++; if (t >= fs && t <= br && arm.includes(j)) { ae += e; an++ } } }
-  const ang = {}, sgn = {};
-  for (const e of ["fs", "mer", "br"]) for (const k of ANG) { const a = D.metrics[k][tr.events[e]], b = TD.metrics[k][tr.events[e]]; if (a == null || b == null) continue; const d = ROT.has(k) ? wrap(a - b) : a - b; ang[k + "|" + e] = Math.abs(d); sgn[k + "|" + e] = d }
+  const ang = {}, sgn = {}, tv = {};
+  for (const e of ["fs", "mer", "br"]) for (const k of ANG) { const a = D.metrics[k][tr.events[e]], b = TD.metrics[k][tr.events[e]]; if (a == null || b == null) continue; const d = ROT.has(k) ? wrap(a - b) : a - b; ang[k + "|" + e] = Math.abs(d); sgn[k + "|" + e] = d; tv[k + "|" + e] = b }
   const m = deliveryMeasures(D, tr.height), mt = deliveryMeasures(TD, tr.height, 0);
-  return { joint: 100 * se / n, arm: 100 * ae / an, ang: mean(Object.values(ang)), sgn, slot: m.armSlot - mt.armSlot, stride: 100 * (m.strideLen - mt.strideLen), hand: D.throwHand,
+  return { tv, joint: 100 * se / n, arm: 100 * ae / an, ang: mean(Object.values(ang)), sgn, slot: m.armSlot - mt.armSlot, stride: 100 * (m.strideLen - mt.strideLen), hand: D.throwHand,
     slotT: mt.armSlot, strideT: 100 * mt.strideLen, tiltT: TD.metrics.trunkLat[tr.events.br], tilt: sgn["trunkLat|br"], knee: mean(["fs", "mer", "br"].map(e => sgn["leadKnee|" + e])),
     kneeT: Object.fromEntries(["fs", "mer", "br"].map(e => [e, TD.metrics.leadKnee[tr.events[e]]])), kneeS: Object.fromEntries(["fs", "mer", "br"].map(e => [e, sgn["leadKnee|" + e]])), fit: D.bodyFit || null };
 }
@@ -59,6 +59,12 @@ const all = (w, k, abs) => mean(rows.map(r => abs ? Math.abs(r[w][k]) : r[w][k])
 console.log(`\nall      joints ${all("app", "joint").toFixed(2)} -> ${all("fit", "joint").toFixed(2)} cm, arm ${all("app", "arm").toFixed(2)} -> ${all("fit", "arm").toFixed(2)} cm, angles ${all("app", "ang").toFixed(2)} -> ${all("fit", "ang").toFixed(2)}°`);
 console.log(`         |slot| ${all("app", "slot", 1).toFixed(1)} -> ${all("fit", "slot", 1).toFixed(1)}°, |stride| ${all("app", "stride", 1).toFixed(1)} -> ${all("fit", "stride", 1).toFixed(1)}% of height, |tilt at release| ${all("app", "tilt", 1).toFixed(1)} -> ${all("fit", "tilt", 1).toFixed(1)}°`);
 console.log(`         hand read wrong: app ${rows.filter(r => r.app.hand !== r.hand).length}, fit ${rows.filter(r => r.fit.hand !== r.hand).length} of ${rows.length}`);
+// how much of each pitcher's own difference from the group average a reading keeps (100% = all of it; the fit pulling
+// unusual pitchers toward the lab average shows as a low number). Slope of the reading against the truth, over views.
+{ const slope = (w, key) => { const R = rows.filter(r => r[w].sgn[key] != null && r.app.tv[key] != null), x = R.map(r => r.app.tv[key]), yv = R.map(r => r.app.tv[key] + r[w].sgn[key]);
+    const mx = mean(x), my = mean(yv); let sxy = 0, sxx = 0; x.forEach((v, i) => { sxy += (v - mx) * (yv[i] - my); sxx += (v - mx) ** 2 }); return 100 * sxy / sxx };
+  console.log("\nkeeps % of the pitcher's own difference   app FS/MER/BR      fit FS/MER/BR");
+  for (const k of ANG) console.log(`${k.padEnd(14)} ${["fs", "mer", "br"].map(e => slope("app", k + "|" + e).toFixed(0).padStart(5)).join(" ")}    ${["fs", "mer", "br"].map(e => slope("fit", k + "|" + e).toFixed(0).padStart(5)).join(" ")}`) }
 // the angle table (absolute, averaged over views) for the readings that matter most
 console.log("\nangle error (°)          app FS/MER/BR          fit FS/MER/BR");
 for (const k of ANG) console.log(`${k.padEnd(14)} ${["fs", "mer", "br"].map(e => mean(rows.map(r => Math.abs(r.app.sgn[k + "|" + e])))).map(x => x.toFixed(1).padStart(5)).join(" ")}      ${["fs", "mer", "br"].map(e => mean(rows.map(r => Math.abs(r.fit.sgn[k + "|" + e])))).map(x => x.toFixed(1).padStart(5)).join(" ")}`);

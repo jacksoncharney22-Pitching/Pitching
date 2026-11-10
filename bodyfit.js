@@ -169,16 +169,19 @@ export function bodyFit(raw, D, L, opts = {}) {
   // and feet: each moves toward the tracker's own 2D point within the picture plane (opts.resid share, residual clipped
   // at 4% of the picture, smoothed over opts.residSig s); its distance from the camera stays the fit's. Unusual pitchers:
   // front knee 8.4/7.4/8.2 -> 6.1/5.1/5.5 deg (keeps 61-76% of his difference); benchmark 5.3/5.1/6.5 -> 5.1/4.6/4.8.
-  // Shoulders/hips given back too made trunk rotation noisier (benchmark MER 6.0 -> 6.4), so not those.
+  // Shoulders and hips get half that share (opts.residTrunk 0.5): the fit kept only 49-56% of how far an unusual pitcher's
+  // trunk turn differs from the average late in the delivery (app alone 86-88%), separation 54-63% (app 86-93%). With
+  // half: unusual separation 6.1/6.6/6.8 -> 5.5/5.7/5.8 deg, trunk 6.5/7.5/7.6 -> 5.9/7.1/7.1; benchmark separation
+  // 4.7/3.6/4.7 -> 4.1/3.3/4.0, trunk 6.6/6.0/6.1 -> 6.5/6.0/6.0. A full share made benchmark trunk at arm cocked noisier.
   const RES = opts.resid ?? 1, RF = [];
   if (RES > 0 && cam) {
     const RP = new RegExp(opts.residParts ?? "ankle|knee"), hub = 0.04 * H, { r1, r2, sc, proj } = cam, raw0 = [];
     for (let t = t0; t <= t1; t++) {
       const [s, w] = sAt(t), side = use[w < 0.5 ? s : s + 1], o = {};
-      map.forEach(([j, m]) => { if (!RP.test(L.joints[j])) return;
+      map.forEach(([j, m]) => { const sh = RP.test(L.joints[j]) ? RES : /hip|shoulder/.test(L.joints[j]) ? (opts.residTrunk ?? 0.5) : 0; if (!sh) return;
         const X = [0, 1, 2].map(k => y[idx(s, j) + k] * (1 - w) + y[idx(s + 1, j) + k] * w), q = img(t, side ? swap(m) : m); if (!q) return;
         const p = proj(X); let du = q[0] - p[0], dv = q[1] - p[1]; const n = Math.hypot(du, dv); if (n > hub) { du *= hub / n; dv *= hub / n }
-        const d = [0, 1, 2].map(k => RES * (r1[k] * du + r2[k] * dv) / (sc * sc)); o[m] = [d[0] * height, d[2] * height, (lefty ? 1 : -1) * d[1] * height] });
+        const d = [0, 1, 2].map(k => sh * (r1[k] * du + r2[k] * dv) / (sc * sc)); o[m] = [d[0] * height, d[2] * height, (lefty ? 1 : -1) * d[1] * height] });
       raw0.push(o);
     }
     const sig = Math.max(0.5, (opts.residSig ?? 0.02) * fps), rad = Math.ceil(2.5 * sig);
