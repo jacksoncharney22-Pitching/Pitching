@@ -207,6 +207,9 @@ function setMain(i, keepTrim) {
   if (!$("pitchName").value || !keepTrim) $("pitchName").value = current.name;
   const v = $("prepVideo"); if (v.src !== current.url) { v.src = current.url; $("prepErr").hidden = true }
   v.onloadedmetadata = () => {
+    // a sound-only file (a voice memo, a phone's audio export) loads fine but has no picture: say so now, rather than
+    // letting the coach press Build and get a message about the tracking engine
+    if (!v.videoWidth) { badVideo(current, "This file has sound but no picture. Choose the video of the pitch."); return }
     const d = v.duration || 0;
     $("trimStart").max = $("trimEnd").max = d.toFixed(2);
     $("trimStart").value = 0; $("trimEnd").value = d.toFixed(2);         // the whole clip by default: any length works
@@ -215,8 +218,19 @@ function setMain(i, keepTrim) {
     updateTrim();
     scanPitches(current);                                                  // then narrow it to one pitch, automatically
   };
-  v.onerror = () => { $("prepErr").hidden = false; $("prepErr").textContent = "This browser can't play that video file. Try an MP4 (H.264) export, or open it in Safari for iPhone .mov files." };
+  v.onerror = () => badVideo(current, "This browser can't play that video file. Try an MP4 (H.264) export, or open it in Safari for iPhone .mov files.");
   renderAngles();
+}
+// A main video that can't be read keeps its message on screen and Build skeleton off, so nobody waits on a file that
+// can't work (a damaged file used to sit for 18 s, then say "the video stopped responding").
+// on a phone the message box sits below the video and trim controls, off the screen: bring it into view
+const errInView = () => { try { $("prepErr").scrollIntoView({ block: "nearest", behavior: "smooth" }) } catch (e) {} };
+function badVideo(a, msg) {
+  if (!a) return;
+  a.bad = msg;
+  if (a !== current) return;
+  $("prepErr").hidden = false; $("prepErr").textContent = msg; $("analyze").disabled = true; errInView();
+  scan = null; showPitches();                                              // no pitch finder on a file with no picture
 }
 function renderAngles() {
   const list = $("angleList"); list.innerHTML = "";
@@ -231,7 +245,7 @@ function renderAngles() {
     li.querySelector(".rm").onclick = () => { URL.revokeObjectURL(a.url); angles.splice(i, 1); angles.length ? setMain(0, true) : (current = null, show("home")) };
     list.append(li);
   });
-  $("analyze").disabled = !angles.length; $("addAngle").hidden = angles.length >= 3;
+  $("analyze").disabled = !angles.length || !!(current && current.bad); $("addAngle").hidden = angles.length >= 3;
   $("angleList").hidden = angles.length < 2;
   $("angleNote").textContent = angles.length > 1 ? `${angles.length} angles of the same pitch. Trim the main angle; the others are lined up automatically.`
     : "";
@@ -305,6 +319,7 @@ async function run() {
   ["stModel", "stTrack", "stBuild"].forEach(s => step(s, "todo", ""));
   try {
     if (!angles.length) throw new Error("Choose a pitching video first.");
+    if (current && current.bad) throw new Error(current.bad);
     if (!userTrimmed && scan && scan.state === "busy" && scan.promise) {
       // waiting on the pitch finder: keep its progress (and time left) on screen rather than a still line
       const sc = scan, tick = () => step("stModel", "doing", `Finding the pitch in this clip… ${Math.round(100 * (sc.prog || 0))}%${finderEta(sc)}`);
@@ -375,7 +390,7 @@ async function run() {
     if (e.message === "cancelled") { show("prep"); return }
     console.error(e);
     show("prep"); $("prepErr").hidden = false;
-    $("prepErr").textContent = friendlyError(e);
+    $("prepErr").textContent = friendlyError(e); errInView();
   }
 }
 // What went wrong, in words a coach can act on (the messages we throw ourselves are already written that way)
@@ -495,6 +510,7 @@ async function trackSimple(q, src) {
   }
   runModels.forEach(m => m.close()); runModels = [];                    // frees the worker and its models
   const nReal = N - dupS.filter(Boolean).length, found = frames.filter(Boolean).length;
+  if (!found) throw new Error("The tracker couldn't find anyone in this clip. Use a clip where the pitcher's whole body is in view.");
   if (found < nReal * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${nReal} frames of one angle. Use clips where his whole body stays in view.`);
   return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal, diffs, keep, clipStart: start };
 }
@@ -761,6 +777,7 @@ async function trackMax(src) {
     tick("Pass 1 of 3 · full picture", i);
   }
   const dup = repeatedFrames(diffs), nRep = dup.filter(Boolean).length;
+  if (!first.some(Boolean)) throw new Error("The tracker couldn't find anyone in this clip. Use a clip where the pitcher's whole body is in view.");
   if (first.filter(Boolean).length < N * 0.5) throw new Error(`The tracker only found the pitcher in ${first.filter(Boolean).length} of ${N} frames. Use a clip where his whole body stays in view.`);
   // a smooth crop path that follows the pitcher over the whole clip
   const near = i => { if (first[i]) return first[i]; for (let k = 1; k < N; k++) { if (first[i - k]) return first[i - k]; if (first[i + k]) return first[i + k] } return null };

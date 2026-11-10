@@ -408,6 +408,20 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   the parallel re-read pool (details in the session log). Tests and deploy passed for 6d67bd9; 1153829's run was still going at wrap-up:
   check it. Big project step 1 not started.
 
+- **15:40 SHIPPED (0001318): a skeleton-build worker the browser silently stops no longer makes the coach wait 3 minutes.**
+  The worker says "still here" on arrival of a request and at each skeleton stage (via `_snap`, at most 1/s; results
+  bit-identical, anaworker_check ok); the page drops it after 45 s of silence while busy (`?anastall=<s>` for tests) instead of a
+  flat 180 s per build (which also counted time a request spent queued behind others: "Over time" with 30 pitches on a 2-core
+  phone could wrongly give up on a healthy worker). New `tools/test/anastall_check.py` (on GitHub): silent worker -> page in
+  6.6 s at anastall=6 (old code: still waiting at 120 s), worker that quits -> 8.5 s, broken script -> 0.5 s, slow-but-alive
+  (10 s) stays in the worker; same angle table every way. trend_time 20 pitches 17.6 s, no drop. Gaps between "still here"
+  in Node are at most 1/3 of a build (guard stage), so 45 s = a build of 2+ minutes with no sign of life.
+- **15:40 (in progress) browser-level odd uploads: `tools/test/badclip_check.py`** (not-a-video, sound-only, 0.3 s, no person,
+  portrait 4K; Fast). FOUND + FIXED: a sound-only file said "This browser blocked the tracking engine (WebAssembly)" after
+  pressing Build; random bytes called .mp4 sat 18 s then said "The video stopped responding". Now both show the right
+  message at once ("This file has sound but no picture..." / "can't play that video file") and Build skeleton stays off
+  until another video is chosen (`badVideo` in app.js).
+
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
 - **7:40 session: Recent's pitch-only video is ON by default (6d67bd9).** The 6:40 "noisy clip stalled" was not the keeper:
