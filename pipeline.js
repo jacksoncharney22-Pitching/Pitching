@@ -1620,7 +1620,17 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   const stance = (() => { const a = P.slice(0, Math.max(1, ph("Peak leg lift") ?? 1)).map(F => F[back]); const med = i => a.map(p => p[i]).sort((x, y) => x - y)[a.length >> 1]; return [med(0), med(1), med(2)] })();
   const LA = D.strideFoot && D.strideFoot.frame === fs ? D.strideFoot.p : P[fs][lead], dx = LA[0] - stance[0], dz = LA[2] - stance[2], strideM = Math.hypot(dx, dz);
   const ground = Math.min(P[fs][lead][1], stance[1]);
-  const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
+  const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot3 = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
+  // From a camera straight behind or in front, the slot is right there in the picture (the plain shoulder-to-wrist angle
+  // on screen), while the 3D arm has to guess the depth and gets pulled toward a typical arm (sidearm read high, very high
+  // slots low). Unusual lab deliveries seen from behind: picture angle 3-4 deg off and keeps the pitcher's whole
+  // difference, the 3D arm 9 deg off. From the side the slot is all depth, so the picture says nothing, and from 45 degrees
+  // the picture reads 3-9 deg high: so the picture only counts when the camera is nearly square to the line to the plate
+  // (full weight straight on, 2/3 at 15 deg off, 1/3 at 25, nothing by 45). 60 benchmark views: slot 6.2 -> 5.8 deg off
+  // (r 0.85 -> 0.87); 70 unusual-delivery views: 10.3 -> 10.2, sidearm from behind 15/11 -> 6/8 deg off.
+  const cd = D.cameraDir, I = D.img, face = cd ? cd[0] ** 2 / Math.max(1e-9, cd[0] ** 2 + cd[2] ** 2) : 0, wP = face ** 12;
+  const slotPic = (() => { if (!I || !D.width || !D.height) return null; let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { const A = I[t] && I[t][sh], B = I[t] && I[t][wr]; if (!A || !B) continue; a += Math.atan2(-(B[1] - A[1]) * D.height, Math.abs(B[0] - A[0]) * D.width) * 180 / Math.PI; c++ } return c ? a / c : null })();
+  const slot = slotPic == null ? slot3 : slot3 + (slotPic - slot3) * wP;
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
   return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
 }
