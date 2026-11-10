@@ -300,6 +300,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Freeze reduction for High not measured separately (Fast's was 223 -> 2 freezes over 0.3 s). `window.__poseFellBack` is set
   if the worker fails mid-run (for tests). Tip: a full untrimmed High run takes 25+ min here; trim to ~1.3 s around the pitch.
 - 1:40 shipped: the "Rebuilding the 3D skeleton" step counts seconds while it works (now that the page can update during it).
+- 2:40 session (2:40 session working on this, 2:41 ET): (1) Max accuracy's MediaPipe into the pose worker.
 - **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (0) confirm test run 148 (0ed4df1, High in the worker) passed; its website deploy already succeeded. (1) Max accuracy's MediaPipe calls into the pose worker
   (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
   raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
