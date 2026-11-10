@@ -269,6 +269,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 12:40 tried, not shipped: the general "small hint" blend in `lift` (0.25 of bone length, all bones) at 0.15 (worse almost
   everywhere) and 0.35 (side tilt 5.5/5.8 -> 5.4/5.5, unusual joints 9.4 -> 9.3, BUT behind_3b arm 9.5 -> 10.0 cm, slot
   5.61 -> 5.74). Same arm-from-behind trade as the spine softness: that's the thing to understand.
+- (13:40 session working on: spine softness vs arm-from-behind, 13:41 ET)
 - **Next session (after 12:40):** (1) Tuesday: Max pass-3 skip still needs a real clip; long/4K video check (synthetic clip,
   memory + honest progress) is the doable speed/reliability item; (2) accuracy leads above (spine softness vs arm from
   behind; side tilt before foot strike from side_back; side_back slot +10.5); (3) extension card only if it beats a
