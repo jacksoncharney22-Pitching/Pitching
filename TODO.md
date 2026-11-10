@@ -220,6 +220,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   +2.5 -> +3.2; measures.mjs --check fails at limit 5.80). (The opposite split, MediaPipe difference + learned mean, gave
   nothing and worse trunk turn.) Try: does the slot's geometric/picture blend need re-tuning with the new shoulders
   (`__slotGeo`), or the slot's +3 bias; then perview, slowmo, export_check, and ship.
+  11:40 checked: `__slotGeo` 0.75/1 worse (5.83/5.94). Slot now has the same +3.2/+3.5 bias on both sets: with slot - 2
+  (app only) bench 5.61 (baseline 5.53, inside the check limit), unusual 6.07 (was 7.93); slot - 3: 5.63 / 6.04. So ship
+  = shoulder change + slot - 2, after perview (side_back views), comparecheck --check, slowmo, export_check, and a look at
+  Maher/Staumont numbers; patch saved as scratch shoulder_mean.diff (gone with this sandbox: re-type from the recipe).
 - 11:40 FINDING (test data, don't chase as an app bug): unusual-set LEFTIES at side cameras read side tilt ~40 deg wrong
   (1718, 2655, 3132 side_back/side_open -34 to -46), but the app is mirror-consistent (mirrored raw gives identical angles)
   and lefties from behind are fine: `unusual_make.py` pastes a right-handed donor's side-view tracker error onto a lefty seen
