@@ -34,8 +34,12 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
       at desktop and phone width), so Jackson can try it without editing the address.
   (d) Late-started slow motion (Thursday list): the 18:40 window idea (fixed fraction of foot strike->release,
       interpolated), test at 2x first.
-  (e) Delete the old `wip-max-worker` branch (everything is on main).
+  (e) Delete the old `wip-max-worker` branch (everything is on main). 7:40: deleting a branch is blocked for these sessions
+      (permission), so leave it; it does no harm. (Its parallel re-read pool shipped 7:40, 1153829.)
 - Next session: continue the big project at whichever step is open below; claim it in this list first.
+- 7:40 session (ran 7:41-8:25, before the plan): shipped pitch-only Recent video ON by default + hand-moved-event fix, and
+  the parallel re-read pool (details in the session log). Tests and deploy passed for 6d67bd9; 1153829's run was still going at wrap-up:
+  check it. Big project step 1 not started.
 
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
