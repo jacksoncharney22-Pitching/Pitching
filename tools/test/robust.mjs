@@ -1,7 +1,8 @@
 // Damaged-input check (no browser): the skeleton build must never crash or hang on bad tracker output, which is what a
 // shaky phone clip, a pitcher walking out of the picture or a two-second upload produce. Every fixture is damaged in
 // several ways (frames lost at random or in one long run, very short clips, NaN points, the throwing arm never seen,
-// no 3D points, a pitcher standing still, ...) and run through analyse() and detectSlowFactor() with the lab arm library.
+// no 3D points, a pitcher standing still, ...) and run through analyse() and detectSlowFactor() with the lab arm library,
+// with and without the lab-matched body.
 // A run passes if it either returns a result whose events are in order and whose numbers are finite or empty, or stops
 // with a plain message (an Error with text); it fails on a crash inside the maths (TypeError etc.) or a run over 20 s.
 //   node tools/test/robust.mjs           (exit 1 on any failure)
@@ -10,6 +11,8 @@ import { dirname, join } from "path"; import { fileURLToPath } from "url";
 import { analyse, detectSlowFactor } from "../../pipeline.js";
 const here = dirname(fileURLToPath(import.meta.url)), fx = process.env.ROBDIR || join(here, "fixtures")   // ROBDIR: other clips in the same format;
 const LIB = JSON.parse(readFileSync(join(here, "../../armlib.json"), "utf8"));
+// the lab-matched body (trial switch on the trim screen) is run too, as in the app when it's ticked
+const BODY = JSON.parse(readFileSync(join(here, "../../bodylib.json"), "utf8"));
 let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const clone = o => JSON.parse(JSON.stringify(o));
 const DAMAGE = {
@@ -49,11 +52,13 @@ for (const file of files) {
     const t0 = Date.now(); let res = "ok", why = "";
     try {
       detectSlowFactor(clone(raw));
-      const D = analyse(raw, { hand: "auto", armLib: LIB });
-      const fr = (D.phases || []).map(p => p.frame).filter(x => x != null);
-      if (fr.some((x, i) => i && x < fr[i - 1])) { res = "FAIL"; why = "events out of order " + D.phases.map(p => p.name + " " + p.frame).join(", ") }
-      for (const [k, a] of Object.entries(D.metrics || {})) if (Array.isArray(a) && a.some(x => x != null && !Number.isFinite(x))) { res = "FAIL"; why = "non-finite " + k; break }
-      if (D.pose && D.pose.some(F => F && F.some(p => p && p.some(x => !Number.isFinite(x))))) { res = "FAIL"; why = "non-finite skeleton point" }
+      for (const o of [{ hand: "auto", armLib: LIB }, { hand: "auto", armLib: LIB, bodyLib: BODY, bodyFit: true }]) {
+        const D = analyse(clone(raw), o), tag = o.bodyFit ? " (lab-matched body)" : "";
+        const fr = (D.phases || []).map(p => p.frame).filter(x => x != null);
+        if (fr.some((x, i) => i && x < fr[i - 1])) { res = "FAIL"; why = "events out of order " + D.phases.map(p => p.name + " " + p.frame).join(", ") + tag }
+        for (const [k, a] of Object.entries(D.metrics || {})) if (Array.isArray(a) && a.some(x => x != null && !Number.isFinite(x))) { res = "FAIL"; why = "non-finite " + k + tag; break }
+        if (D.pose && D.pose.some(F => F && F.some(p => p && p.some(x => !Number.isFinite(x))))) { res = "FAIL"; why = "non-finite skeleton point" + tag }
+      }
     } catch (e) {
       if (e instanceof TypeError || e instanceof RangeError || e instanceof ReferenceError || !e.message) { res = "FAIL"; why = "crash: " + (e && e.stack || e).toString().split("\n").slice(0, 2).join(" ") }
       else { res = "stop"; why = e.message }
