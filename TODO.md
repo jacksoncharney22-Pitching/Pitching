@@ -163,6 +163,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   (app 6.7/6.0/5.6), joints 6.22 -> 6.07 cm, arm 7.61 -> 7.28, forward tilt 3.0/4.3/3.9 -> 2.7/3.9/3.5, separation
   5.9/4.6/5.8 -> 5.5/4.5/5.7, trunk FS 6.2 -> 6.6 (still beats the app's 8.2). hipw 0.3 worse everywhere; 2: between;
   8: pelvis 6.1/6.6/6.0, trunk FS 6.8. Pelvis late still ~0.6-0.8° behind the app's (tuned) reading.
+- 19:40 per view (defaults K 80, hipw 4, lam 0.3): the fit's joint error is lower on 58 of 60 views; worse only on 1826 side_back (7.3 -> 7.8 cm) and 3036 behind (7.0 -> 7.6). Worst fitted view: 3035 behind 8.3 cm.
 - **NEXT SESSION (after 19:40), in order:** (1) put the hybrid into pipeline.js behind `_bodyFit` (fit2D from
   tools/test/bodyproj.mjs: library K 80 + hipw 4 + lam 0.3, app's arm kept in trunk axes, app pose outside the window
   with a short blend), load `bodylib.json` in app.js like armlib (bench must use the holdout copy), then run bench (incl.
