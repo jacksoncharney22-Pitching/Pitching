@@ -4,7 +4,8 @@ import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib
 import { analyse, deliveryMeasures } from "../../pipeline.js"; import { truthD, armLibFor } from "./truth.mjs";
 // BODYFIT=1: with the whole-body fit (benchmark views use the library built without the benchmark athletes)
 const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(new URL("./bench/bodylib_holdout.json", import.meta.url), "utf8")) : null;
-const dir=new URL("./bench/", import.meta.url).pathname; const load=f=>JSON.parse(gunzipSync(readFileSync(dir+f)).toString());
+const dir=process.env.BENCHDIR?process.env.BENCHDIR.replace(/\/?$/,"/"):new URL("./bench/", import.meta.url).pathname;   // BENCHDIR=<dir>: other views (e.g. unusual_make.py)
+ const load=f=>JSON.parse(gunzipSync(readFileSync(dir+f)).toString());
 const views=readdirSync(dir).filter(f=>f.endsWith(".raw.json.gz")).map(f=>f.replace(".raw.json.gz",""));
 const KEYS=["strideLen","strideM","armSlot","relHeight","extension","peakSep","peakSepMs"], E=Object.fromEntries(KEYS.map(k=>[k,[]])), S=Object.fromEntries(KEYS.map(k=>[k,[]])), A=Object.fromEntries(KEYS.map(k=>[k,[]])), T=Object.fromEntries(KEYS.map(k=>[k,[]]));
 const CAM={};

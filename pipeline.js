@@ -422,7 +422,9 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
   const sampleTo = (a, tau, k, o) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return false; const i = Math.min(N - 2, Math.floor(x)), w = x - i, j = i * 6 + k;
     if (a[j] !== a[j] || a[j + 6] !== a[j + 6]) return false;
     o[0] = a[j] + (a[j + 6] - a[j]) * w; o[1] = a[j + 1] + (a[j + 7] - a[j + 1]) * w; o[2] = a[j + 2] + (a[j + 8] - a[j + 2]) * w; return true };
-  const shifts = []; for (let s = -0.05; s <= 0.0501; s += 1 / 240) shifts.push(s);
+  // how far the lab throws may move release (s): +-75 ms (was 50 ms until 2026-11-10; with a camera behind the pitcher the
+  // throws often wanted more and, pinned at the limit, were ignored for timing: release then stayed 2-4 frames late)
+  const SMX = opts._shiftMax ?? 0.075, shifts = []; for (let s = -SMX; s <= SMX + 1e-4; s += 1 / 240) shifts.push(s);
   const speeds = [0.88, 0.94, 1, 1.06, 1.13];
   const step = Math.max(1, Math.ceil(fr.length / 30)), frS = fr.filter((_, i) => i % step === 0);   // slow-motion: score every few frames
   // One lab throw's misfit at one timing (speed k, shift s); gives up as soon as the misfit can only end above `stop`.
@@ -504,7 +506,7 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
   let relShift = -top6.reduce((a, m) => a + m.s, 0) / Math.max(1, top6.length) * fs;   // where the lab throws put release, in frames
   // matches pinned at the edge of the allowed timing (a much slower or faster arm than any lab throw: usually a
   // slow-motion clip whose speed changes partway) aren't trusted for timing, and steer the arm only half as much
-  const edge = top6.filter(m => Math.abs(m.s) > 0.045 && (m.k <= speeds[0] || m.k >= speeds[speeds.length - 1])).length / Math.max(1, top6.length);
+  const edge = top6.filter(m => Math.abs(m.s) > SMX - 0.005 && (m.k <= speeds[0] || m.k >= speeds[speeds.length - 1])).length / Math.max(1, top6.length);
   if (edge > 0.5) { relShift = 0; for (let t = 0; t < T; t++) wt[t] *= 0.5 }
   return { u, f, wt, relShift, edge };
 }
@@ -889,6 +891,13 @@ function analyseOnce(raw, opts = {}) {
     if (rel < top) { let r2 = top; for (let t = top; t < Math.min(T - 1, top + Math.round(0.35 * fs)); t++) if (wsp[t] > wsp[r2]) r2 = t; rel = r2 }
     if (opts._dbgRel) opts._dbgRel.push({ step: "top", top, rel, fs_, wEnd, K })
   }
+  // Filmed from behind, the hand's fastest motion ON SCREEN comes about 3 frames (50 ms) after the ball leaves: the arm
+  // whips straight away from the camera at release and only sweeps across the picture as it comes down after it (60 lab
+  // views from behind and 45 degrees behind: 3-4 frames late on every one; from the side 0, from in front 1-2). So the
+  // on-screen guess is moved earlier by that much, scaled by how straight behind the camera is, before the 3D and
+  // lab-throw checks refine it. Without this the lab-throw match had to make up 3-4 frames on its own and ran out of
+  // room on some unusual deliveries (14 unusual lab pitchers from behind: release 2-4 frames late on 4 of 28 views).
+  { const c0 = camDir[0], b = c0 < 0 ? (opts._relCamB ?? 0.05) : 0; rel = Math.max(relFrom, rel - Math.round(fs * b * c0 * c0)) }
   // with the learned 3D model: release is just after the hand's fastest moment in 3D (lab: 8 ms after, spread 6 ms).
   // Speed on screen alone peaks early or late depending on where the camera is (up to 3 frames off at 60 fps;
   // tested on 60 lab pitches seen from 5 camera angles: within 1 frame went from 19 to 31 of 60).
