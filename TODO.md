@@ -70,6 +70,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   keeps 77% vs 75%: the remaining tilt flattening is depth (side-on cameras), not the picture plane.
 - 8:15 tried, no gain (drop): (d) late-started slow motion, wrist speed over an exact fraction of foot strike -> release
   (interpolated, not rounded): `slowmo.mjs --late 20` 227 -> 227 of 240, `--late 30` 229 -> 229. The window rounding isn't it.
+- FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
 - Next session: (1) (a) analysis memory/GC (typed arrays in `lift`/`oePass`, samecheck-identical); (2) (b) Max profile on the
   synthetic clip; (3) side tilt/pelvis flattening with the fit (depth: needs an idea); (4) Monday/Saturday item: the app's
   arm readings keep only about half of a pitcher's difference in shoulder abduction (51-55%) and layback (60-63%) late,
