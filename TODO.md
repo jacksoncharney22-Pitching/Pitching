@@ -8,7 +8,36 @@ with the date. When a theme has fewer than 3 items left, add new ones that fit i
 Measure before and after every change. The accuracy benchmark (`tools/test/bench`, 10 real pitches with
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
-## Today (2026-11-10, Tuesday: speed and reliability; Monday notes below)
+## Today (2026-11-10, Tuesday: speed and reliability; plan written 8:15 ET)
+Most Tuesday items were finished overnight (workers for finder/tracker/analysis/Max, faster analysis, pitch-only Recent
+video, phone buttons). The rebuild is Jackson's top priority and step 4 needs no clip, so it's today's big project.
+
+**Big project: rebuild step 4 — does the lab-matched body (`?bodyfit=1`) follow UNUSUAL deliveries, and is it reliable
+enough to become the default?** The fit pulls every pitcher toward real lab deliveries; the risk is that a sidearm,
+very short/long stride, slide-step or big trunk tilt gets flattened toward "average". Steps:
+1. Build `tools/test/unusual.mjs`: pick the most unusual lab deliveries NOT in the benchmark (lowest/highest arm slot,
+   shortest/longest stride, most/least trunk tilt at release, quickest leg lift = slide-step-like, lefties), rebuild a
+   library WITHOUT them (`bodylib_build.py --exclude`), make 2D "tracker" points by projecting their true 3D through
+   the 5 benchmark cameras with tracker-like noise (noise measured from bench raw vs truth), and score app vs app+fit
+   on joints, arm slot, stride, trunk tilt, separation. (Lab data: download steps in the rebuild section.)
+2. Find where the fit flattens an unusual pitcher (signed error on the reading that makes him unusual) and fix it
+   (weaker prior on the shapes the video clearly decides, or a 2D-residual check that falls back to the app's own
+   body), without losing the benchmark gains (`BODYFIT=1 bench.mjs`, perview --check).
+3. "How unusual is this delivery": distance from the library average (in shapes), shown as a plain note if the fit
+   is trusted less there; report it per test pitcher.
+4. Speed/reliability of the fit (Tuesday): it adds 0.4-0.7 s per analysis; profile and cut it (samecheck-identical),
+   and make sure a fit that fails or produces junk can never break a build (fallback to the app's body, page-error check).
+- Follow-on items (in order, any session):
+  (a) Analysis memory/GC: typed arrays in the hottest loops (despike tried, slower: try `lift`/`oePass`), samecheck-identical.
+  (b) Max accuracy profile on the synthetic clip: where do the minutes go (tracker passes, arm-zoom, net, learned 3D)?
+  (c) A visible "Lab-matched body (trial)" switch on the trim screen instead of the URL flag (look change, screenshots
+      at desktop and phone width), so Jackson can try it without editing the address.
+  (d) Late-started slow motion (Thursday list): the 18:40 window idea (fixed fraction of foot strike->release,
+      interpolated), test at 2x first.
+  (e) Delete the old `wip-max-worker` branch (everything is on main).
+- Next session: continue the big project at whichever step is open below; claim it in this list first.
+
+## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
 - **7:40 session: Recent's pitch-only video is ON by default (6d67bd9).** The 6:40 "noisy clip stalled" was not the keeper:
   the same 31 MB noisy synthetic clip (5.6 s, ffmpeg noise=alls=12, 25 Mb/s) runs Fast to results in 226 s without the keeper
