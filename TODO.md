@@ -514,7 +514,26 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   15.9/14.5; the falling trend is partly real: later FS = later start of the peak search) but bench "behind" arm 7.8 -> 8.2 cm
   (CI's "clearly worse"); 0.3 same pattern. `_sepNear` 0 vs 15 makes no difference on Maher. So try the per-stretch decision
   idea rather than a longer window.
-- (17:40 session working on the shoulder-flip window edges, 17:45 ET)
+- **17:40 SHIPPED (1d390e3, aa6eb69, 69cf99b): moving an event by hand no longer changes the delivery numbers.** Wider than
+  the 16:40 lead: the viewer sends ALL FOUR events whenever any one is moved, and a hand-set foot strike rebuilt every
+  foot-strike-keyed step (shoulder flip window, arm work, foot-repair pass) around that frame instead of the first guess
+  (`fsReach`) the automatic run uses. So moving only release, or setting foot strike to the app's own frame, changed
+  separation (Maher fast 21.2 -> 16.3, max 26.6 -> 29.9), slot (-5 Maher, -5 Hackimer), stride (+7 cm) and hand height (-13 cm
+  Maher max). Fix: a hand-set foot strike within 0.2 s of the first guess (`_fsKeepS`; 0.1 missed Hackimer, whose guess is
+  0.15 s early in 16x slow motion) builds the skeleton around the guess and only the reported foot strike (contactF) moves
+  (`_fsKeep:false` = old). Hand foot strike -4..+3 frames: Maher sep 21.8..21.1 (was 22.7..14.3). Automatic runs bit-identical
+  (bench 0, regress, measures, robust 96/96, export_check Maher fast + Hackimer). New `tools/test/handevents.mjs` (in the
+  regression job; fails on the old code). Tried first, no gain: fading the flip window edges (`_shFade` 0.03/0.06 s).
+- 17:40 FINDING (trim spread, follow-up): with the FS fix the first guess is 93 on all 9 Maher fast trims; the remaining
+  separation spread 17.9-21.9 comes with the final FS 95 vs 96 on the two shortest trims AND whole-trim statistics (hand FS
+  95 -> 96 by itself moves separation only 0.1), i.e. the bone-length/plate/bodyH lead from 16:40, not the flip any more.
+- 17:40 FINDING (arm slot vs the release frame): slot is read at the release frame and the arm swings over the top in ~2
+  frames, so one frame later reads 6 deg lower on average even in MOTION CAPTURE (benchmark truth 50 -> 35 on 1612, 61 -> 38
+  on 3035) and 12-24 deg on Maher by hand (release +1: 19.5 -> 7.8, -1: 43). So a coach moving release by 1 frame moves the
+  slot card a lot; it's the definition, not a bug. Tried, NOT shipped: reading the slot at the frame where the forearm
+  crosses k of the way toward the plate (like extension): benchmark 4.39 -> 4.13 (k 0.7) / 4.08 (k 0.9) BUT Maher fast auto slot
+  19.5 -> 7.9 (Max stays 20: fast and max would disagree by 12) and release+1 on Max still 4. Needs Maher's video to judge;
+  a steadier slot definition (e.g. the arm plane's tilt over -2..+1 frames) is a Wednesday item.
 - 16:40 tried, NOT shipped: extending a flipped stretch past the window end while the flip still fits (`_shExt` 0.25 s):
   hand-FS sweep smooth (88..97: 26.2/25.2/20.3/19.7/15.9/14.5), bench 0 change, BUT the automatic Maher fast run then moves
   foot strike 1.55 -> 1.60 s and arm cocked onto release (regress FAIL) and its slot reads 0.7-14.6 across trims. The flip
