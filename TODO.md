@@ -524,6 +524,11 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   (`_fsKeep:false` = old). Hand foot strike -4..+3 frames: Maher sep 21.8..21.1 (was 22.7..14.3). Automatic runs bit-identical
   (bench 0, regress, measures, robust 96/96, export_check Maher fast + Hackimer). New `tools/test/handevents.mjs` (in the
   regression job; fails on the old code). Tried first, no gain: fading the flip window edges (`_shFade` 0.03/0.06 s).
+- **17:40 SHIPPED (e408c99): arm slot -2.5 deg bias removed** (single camera only; `__slotB`). The bias is the same on both
+  lab sets (benchmark +2.6, unusual +2.5): slot error 4.39 -> 3.92 (benchmark), 5.72 -> 5.42 (unusual); card "about 4 deg".
+  Also validated 16:40's summed-direction slot on the unusual set: 6.02 -> 5.72. Other delivery numbers' biases disagree
+  between the sets (peak sep +0.4 vs +2.4, hand height +0.01 vs +0.03, stride -0.01 vs +0.02): no constant fix for them.
+  Hand-moved leg lift / arm cocked checked too (-6..+6 frames): every card unchanged (Staumont stride 1.45-1.49 with leg lift).
 - 17:40 FINDING (trim spread, follow-up): with the FS fix the first guess is 93 on all 9 Maher fast trims; the remaining
   separation spread 17.9-21.9 comes with the final FS 95 vs 96 on the two shortest trims AND whole-trim statistics (hand FS
   95 -> 96 by itself moves separation only 0.1), i.e. the bone-length/plate/bodyH lead from 16:40, not the flip any more.
