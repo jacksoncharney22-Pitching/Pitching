@@ -285,6 +285,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - **NEXT SESSION (after 0:40):** (1) check run for b59b363 (and later) passed and the site deployed; (2) High in the
   worker: a 0:40 test was left running (`?highworker=1`, synthetic 2.2 s clip; results not read): redo it, see Tuesday
   list; (3) then the skeleton analysis in a worker (biggest freeze left, ~20 s headless), then Max's MediaPipe.
+  0:40 wrap: website deploy for 38ce1e9 failed twice with no log (b59b363's was cancelled by it), so this push is a fresh
+  try: CHECK the newest "pages build and deployment" run; if failed, rerun it and tell Jackson if it keeps failing.
+  The High test pair (2.2 s clip) hadn't finished after ~8 min of headless High; give it 15+ min, one at a time.
   Synthetic test clip: `tools/test/finder_check.py` writes `finder_mannequin.webm` into its outdir (no real clips in the cloud).
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
