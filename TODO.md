@@ -180,7 +180,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   = 10-30 cm). Better idea: define extension at a moment read from the arm's own motion, e.g. hand position when the
   forearm passes a fixed angle (interpolated between frames), calibrated on the lab truth so it matches the lab's
   release-frame extension on average; or the hand's forward reach 1 frame after release (forearm ~fully forward, stable)
-  minus a lab offset. Score with measures.mjs (bench + BENCHDIR unusual); the report shows extension as "rough" today.
+  minus a lab offset. 10:40 quick try (scratch): reading the app 1 / 2 frames after its release with the average offset
+  removed: benchmark mean error 0.232 -> 0.207 / 0.176 m, r 0.22 -> 0.23 / 0.28; unusual 0.230 -> 0.209 / 0.185, r 0.55 ->
+  0.59. Small gain; the TRUTH's own one-frame extension is just as timing-noisy, so compare against a truth read the same
+  way (interpolated release) before deciding. Score with measures.mjs (bench + BENCHDIR unusual); the report shows extension as "rough" today.
   score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
   (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
   (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
