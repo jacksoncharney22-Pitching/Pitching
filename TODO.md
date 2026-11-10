@@ -316,6 +316,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
   TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
   on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
+- 3:40 session working on: Max worker identity check on `wip-max-worker` (one run at a time) (3:40 session working on this, 3:41 ET)
 - **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (0) confirm test run 148 (0ed4df1, High in the worker) passed; its website deploy already succeeded. (1) Max accuracy's MediaPipe calls into the pose worker
   (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
   raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
