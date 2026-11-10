@@ -245,7 +245,7 @@ function mirrorFrames(frames) {
 // it has seen how real bodies move, so it doesn't send an arm the wrong way toward/away from the camera.
 const H36 = { 0: 9, 11: 11, 12: 14, 13: 12, 14: 15, 15: 13, 16: 16, 23: 4, 24: 1, 25: 5, 26: 2, 27: 6, 28: 3 };
 const H36_PARENT = j => j <= 10 ? 0 : j === 17 || j === 19 || j === 21 ? 15 : j === 18 || j === 20 || j === 22 ? 16 : j === 29 || j === 31 ? 27 : j === 30 || j === 32 ? 28 : j;
-function injectLearnedDepth(frames, l3, only = null) {
+function injectLearnedDepth(frames, l3, only = null, opts = {}) {
   const T = frames.length, ks = [];
   for (let t = 0; t < T; t++) {
     const L = l3[t], f = frames[t]; if (!L || !f) continue;
@@ -265,6 +265,15 @@ function injectLearnedDepth(frames, l3, only = null) {
       if (j in H36) return [p[0], p[1], z(j) + hz];
       return [p[0], p[1], z(par) + hz + (old[j] - old[par])];
     });
+    // shoulders: how far in front/behind each other they are (trunk turn) comes from the learned model, but where the
+    // shoulder line sits in depth relative to the hips comes from the tracker's own 3D (benchmark: side tilt at arm cocked
+    // 7.2 -> 4.5 deg, forward tilt 5.8 -> 3.2, joints 9.9 -> 9.0 cm). `_shMean` 0 = learned model for both (old way).
+    const shw = opts._shMean ?? 1;
+    if (shw && (!only || (only.has(11) && only.has(12)))) {
+      const a = f.world[11][2], b = f.world[12][2], dL = (b - a) / 2, lM = (a + b) / 2, mM = (old[11] + old[12]) / 2;
+      const m = lM + shw * (mM - lM);
+      f.world[11][2] = m - dL; f.world[12][2] = m + dL;
+    }
     n++;
   }
   return n;
@@ -334,7 +343,12 @@ function lift(frames, W, H, fs, opts = {}) {
       else if (r2 > 0) {
         const sg = SIGN[a + "," + b] ? SIGN[a + "," + b][t] : Math.sign(hint || 1);
         let dz = sg * Math.sqrt(r2);
-        if (Math.abs(hint) < 0.25 * Lb) dz = 0.5 * dz + 0.5 * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2));
+        // the spine (hip centre -> shoulder centre): when the depth models say it leans only a little toward/away from the
+        // camera, take their depth as it is (clamped to the spine's length) instead of a full toward/away sign choice, sliding
+        // to the sign choice as the lean gets clear (half a spine length). From a side camera the spine's depth IS the side
+        // tilt; a sign choice on a near-zero hint flipped a whole delivery's side tilt by ~25 deg (Maher Max, 2026-11-10)
+        if (a === -2 && b === -1 && opts._spineSign !== true) { const w = Math.min(1, Math.abs(hint) / ((opts._softSpine ?? 0.5) * Lb)); dz = w * dz + (1 - w) * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2)) }
+        else if (Math.abs(hint) < 0.25 * Lb) dz = 0.5 * dz + 0.5 * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2));
         vec = [d2[0], d2[1], dz];
       } else { const n2 = Math.hypot(d2[0], d2[1]) || 1; vec = [d2[0] * Lb / n2, d2[1] * Lb / n2, 0] }
       pos[b] = add(pos[a], vec);
@@ -811,7 +825,7 @@ function prepOnce(raw, opts) {
   }
   raw = { ...raw, frames: tracked, l3 };
   let frames = fillGaps(raw.frames).map(f => ({ img: f.img.map(p => p.slice()), world: f.world.map(p => p.slice()), spread: f.spread || null }));
-  const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null), opts.learnedParts === "all" ? null : new Set(opts.learnedParts || [11, 12, 13, 14, 15, 16])) : 0;
+  const learned = raw.l3 && opts.learned !== false ? injectLearnedDepth(frames, raw.l3.map((L, t) => raw.frames[t] ? L : null), opts.learnedParts === "all" ? null : new Set(opts.learnedParts || [11, 12, 13, 14, 15, 16]), opts) : 0;
   // slow-motion clip: s video frames per step of a real-speed clip. The tracker's frame-to-frame wobble is the same as
   // on any clip, but the body barely moves between neighbouring frames, so average the wobble over about one real step.
   const slowF = raw.videoFps ? raw.fps / raw.videoFps : 1;
