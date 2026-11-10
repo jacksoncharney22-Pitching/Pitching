@@ -6,12 +6,21 @@ let ARMLIB = null;
 const armLibLoad = fetch("armlib.json?v=2").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
 // analyses that can start the moment the page opens (a saved one from Recent, an OpenCap file) wait for the library,
 // or a slow connection gives a different throwing arm than the first time (elbow 96° at foot strike read 114° on Maher)
-// Trial: open the app with ?bodyfit=1 and legs, hips and trunk are fitted to 366 real lab deliveries (bodyfit.js; 60 lab
-// views: joints 9.9 -> 8.2 cm, front knee and trunk tilts several degrees closer). Off for everyone else until it has
-// been checked against real videos.
-const BODYFIT = (() => { try { return new URLSearchParams(location.search).has("bodyfit") } catch (e) { return false } })();
-let BODYLIB = null;
-const bodyLibLoad = BODYFIT ? fetch("bodylib.json?v=1").then(r => r.ok ? r.json() : null).then(j => { BODYLIB = j }).catch(() => {}) : Promise.resolve();
+// Trial: "Lab-matched body" (tick box above Build skeleton, remembered; or open the app with ?bodyfit=1): legs, hips and
+// trunk are fitted to 366 real lab deliveries (bodyfit.js; 60 lab views: joints 9.9 -> 7.6 cm, front knee, separation
+// and trunk tilts several degrees closer; unusual pitchers keep their own knee/separation). Off unless ticked, until it
+// has been checked against real videos. Ticking it re-reads saved pitches with it too.
+const LABKEY = "fp-labbody";
+let BODYFIT = (() => { try { const q = new URLSearchParams(location.search).get("bodyfit"); if (q != null) return q !== "0"; return localStorage.getItem(LABKEY) === "1" } catch (e) { return false } })();
+let BODYLIB = null, BODYLIB_LOADED = null;
+const loadBodyLib = () => fetch("bodylib.json?v=1").then(r => r.ok ? r.json() : null).then(j => { BODYLIB_LOADED = j; if (BODYFIT) BODYLIB = j }).catch(() => {});
+let bodyLibLoad = BODYFIT ? loadBodyLib() : Promise.resolve();
+function setLabBody(on) {
+  BODYFIT = !!on; try { localStorage.setItem(LABKEY, on ? "1" : "0") } catch (e) {}
+  if (!on) { BODYLIB = null; return }
+  if (BODYLIB_LOADED) { BODYLIB = BODYLIB_LOADED; return }
+  bodyLibLoad = loadBodyLib();
+}
 const armLibReady = () => Promise.race([Promise.all([armLibLoad, bodyLibLoad]), new Promise(r => setTimeout(r, 20000))]);
 const analyse = (raw, o = {}) => analyseRaw(raw, { ...o, ...(ARMLIB ? { armLib: ARMLIB } : {}), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
 // The skeleton build after tracking runs in a background worker (analysisworker.js) so the page keeps moving (it froze
@@ -138,6 +147,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 // Who is throwing, kept apart from the pitch's own name: "Over time" and the camera-spot note need to know which pitches belong to one pitcher.
 const stampPitcher = d => { const p = $("pitcherName").value.trim().slice(0, 40); if (p) d.pitcher = p; try { localStorage.setItem("fp-pitcher-name", p) } catch (e) {} };
 try { const p = localStorage.getItem("fp-pitcher-name"); if (p) $("pitcherName").value = p } catch (e) {}
+{ const cb = $("labBody"); if (cb) { cb.checked = BODYFIT; cb.addEventListener("change", () => setLabBody(cb.checked)) } }
 const isVideo = f => f.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(f.name);
 const isTRC = f => /\.trc$/i.test(f.name);
 // OpenCap (two phones, measured 3D): its marker file becomes the skeleton directly; one of its videos is shown beside it

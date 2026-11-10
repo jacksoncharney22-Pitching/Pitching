@@ -134,6 +134,10 @@ table.trend-t input { width: 18px; height: 18px }
 #trimLabel { font-family: var(--mono); font-size: 13px; color: var(--muted) }
 .field { display: grid; gap: 6px }
 .field label { font-size: 13px; color: var(--muted) }
+.labbody { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; margin: 4px 0 2px }
+.labbody input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--throw) }
+.labbody .hint { display: block; line-height: 1.45; margin-top: 2px }
+.labbody .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 2px }
 input[type=text], select { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100% }
 .err { background: rgba(255,111,80,.1); border: 1px solid rgba(255,111,80,.4); color: #ffb4a3; border-radius: 9px; padding: 10px 12px; font-size: 14px; margin: 0 }
 .warn { color: #ffd27a; font-size: 13px; margin: 0 }
@@ -567,6 +571,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
       <div class="card">
         <div class="field"><label for="pitcherName">Pitcher</label><input type="text" id="pitcherName" list="pitcherList" maxlength="40" autocomplete="off" placeholder="e.g. J. Smith (keeps his pitches together)"><datalist id="pitcherList"></datalist></div>
         <div class="field"><label for="pitchName">Name this pitch</label><input type="text" id="pitchName" placeholder="e.g. Bullpen fastball #3"></div>
+        <label class="labbody"><input type="checkbox" id="labBody"><span><b>Lab-matched body</b> <span class="tag">trial</span><br><span class="hint">Fits legs, hips and trunk to 366 real lab deliveries (motion capture), keeping what the video clearly shows. Usually closer; check it against the video.</span></span></label>
         <p class="hint">The pitch is found for you. To adjust, drag the white handles: start before the leg lift, end after the follow-through.</p>
         <p class="selinfo" id="selInfo"></p>
         <p class="err" id="prepErr" hidden></p>
@@ -672,25 +677,25 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794318627",
-  "./bodyfit.js": "./bodyfit.js?v=1794318627",
-  "./fuse.js": "./fuse.js?v=1794318627",
-  "./multiview.js": "./multiview.js?v=1794318627",
-  "./rtm.js": "./rtm.js?v=1794318627",
-  "./pdf.js": "./pdf.js?v=1794318627",
-  "./compare.js": "./compare.js?v=1794318627",
-  "./editor.js": "./editor.js?v=1794318627",
-  "./lifter.js": "./lifter.js?v=1794318627",
-  "./ortboot.js": "./ortboot.js?v=1794318627",
-  "./keepclip.js": "./keepclip.js?v=1794318627",
-  "./armzoom.js": "./armzoom.js?v=1794318627",
-  "./net.js": "./net.js?v=1794318627",
-  "./opencap.js": "./opencap.js?v=1794318627",
-  "./ultra.js": "./ultra.js?v=1794318627",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794318627"
+  "./pipeline.js": "./pipeline.js?v=1794318779",
+  "./bodyfit.js": "./bodyfit.js?v=1794318779",
+  "./fuse.js": "./fuse.js?v=1794318779",
+  "./multiview.js": "./multiview.js?v=1794318779",
+  "./rtm.js": "./rtm.js?v=1794318779",
+  "./pdf.js": "./pdf.js?v=1794318779",
+  "./compare.js": "./compare.js?v=1794318779",
+  "./editor.js": "./editor.js?v=1794318779",
+  "./lifter.js": "./lifter.js?v=1794318779",
+  "./ortboot.js": "./ortboot.js?v=1794318779",
+  "./keepclip.js": "./keepclip.js?v=1794318779",
+  "./armzoom.js": "./armzoom.js?v=1794318779",
+  "./net.js": "./net.js?v=1794318779",
+  "./opencap.js": "./opencap.js?v=1794318779",
+  "./ultra.js": "./ultra.js?v=1794318779",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794318779"
 }}
 </script>
-<script src="viewer.js?v=1794318627" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794318627"></script>
+<script src="viewer.js?v=1794318779" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794318779"></script>
 </body>
 </html>
