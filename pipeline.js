@@ -1649,7 +1649,10 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   if (fs == null || br == null || !P[fs] || !P[br]) return null;
   const R = D.throwHand !== "L", sh = R ? 12 : 11, wr = R ? 16 : 15, lead = R ? 27 : 28, back = R ? 28 : 27, fps = D.fps;
   const stance = (() => { const a = P.slice(0, Math.max(1, ph("Peak leg lift") ?? 1)).map(F => F[back]); const med = i => a.map(p => p[i]).sort((x, y) => x - y)[a.length >> 1]; return [med(0), med(1), med(2)] })();
-  const LA = D.strideFoot && D.strideFoot.frame === fs ? D.strideFoot.p : P[fs][lead], dx = LA[0] - stance[0], dz = LA[2] - stance[2], strideM = Math.hypot(dx, dz);
+  const LA = D.strideFoot && D.strideFoot.frame === fs ? D.strideFoot.p : P[fs][lead], dx = LA[0] - stance[0], dz = LA[2] - stance[2],
+    // the skeleton reads the stride ~4% short of motion capture (60 benchmark views: 1.45 vs 1.53 m; 70 unusual deliveries
+    // 1.49 vs 1.53), so it's scaled up by that: error 4.9 -> 3.3% of height (benchmark), 5.3 -> 4.8% (unusual)
+    strideM = Math.hypot(dx, dz) * (D.truth ? 1 : 1.04);
   const ground = Math.min(P[fs][lead][1], stance[1]);
   const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot3 = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
   // From a camera straight behind or in front, the slot is right there in the picture (the plain shoulder-to-wrist angle
@@ -1687,7 +1690,7 @@ export function deliveryCards(D) {
   if (!m) return [];
   const ftIn = v => { const n = Math.round(v / 0.0254), f = Math.floor(n / 12); return `${f}'${n - f * 12}"` };
   const out = [];
-  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Reads about 5% of height short of motion capture; use it to compare pitches filmed from the same spot." });
+  if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Typical error about 4% of height; best for comparing pitches filmed from the same spot." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
   const lowFps = D.fps < 50;   // the true rate: slow motion is plenty of frames even from a 30 fps file
   out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 5\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
