@@ -123,7 +123,31 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   from horizontal cameraDir, sign from the app's own projection, in-picture length kept).
 - 9:40 wrap-up (10:22): tests for 6c6e973 passed (accuracy, per-view, compare, regression, slow-motion); the exports job and
   website deploy 215 were still running: check them first (export_check passed locally on Maher max and Staumont).
-- **Next session (after 9:40):** (1) (10:40 session working on this, 10:45 ET) release 2-4 frames late from behind on unusual deliveries (see finding above;
+- **10:40 SHIPPED (9be43a9): release from a camera behind the pitcher no longer 2-4 frames late on unusual deliveries.**
+  Cause: from behind, the hand's fastest motion on screen comes ~3 frames AFTER release on every lab view (behind +3,
+  45-deg behind +3/+4, front_3b +2, side 0/-1), the learned-3D peak is also late there, so the lab-throw match had to
+  move release 3-4 frames; it could only move 50 ms and, pinned at that limit with an edge speed, the "edge" rule threw
+  the shift away (relShift = 0). Fix: on-screen guess moved earlier by fs*0.05*camDir[0]^2 when the camera is behind
+  (`opts._relCamB`), and the lab-throw shift range +-50 -> +-75 ms (`opts._shiftMax`). Unusual 70 views: release
+  mean 0.57 -> 0.37 frames, 2+ frames off 5 -> 1 (2655 side_open -2 -> -3), behind 14 -> 5 ms, behind_3b 11 -> 2 ms;
+  slot 9.5 -> 7.9 deg (r 0.74 -> 0.83); as-seen layback at arm cocked 9.7 -> 6.2, at release 40 -> 36. Benchmark: release
+  0.33 -> 0.28 frames (none 2+ off, was 1), as-seen +0.1 deg overall (behind +0.4: arm cocked moves with release),
+  slot 5.39 -> 5.53, extension 0.259 -> 0.273 m (under-read gets a bit bigger: it's the skeleton's bias, not timing).
+  perview: skeleton angles neutral on average but some single views swing both ways (elbow at arm cocked 3044 behind
+  +19, layback at release 3036 behind +30, about as many better): the arm template follows release timing.
+  Slow motion 240/240, regression ok, comparecheck slot limit 8 still fits. `measures.mjs` now takes BENCHDIR.
+- 10:40 FINDING (slot side_back, item 3): benchmark side_back slot reads +10.9 high on all 12 pitchers, but the unusual
+  set's side_back (same cameras, same tracker noise borrowed from those views) has bias only +2.3 with a +-13-24 spread.
+  So it's not a fixed camera bias: a correction would make the unusual set worse. Not shipped; needs a real look at the
+  depth of the throwing hand from that side (the arm is on the far side of the body there).
+- 10:40 FINDING (b) Max profile, 24 frames, headless 2 cores, worker path, 856 s total: setup 9 s, pass 1 (MediaPipe finder
+  + heavy model, full picture) 245 s = 10 s/frame, pass 2 (2 zoomed MediaPipe + 2 RTMPose looks) 280 s = 11.7 s/frame,
+  pass 3 (2 backwards MediaPipe) 245 s = 10 s/frame, arm close-up 55 s, combining + learned 3D 75 s. So each MediaPipe
+  heavy look is ~5 s and each RTMPose look ~1 s here: MediaPipe's GPU path runs on SOFTWARE GL headless, so this
+  profile does not show a real computer's split. Idea (needs a real clip to measure accuracy, NOT done): when RTMPose
+  loaded (weight 3 vs 1 in fuseSoft), skip pass 3 (backwards) to save ~30% of Max; test by saving `window.__lastLooks`
+  from one full Max run on a real clip and re-fusing with and without the "back"/"backMirror" looks.
+- **Next session (after 9:40):** (1) DONE 10:40 (see above) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
   background FIRST, then time passes 2/3/arm zoom; (3) slot: side_back reads 10.9 deg high on all 12 benchmark pitchers; full-weight geometric slot if behind_3b can be fixed;
   (4) side tilt/pelvis flattening with the fit (needs an idea).
