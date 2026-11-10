@@ -28,7 +28,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 4. Speed/reliability of the fit (Tuesday): it adds 0.4-0.7 s per analysis; profile and cut it (samecheck-identical),
    and make sure a fit that fails or produces junk can never break a build (fallback to the app's body, page-error check).
 - Follow-on items (in order, any session):
-  (a) Analysis memory/GC: typed arrays in the hottest loops (despike tried, slower: try `lift`/`oePass`), samecheck-identical.
+  (a) (9:40 session working on this, 9:45 ET) Analysis memory/GC: typed arrays in the hottest loops (despike tried, slower: try `lift`/`oePass`), samecheck-identical.
   (b) Max accuracy profile on the synthetic clip: where do the minutes go (tracker passes, arm-zoom, net, learned 3D)?
   (c) A visible "Lab-matched body (trial)" switch on the trim screen instead of the URL flag (look change, screenshots
       at desktop and phone width), so Jackson can try it without editing the address.
@@ -70,7 +70,8 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   keeps 77% vs 75%: the remaining tilt flattening is depth (side-on cameras), not the picture plane.
 - 8:15 tried, no gain (drop): (d) late-started slow motion, wrist speed over an exact fraction of foot strike -> release
   (interpolated, not rounded): `slowmo.mjs --late 20` 227 -> 227 of 240, `--late 30` 229 -> 229. The window rounding isn't it.
-- FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
+- 9:40 session: deploy checked: run 207 (70141cc, carries the tick box and results line) succeeded; 205/206 were cancelled by newer pushes. Done.
+- (old) FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
 - Next session: (1) (a) analysis memory/GC (typed arrays in `lift`/`oePass`, samecheck-identical); (2) (b) Max profile on the
   synthetic clip; (3) side tilt/pelvis flattening with the fit (depth: needs an idea); (4) Monday/Saturday item: the app's
   arm readings keep only about half of a pitcher's difference in shoulder abduction (51-55%) and layback (60-63%) late,
