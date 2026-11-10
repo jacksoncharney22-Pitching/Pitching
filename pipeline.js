@@ -725,6 +725,11 @@ export function analyse(raw, opts = {}) {
   if (!opts.bodyLib || !opts.bodyFit) return out;
   let F = null; try { F = bodyFit(raw, out, opts.bodyLib, opts.bodyFitOpts || {}) } catch (e) { F = null }
   if (!F) { out.bodyFit = false; return out }
+  // a fit that doesn't line up with the video is not used: the fitted delivery's median miss of the tracker's 2D points,
+  // as a share of the body's picture height, is 1.6-4.1% on 130 lab views and 3.7-4.2% on Maher/Staumont; a clip whose
+  // tracker jumps around (second half scrambled) reads 9-37%. Hackimer's speed-ramped slow motion reads 8.4% (and its
+  // fitted separation, 88 deg at foot strike, was outside every lab pitcher's), so it keeps the app's own body.
+  if (F.miss != null && F.miss > (opts.bodyFitMaxMiss ?? 0.07)) { out.bodyFit = false; out.bodyFitMiss = Math.round(F.miss * 1000) / 1000; return out }
   const r4 = v => Math.round(v * 1e4) / 1e4, rd1 = v => v == null || !Number.isFinite(v) ? null : Math.round(v * 10) / 10;
   const L = out.throwHand === "L", Pi = L ? F.pose.map(Fr => Fr.map((_, j) => { const p = Fr[mir(j)]; return [p[0], p[1], -p[2]] })) : F.pose;
   const rel = (out.phases.find(p => p.name === "Release") || {}).frame;
@@ -736,7 +741,7 @@ export function analyse(raw, opts = {}) {
   // arm slot too: the fit hangs the app's arm on the fitted trunk, which tilts it with the trunk (60 lab views: slot
   // 6.2 -> 7.6 deg off), so the slot is read from the app's own shoulder-to-wrist direction around release
   if (rel != null) { const sh = L ? 11 : 12, wr = L ? 15 : 16, o = {}; for (let t = Math.max(0, rel - 4); t <= rel; t++) if (out.pose[t]) o[t] = [out.pose[t][sh].slice(), out.pose[t][wr].slice()]; out.slotArm = o }
-  out.pose = F.pose.map(Fr => Fr.map(p => p.map(r4))); out.metrics = metrics; out.bodyFit = { window: F.window };
+  out.pose = F.pose.map(Fr => Fr.map(p => p.map(r4))); out.metrics = metrics; out.bodyFit = { window: F.window, miss: F.miss == null ? null : Math.round(F.miss * 1000) / 1000 };
   return out;
 }
 

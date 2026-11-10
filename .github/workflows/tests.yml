@@ -20,6 +20,8 @@ jobs:
         run: node tools/test/regress.mjs
       - name: Max accuracy combines frames with only a few looks
         run: node tools/test/fuse_check.mjs
+      - name: Lab-matched body is refused when it doesn't line up with the video
+        run: node tools/test/fitguard.mjs
   slow-motion:
     runs-on: ubuntu-latest
     steps:

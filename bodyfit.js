@@ -246,5 +246,12 @@ export function bodyFit(raw, D, L, opts = {}) {
     for (let j = 0; j <= 10; j++) P[t][j] = A[t][j].map((v, k) => v + ms[k]);
   }
   if (P.some(F => F.some(p => p.some(v => !Number.isFinite(v))))) return null;
-  return { pose: P, window: [t0, t1], coef: c };
+  // how well the fitted delivery lines up with the tracker's 2D points: median miss as a share of the body's picture height
+  let miss = null;
+  if (cam) { const X = lib(y), es = [], hs = [];
+    sf.forEach((_, s) => { const O = (use[s] ? obsB : obsA)[s]; let lo = Infinity, hi = -Infinity;
+      map.forEach((__, u) => { const q = O[u]; if (!q) return; const p = cam.proj(X[s][u]); es.push(Math.hypot(p[0] - q[0], p[1] - q[1])); lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]) });
+      if (hi > lo) hs.push(hi - lo) });
+    const med = a => a.slice().sort((x, z) => x - z)[a.length >> 1]; if (es.length && hs.length) miss = med(es) / med(hs) }
+  return { pose: P, window: [t0, t1], coef: c, miss };
 }
