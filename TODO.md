@@ -239,6 +239,11 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   place before caching them (or hand out copies).
   Measured first: Hackimer speed reading 1.0 s + skeleton 1.3 s, Maher 0.2 + 0.5 s, so the cache saves at most ~0.6 s on
   slow motion; the arm-match scoring (half of the skeleton time) is the bigger target.
+- 23:40 shipped (speed): lab-throw arm matching skips timings that can no longer win (exact bound: running misfit already
+  above the best so far x window weight, plus a quick-look limit from each throw's few easy timings and the 30th-best throw):
+  analysis on 4 saved clips + 20 benchmark views 9.3-9.9 -> 7.3-7.7 s (~23% faster), results bit-for-bit identical
+  (pose, events, all metrics). Only ~half the frames per timing get skipped because the misfit is an average; a bigger cut
+  needs an approximate search (coarse grid then refine), which would change results: bench it if anyone tries.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,

@@ -425,9 +425,13 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
   const shifts = []; for (let s = -0.05; s <= 0.0501; s += 1 / 240) shifts.push(s);
   const speeds = [0.88, 0.94, 1, 1.06, 1.13];
   const step = Math.max(1, Math.ceil(fr.length / 30)), frS = fr.filter((_, i) => i % step === 0);   // slow-motion: score every few frames
-  const scored = LIB.map(L => {
-    let best = Infinity, bs = 0, bk = 1;
-    for (const k of speeds) for (const s of shifts) {
+  // One lab throw's misfit at one timing (speed k, shift s); gives up as soon as the misfit can only end above `stop`.
+  // The misfit is (sum of frame misfits) / (weight of frames covered) + a penalty, and the covered weight can't exceed
+  // the whole window's weight, so a running sum already past stop x total weight can't come back under stop. Skipping
+  // those hopeless timings leaves every result bit-for-bit the same (checked on saved clips and benchmark views).
+  const Wtot = frS.reduce((a, q) => a + q.w, 0);
+  const cost = (L, k, s, stop) => {
+      const lim = stop * Wtot * (1 + 1e-9);                // a hair of slack so rounding can never cut a winner
       let c = 0, ws = 0, miss = 0;
       for (const q of frS) {
         const tau = ((q.t - rel) / fs + s) * k;
@@ -436,9 +440,30 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
         const ux = Lu * (q.px[0] * u[0] + q.px[1] * u[1] + q.px[2] * u[2]) - q.ou[0], uy = Lu * (q.py[0] * u[0] + q.py[1] * u[1] + q.py[2] * u[2]) - q.ou[1];
         const fx = Lf * (q.px[0] * f[0] + q.px[1] * f[1] + q.px[2] * f[2]) - q.of[0], fy = Lf * (q.py[0] * f[0] + q.py[1] * f[1] + q.py[2] * f[2]) - q.of[1];
         c += q.w * ((ux * ux + uy * uy) / (Lu * Lu) + (fx * fx + fy * fy) / (Lf * Lf)); ws += q.w;
+        if (c > lim) return Infinity;
       }
-      if (ws < 2 * miss || !ws) continue;                   // must cover at least two thirds of the window
-      c = c / ws + 0.15 * miss / (ws + miss); if (c < best) { best = c; bs = s; bk = k }
+      if (ws < 2 * miss || !ws) return Infinity;            // must cover at least two thirds of the window
+      return c / ws + 0.15 * miss / (ws + miss);
+  };
+  // Only the best few throws are used (top 30 for the arm's shape, top 6 for timing). A first quick look (each throw at
+  // its usual speed and no shift) gives an upper limit: at least that many throws fit at least this well, so a throw whose
+  // every timing ends above it can't make the list, and its timings can be abandoned early.
+  const keep = Math.max(6, opts.armMatchK ?? (opts.armLocal !== false ? 30 : 6));
+  // The quick look tries a few timings per throw (usual speed at every third shift, every speed at no shift); the best of
+  // those is also an upper limit for that throw's own full search.
+  const mid0 = Math.floor(shifts.length / 2), quick = [];
+  for (let i = mid0 % 3; i < shifts.length; i += 3) quick.push([1, shifts[i]]);
+  for (const k of speeds) if (k !== 1) quick.push([k, shifts[mid0]]);
+  const Gl = LIB.map(L => { let b = Infinity; for (const [k, s] of quick) { const c = cost(L, k, s, b); if (c < b) b = c } return b });
+  const G = LIB.length > keep ? Gl.slice().sort((a, b) => a - b)[keep - 1] : Infinity;
+  const scored = LIB.map((L, li) => {
+    let best = Infinity, bs = 0, bk = 1;
+    const cap = Math.min(G, Gl[li]) * (1 + 1e-12);
+    for (const k of speeds) for (const s of shifts) {
+      // abandon when the misfit must end above this throw's best so far (an equal one wouldn't replace it either), or
+      // above the limits from the quick look (strictly, so a timing tied with them is still scored in full)
+      const c = cost(L, k, s, Math.min(best, cap));
+      if (c < best) { best = c; bs = s; bk = k }
     }
     return { L, c: best, s: bs, k: bk };
   }).sort((a, b) => a.c - b.c);
