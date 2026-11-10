@@ -327,6 +327,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   step, re-run with `?ortproxy=0` on the worker side: if that finishes, (b) the proxy is the hang AND the likely cause of the
   differing output, so ship (a) alone (MediaPipe in the worker) after an identical-output run, and drop or time-limit (b);
   (3) then the page side alone and compare `first`/`dup`. 2 cores here: never run both sides at once.
+  Re-run started 4:21 to test the reporter: works (prints a line per frame); alone, pass 1 took 3.5 min (30 frames), pass 2 (stronger tracker) ~9 s/frame. Session ended before it reached the old hang point.
 - **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (0) confirm test run 148 (0ed4df1, High in the worker) passed; its website deploy already succeeded. (1) Max accuracy's MediaPipe calls into the pose worker
   (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
   raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
