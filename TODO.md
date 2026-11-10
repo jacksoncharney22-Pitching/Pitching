@@ -334,7 +334,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   SHIPPED 5:40 (fc5f299): (a) live; worker run on the shipped code: raw 189d65882e42 / looks 3de9d1b584ac (identical), longest
   freeze 24.5-32 -> 17.2 s, freezes over 0.3 s 117-119 -> 53. The 17 s left is RTMPose on the page: (b) removes it (0.6 s).
 - **NEXT SESSION (after 5:40), Tuesday speed and reliability:** (0) check tests/deploy for fc5f299 and later; (1) make the
-  onnxruntime proxy safe to turn on by default: if the proxy's worker fails to start, fall back (e.g. load a second
+  onnxruntime proxy safe to turn on by default: if the proxy's worker fails to start, fall back (6:40 session working on this, 06:50 ET) (e.g. load a second
   copy of ort without proxy, or detect support up front) and say so in `window.__ortProxy`; test by blocking the proxy
   worker's script in Playwright; then default ON (freeze 17 -> 0.6 s); (2) time the parallel re-read pool (c) with
   `tools/test/trend_time.py` on a quiet sandbox (nothing else running), ship if faster; (3) keep only the trimmed pitch
