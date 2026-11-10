@@ -321,7 +321,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   looked like a hang). Cause: `fuseSoft` (fuse.js) crashed on a frame with exactly one built-in look + one stronger-tracker look
   (frame 27 of the synthetic clip had only 'full' and 'rtm'): the single built-in look has no `spread`. Live bug for any Max run
   where most passes miss a frame. Fixed (how sure = distance between the two looks), `tools/test/fuse_check.mjs` (27 mixes, on
-  GitHub; old code fails 3). Normal frames unchanged (regress all ok). wip-max-worker has the fix too, and its check now prints
+  GitHub; old code fails 3). Normal frames unchanged (regress all ok; tests run 156 passed). CHECKED 5:31: with the fix the worker side
+  alone REACHES RESULTS (692 s for 30 frames, longest freeze 0.63 s, no errors; raw hash 189d65882e42, lookHash 3de9d1b584ac).
+  Website deploy for 881da23 failed with no log (the old flaky kind); this wrap-up push retries it: CHECK it. wip-max-worker has the fix too, and its check now prints
   "STOPPED with: <error>" instead of HUNG. A worker-side re-run with the fix was started 5:20 (results in scratch, may not finish).
   NEXT: (1) worker side alone on wip-max-worker should now reach results; then page side alone (`--only page`), then `--only compare`
   (first/dup/raw identical?). Why the worker run had only 2 looks on frame 27 while the page run had more is the same open
