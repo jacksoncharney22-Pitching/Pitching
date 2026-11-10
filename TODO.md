@@ -185,8 +185,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   and arm slot back to 6.2°, but abduction 4.1/3.8/4.9 -> 5.5/7.5/6.6, layback worse. Arm slot with the fit 7.6° (app 6.2).
   Jackson notified (trial link = site address + `?bodyfit=1`). export_check passes with and without `?bodyfit=1`
   (cloud: `npm pack three@0.128.0`, THREE_JS=package/build/three.min.js, ORBIT_JS=tools/test/orbit_stub.js).
-- **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer (speed-ramped) isn't fitted (`bodyFit` returns null:
-  find which check fails; probably frames/fps after the slow-motion reading); (2) arm slot with the fit 7.6 vs 6.2°: read
+- **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer isn't fitted because his clip starts at the leg lift
+  (leg lift read at frame 0; the fit needs 0.25 s before it). Idea: let the fit start at the first frame when the clip
+  starts late (drop the samples before it from the 2D fit; the library still spans them) and check on the lab views cut
+  to start at leg lift (`slowmo.mjs --late` has the cutting code); (2) arm slot with the fit 7.6 vs 6.2°: read
   arm slot from the app's arm direction only, or find why the trunk-axes arm tilts the slot; (3) `pelvisMix` by camera
   (fit over-turns side-on, under-turns behind); (4) a visible "Lab-matched body (trial)" switch instead of the URL flag, if
   Jackson likes it; (5) default ON only after Jackson has looked at Maher/Staumont with `?bodyfit=1`. Speed: the fit adds
