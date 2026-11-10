@@ -165,8 +165,9 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   8: pelvis 6.1/6.6/6.0, trunk FS 6.8. Pelvis late still ~0.6-0.8° behind the app's (tuned) reading.
 - 19:40 per view (defaults K 80, hipw 4, lam 0.3): the fit's joint error is lower on 58 of 60 views; worse only on 1826 side_back (7.3 -> 7.8 cm) and 3036 behind (7.0 -> 7.6). Worst fitted view: 3035 behind 8.3 cm.
 - 19:40 "as the coach sees it" (`--seen`: angles at the app's event frames) for the hybrid: pelvis FS 10.2 -> 8.6, trunk FS/MER/BR 10.7/10.2/8.6 -> 9.2/7.8/6.5, separation FS/MER 6.9/8.0 -> 5.4/7.4 (BR 6.8 -> 7.3 worse), front knee 8.6/7.5/7.8 -> 5.6/5.1/6.9, forward tilt 4.8/6.6/5.9 -> 3.6/4.8/4.3, side tilt 5.5/7.4/7.2 -> 3.4/3.3/3.8; pelvis BR 5.4 -> 6.3 worse; arm unchanged.
+- 19:40 prior re-swept with hipw 4 (as seen): lam 0.15 joints 6.20, 0.3 6.07, 0.6 6.04 (pelvis 8.6/5.6/6.1, trunk 9.6/7.5/6.4, sep 5.6/7.3/6.9), 1 6.12 (pelvis BR 6.0, trunk FS 9.9). Default now 0.6. Pelvis at release still 0.7 worse than the app; everything else as good or better.
 - **NEXT SESSION (after 19:40), in order:** (1) put the hybrid into pipeline.js behind `_bodyFit` (fit2D from
-  tools/test/bodyproj.mjs: library K 80 + hipw 4 + lam 0.3, app's arm kept in trunk axes, app pose outside the window
+  tools/test/bodyproj.mjs: library K 80 + hipw 4 + lam 0.6, app's arm kept in trunk axes, app pose outside the window
   with a short blend), load `bodylib.json` in app.js like armlib (bench must use the holdout copy), then run bench (incl.
   "as the coach sees it"), perview, regress, glitch; (2) if pelvis late is the only loss, try the app's `_hipGain`
   logic on the fitted hips; (3) Maher/Hackimer/Staumont strips before making it default. Perspective (`--dist`) is a

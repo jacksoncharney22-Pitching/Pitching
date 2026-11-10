@@ -120,7 +120,7 @@ function fit2D(raw, A, ev, height) {
   const DIST = arg("--dist", 0), R3S = arg("--r3", 1);
   let c = init.c.slice(), cam = null, use = sf.map(() => 0);
   const lib = y => sf.map((_, s) => map.map(([j]) => [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]));
-  const LAM = arg("--lam2d", 0.3);   // prior weight against pixel residuals (pixels^2 per unit coefficient^2)
+  const LAM = arg("--lam2d", 0.6);   // prior weight against pixel residuals (pixels^2 per unit coefficient^2)
   for (let it = 0; it < 15; it++) {
     const X = lib(recon(c));
     if (DIST > 0 && cam) {
