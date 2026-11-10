@@ -307,6 +307,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 13:40 wrap-up: shipped fb46678 (shoulders), 4a452ba (feet), 7587f1f (knees); tests green for fb46678 and 4a452ba (run 235),
   7587f1f accuracy/unusual/regression green, slow-motion and exports were still running at 14:18 (both passed locally):
   check run 236 first. Today's skeleton total: benchmark joints 9.2 -> 8.1 cm, arm 9.8 -> 8.4, angles 6.5 -> 6.2.
+- **13:40 LEAD for the next accuracy session (measured, not tried):** between foot strike and release (hip-centred error
+  along the camera axis, benchmark): throwing elbow/wrist sit 1-5 / 1-6 cm too NEAR the camera on every camera (behind
+  2.2/4.1, behind_3b 4.9/6.2, front_3b 1.4/1.3, side_back 3.3/5.2, side_open 2.6/3.8) -> a depth bias like the shoulders'
+  and feet's, likely fixable the same way (arm stages run after events are known: e.g. in armDepth/template step). The
+  glove arm's bias flips with the camera (behind -7/-8, front_3b +9/+8, side_back -9/-12): that's a body-frame error (glove
+  arm too far toward the plate / not tucked), not depth. Script: jbias.mjs restricted to t in [fs, br] (scratch; recipe:
+  hip-centred app-minus-truth position dotted with unit D.cameraDir, mean per camera).
 - **Next session (after 13:40):** (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
   D.cameraDir, per camera, bench + unusual set) on elbows/wrists by phase, and the glove shoulder; (2) why arm error follows
   foot strike timing (3228_1_behind_3b); (3) Tuesday items in the list. Lab data for the unusual set: tests.yml steps.
