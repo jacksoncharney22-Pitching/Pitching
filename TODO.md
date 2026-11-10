@@ -176,6 +176,14 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   height, unusual 5.3 -> 4.8%; card says "typical error about 4%". Camera-dependent stride correction adds nothing (behind is
   -0.115 m on both sets but other cameras disagree). Tried, no gain: arm slot minus its +2.5 deg bias (same on both sets):
   5.53 -> 5.48 / 7.93 -> 7.78, not worth it. Hand height: no bias to fix.
+- 11:40 also: measures.mjs `--check` in CI (2b1df6d: delivery numbers guarded against `measures_baseline.json`, verified
+  that undoing the stride fix fails it); separation card says "about 6 deg" (measured 5.7/5.9; was 7) (8ccda08).
+  Phone check FINDING (108c583): the "25 px buttons" in phone_check were a test artefact: a full-page screenshot in
+  headless Chromium switches the touch emulation off until reload; audits now run first: iPhone 13 / Pixel 7 results
+  0 small buttons, no page errors. Tried, no gain (drop): time of peak separation read as the middle of the frames within
+  2/5/10 deg of the peak (err 30 -> 21.5 ms bench but 41 -> 40 unusual; a constant guess is 22/44: still useless);
+  stride camera term (-0.05*cameraDir x: 0.060 -> 0.052 bench, 0.088 -> 0.087 unusual, behind_3b worse on unusual);
+  hand height camera biases disagree between sets.
 - **Next session (after 10:40):** (1) DONE 11:40 (see above) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
   at the truth's release, 12 behind views): -19 cm already at the first 3D lift ("rot"), -23/-26 through armDepth..depop,
   -16 after guard, final -16; side_open ~0 throughout. So the learned depth / first lift under-reads how far the hand
