@@ -183,7 +183,8 @@ export function bodyFit(raw, D, L, opts = {}) {
     // the glove arm (opts.gloveAxes off) only moves with its shoulder: turned with the trunk its long lever made the glove hand jump
     const th = D.throwHand === "L" ? 11 : 12, gl = th === 11 ? 12 : 11, GA = { 11: [13, 15, 17, 19, 21], 12: [14, 16, 18, 20, 22] };
     if (!opts.gloveAxes) for (const j of GA[gl]) P[t][j] = A[t][j].map((v, k) => v + P[t][gl][k] - A[t][gl][k]);
-    for (const [sh, ...rest] of [[11, ...GA[11]], [12, ...GA[12]]]) if (sh === th || opts.gloveAxes) for (const j of rest) { const dd = tr(A[t][j].map((v, k) => v - A[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + dd[k]) }
+    if (opts.armWorld) for (const j of GA[th]) P[t][j] = A[t][j].map((v, k) => v + P[t][th][k] - A[t][th][k]);
+    for (const [sh, ...rest] of [[11, ...GA[11]], [12, ...GA[12]]]) if ((sh === th && !opts.armWorld) || (sh === gl && opts.gloveAxes)) for (const j of rest) { const dd = tr(A[t][j].map((v, k) => v - A[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + dd[k]) }
     // the head goes with the shoulders
     const ms = [0, 1, 2].map(k => (P[t][11][k] + P[t][12][k] - A[t][11][k] - A[t][12][k]) / 2);
     for (let j = 0; j <= 10; j++) P[t][j] = A[t][j].map((v, k) => v + ms[k]);
