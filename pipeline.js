@@ -417,6 +417,11 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
   const sample = (a, tau, k) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return null; const i = Math.min(N - 2, Math.floor(x)), u = x - i, j = i * 6 + k;
     if (a[j] !== a[j] || a[j + 6] !== a[j + 6]) return null;                                 // outside what the lab recorded
     return [a[j] + (a[j + 6] - a[j]) * u, a[j + 1] + (a[j + 7] - a[j + 1]) * u, a[j + 2] + (a[j + 8] - a[j + 2]) * u] };
+  // the same sampling into reused arrays (the scoring loop below runs it ~100 000 times per clip)
+  const u_ = [0, 0, 0], f_ = [0, 0, 0];
+  const sampleTo = (a, tau, k, o) => { const x = (tau - LT0) * LF; if (x < 0 || x > N - 1) return false; const i = Math.min(N - 2, Math.floor(x)), w = x - i, j = i * 6 + k;
+    if (a[j] !== a[j] || a[j + 6] !== a[j + 6]) return false;
+    o[0] = a[j] + (a[j + 6] - a[j]) * w; o[1] = a[j + 1] + (a[j + 7] - a[j + 1]) * w; o[2] = a[j + 2] + (a[j + 8] - a[j + 2]) * w; return true };
   const shifts = []; for (let s = -0.05; s <= 0.0501; s += 1 / 240) shifts.push(s);
   const speeds = [0.88, 0.94, 1, 1.06, 1.13];
   const step = Math.max(1, Math.ceil(fr.length / 30)), frS = fr.filter((_, i) => i % step === 0);   // slow-motion: score every few frames
@@ -425,8 +430,9 @@ function armMatch(P, img, scale, rot, cam, BL, rel, fs, bad, lib, opts = {}) {
     for (const k of speeds) for (const s of shifts) {
       let c = 0, ws = 0, miss = 0;
       for (const q of frS) {
-        const tau = ((q.t - rel) / fs + s) * k, u = sample(L.a, tau, 0), f = sample(L.a, tau, 3);
-        if (!u) { miss += q.w; continue }
+        const tau = ((q.t - rel) / fs + s) * k;
+        if (!sampleTo(L.a, tau, 0, u_) || !sampleTo(L.a, tau, 3, f_)) { miss += q.w; continue }
+        const u = u_, f = f_;
         const ux = Lu * (q.px[0] * u[0] + q.px[1] * u[1] + q.px[2] * u[2]) - q.ou[0], uy = Lu * (q.py[0] * u[0] + q.py[1] * u[1] + q.py[2] * u[2]) - q.ou[1];
         const fx = Lf * (q.px[0] * f[0] + q.px[1] * f[1] + q.px[2] * f[2]) - q.of[0], fy = Lf * (q.py[0] * f[0] + q.py[1] * f[1] + q.py[2] * f[2]) - q.of[1];
         c += q.w * ((ux * ux + uy * uy) / (Lu * Lu) + (fx * fx + fy * fy) / (Lf * Lf)); ws += q.w;
