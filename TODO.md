@@ -453,6 +453,19 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   ("can't play that video file... MP4 (H.264)... Safari"), Build stays off. Real-device check of HEVC in Chrome on Windows/Mac (which can) still open. Accuracy leads from 14:40 still open (glove abduction FS
   camera bias, side_back slot +10.5). All 15:40 work is live and green (0001318, d8853c8; 58fbdd4 to-do only).
 
+- **16:40 SHIPPED: a long trim no longer changes the delivery numbers.** New `tools/test/longtrim.mjs` (on GitHub): the saved
+  clips padded with 3-18 s of the pitcher standing before/after (up to 1480 frames, the app's max 1500). Build time 1.2-2.4 s
+  in Node, memory +20-140 MB, events identical - but FOUND: arm slot moved with the amount of standing in the trim (Maher
+  26 deg -> 22 with 18 s before, -> 34 with 18 s after; Staumont -1.2), because the camera direction, body size and mound
+  are read over every frame (Maher cameraDir x -0.08 -> +0.12 with 3 s of standing before). Fix (`analyse` in pipeline.js):
+  when the trim runs past 1.5 s before peak leg lift / 1.5 s after release, the skeleton is built from that window only
+  (`out.cropped`, start shifted like the camera-cut trim); hand-moved events re-find the same window. Now slot within
+  0.15-0.24 deg, stride 3-5 cm. Normal trims untouched: bench 0 change, regress, measures --check, robust 96/96, fitguard;
+  export_check on a padded Maher (6 s before, 4 s after) passes incl. hand-moved foot strike after re-opening (slot 26).
+  Not cropped: Hackimer-style 480-frame-a-second clips padded only 0.5 s (extension +0.14 m there; not shown).
+- 16:40: item "(1) Max's MediaPipe calls into the pose worker" is ALREADY DONE (trackMax uses poseModels with IMAGE/VIDEO
+  specs since the overnight sessions); removed from the Tuesday list.
+
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
 - **7:40 session: Recent's pitch-only video is ON by default (6d67bd9).** The 6:40 "noisy clip stalled" was not the keeper:
@@ -996,13 +1009,11 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
   Still open: the POSE worker (Fast/High tracking) dying mid-run: it has a 20 s per-frame timeout; check the page carries
   on from that frame with the same tracking (a poseworker stub like anastall's, through clip_run on a short clip).
 - DONE 15:40 (eta_check.py, 3x slower CPU: guesses within 0.8-1.4x) Slow devices: progress/ETA honest under CPU throttling.
-- Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
-  (the worker only does VIDEO mode today: add a mode to init).
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
-- Long and large videos: finder on 60 s 1080p and 4K portrait checked 15:40 (memory flat, honest progress). Still open: a
-  long TRIM (e.g. 20 s) through Fast tracking + build: memory of the raw frames and the analysis.
+- Long and large videos: finder on 60 s 1080p and 4K portrait checked 15:40 (memory flat, honest progress). Long TRIM build
+  DONE 16:40 (longtrim.mjs). Still open: a real 20 s trim through Fast TRACKING in the page (time/memory of tracking itself).
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
 

@@ -749,8 +749,35 @@ function finalMetrics(P, fs_, rel) {
 
 // The whole body fitted to real lab deliveries (bodyfit.js) when a library is given and the option is on: legs, hips and
 // trunk from the fit, arms as the app read them. Off unless opts.bodyLib && opts.bodyFit.
+// A long trim (a coach dragging it over a whole 20 s phone clip: the pitcher standing on the mound before, walking off
+// after) used to change the delivery numbers: several whole-clip readings (camera direction, body size, mound) are taken
+// over every frame, so 18 s of standing moved Maher's arm slot from 26 to 22 deg and 18 s after moved it to 34 deg
+// (tools/test/longtrim.mjs). So when the trim runs far past the delivery, the skeleton is built from the delivery alone:
+// 1.5 s before peak leg lift to 1.5 s after release (every lab view and saved test clip fits inside that, so they are
+// untouched). The events are found on the whole trim first; the window is found the same way again when an event has
+// been moved by hand (those come in the window's frames), so a re-opened pitch lands on the same frames.
+const CROP_PRE = 1.5, CROP_POST = 1.5;
 export function analyse(raw, opts = {}) {
   raw = withFps(raw);
+  if (!opts._noCrop && raw.frames && raw.frames.length) {
+    const fs = raw.fps, n = raw.frames.length;
+    if (n > (CROP_PRE + CROP_POST + 1) * fs) {             // too short to need it: skip the extra look
+      let first = null; try { first = analyseCore(raw, { ...opts, phases: undefined, _noCrop: true }) } catch (e) { first = null }
+      const fr = nm => ((first && first.phases) || []).find(p => p.name === nm)?.frame;
+      const lift = fr("Peak leg lift"), rel = fr("Release");
+      if (lift != null && rel != null && rel > lift) {
+        const a = Math.max(0, lift - Math.round(CROP_PRE * fs)), b = Math.min(n, rel + Math.round(CROP_POST * fs) + 1);
+        if (a > 0 || b < n) {
+          const r2 = { ...raw, frames: raw.frames.slice(a, b), start: (raw.start || 0) + a / fs };
+          if (Array.isArray(raw.l3)) r2.l3 = raw.l3.slice(a, b);
+          if (Array.isArray(raw.travel)) r2.travel = raw.travel.slice(a, b);       // several cameras: measured hip path, per frame
+          const out = analyse(r2, { ...opts, _noCrop: true });
+          out.cropped = { from: a, to: b, of: n };
+          return out;
+        }
+      }
+    }
+  }
   const out = analyseCore(raw, opts);
   if (!opts.bodyLib || !opts.bodyFit) return out;
   let F = null; try { F = bodyFit(raw, out, opts.bodyLib, opts.bodyFitOpts || {}) } catch (e) { F = null }
