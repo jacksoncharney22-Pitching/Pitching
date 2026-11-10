@@ -32,14 +32,24 @@ let anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "
 const anaMax = Math.max(1, Math.min(3, ((typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 2) - 1));
 let anaPool = [];                                       // { w, libs: { arm, body }, busy }
 const anaWait = new Map();
-const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; for (const x of anaPool) try { x.w.terminate() } catch (e) {} anaPool = []; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
+const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); window.__anaFellBack = why; anaOk = false; clearInterval(anaWatch); for (const x of anaPool) try { x.w.terminate() } catch (e) {} anaPool = []; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
+// A worker that is busy says "still here" at least every few seconds (analysisworker.js). If a busy one goes quiet for
+// 45 s (?anastall=<s> for tests) the browser has stopped it without telling us (phones do this when short of memory), so
+// the page takes over at once. This replaced a flat 180 s limit per build, which made a coach wait 3 minutes on a dead
+// worker, and could wrongly give up on a healthy worker reading 30 saved pitches one after another.
+const anaStall = 1000 * (+(/[?&]anastall=(\d+)/.exec(location.search) || [])[1] || 45);
+let anaWatch = 0;
+const anaCheck = () => { const n = performance.now(); for (const x of anaPool) if (x.busy > 0 && n - x.seen > anaStall) return anaDrop(`stopped answering for ${Math.round((n - x.seen) / 1000)} s`) };
 function anaWorker() {
   let x = anaPool.find(p => !p.busy);
   if (!x && anaPool.length < anaMax) {
     const w = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
-    w.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
+    x = { w, libs: { arm: false, body: false }, busy: 0, seen: performance.now() };
+    const me = x;
+    w.onmessage = ({ data }) => { me.seen = performance.now(); if (data.alive) return; const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
     w.onerror = e => anaDrop(e.message || "worker failed");
-    anaPool.push(x = { w, libs: { arm: false, body: false }, busy: 0 });
+    anaPool.push(x);
+    if (!anaWatch) anaWatch = setInterval(anaCheck, Math.min(5000, anaStall / 3));
   }
   return x || anaPool.reduce((a, b) => b.busy < a.busy ? b : a);
 }
@@ -47,11 +57,11 @@ function anaAsk(m) {
   const x = anaWorker(), libs = {};
   if (ARMLIB && !x.libs.arm) { libs.armLib = ARMLIB; x.libs.arm = true }
   if (BODYLIB && !x.libs.body) { libs.bodyLib = BODYLIB; x.libs.body = true }
+  if (!x.busy) x.seen = performance.now();               // time spent idle doesn't count as silence
   x.busy++;
   return new Promise((res, rej) => {
     const id = ++anaSeq; anaWait.set(id, [res, rej]);
     x.w.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
-    setTimeout(() => { if (anaWait.has(id)) anaDrop("timed out") }, 180000);
   }).finally(() => { x.busy-- });
 }
 // same answer as analyse()/detectSlowFactor() on the page; an error in the worker re-runs it on the page, which then

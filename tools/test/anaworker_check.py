@@ -18,7 +18,7 @@ JS = r"""async ([raw]) => {
   const armLib = await (await fetch('armlib.json?v=2')).json();
   const beat = () => { const g = []; let on = true, t = performance.now(); (function hb() { setTimeout(() => { const n = performance.now(); g.push(n - t); t = n; if (on) hb() }, 50) })(); return () => { on = false; return Math.max(0, ...g) - 50 } };
   const w = new Worker('analysisworker.js?' + v, { type: 'module' });
-  const ask = m => new Promise((res, rej) => { w.onmessage = ({ data }) => data.ok ? res(data.r) : rej(new Error(data.err)); w.onerror = e => rej(new Error(e.message)); w.postMessage(m) });
+  const ask = m => new Promise((res, rej) => { w.onmessage = ({ data }) => data.alive ? 0 : data.ok ? res(data.r) : rej(new Error(data.err)); w.onerror = e => rej(new Error(e.message)); w.postMessage(m) });
   let stop = beat(); let t0 = performance.now();
   const sW = await ask({ id: 1, op: 'slow', raw });
   const r = structuredClone(raw); r.fps = raw.fps * 1;
