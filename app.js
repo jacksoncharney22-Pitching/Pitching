@@ -17,23 +17,33 @@ const analyse = (raw, o = {}) => analyseRaw(raw, { ...o, ...(ARMLIB ? { armLib: 
 // The skeleton build after tracking runs in a background worker (analysisworker.js) so the page keeps moving (it froze
 // for seconds, longer on phones). Anything wrong with the worker and it simply runs on the page as before;
 // ?analysisworker=0 forces the page.
-let anaW = null, anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "undefined", anaSeq = 0, anaLibs = { arm: false, body: false };
+// Up to 3 workers (one fewer than the device's processor cores): "Over time" and Compare re-read several saved pitches,
+// and on a phone each takes a second or more, so they are read side by side. A single build uses one worker.
+let anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "undefined", anaSeq = 0;
+const anaMax = Math.max(1, Math.min(3, ((typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 2) - 1));
+let anaPool = [];                                       // { w, libs: { arm, body }, busy }
 const anaWait = new Map();
-const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; try { anaW && anaW.terminate() } catch (e) {} anaW = null; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
-function anaAsk(m) {
-  if (!anaW) {
-    anaW = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
-    anaW.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
-    anaW.onerror = e => anaDrop(e.message || "worker failed");
+const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; for (const x of anaPool) try { x.w.terminate() } catch (e) {} anaPool = []; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
+function anaWorker() {
+  let x = anaPool.find(p => !p.busy);
+  if (!x && anaPool.length < anaMax) {
+    const w = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    w.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
+    w.onerror = e => anaDrop(e.message || "worker failed");
+    anaPool.push(x = { w, libs: { arm: false, body: false }, busy: 0 });
   }
-  const libs = {};
-  if (ARMLIB && !anaLibs.arm) { libs.armLib = ARMLIB; anaLibs.arm = true }
-  if (BODYLIB && !anaLibs.body) { libs.bodyLib = BODYLIB; anaLibs.body = true }
+  return x || anaPool.reduce((a, b) => b.busy < a.busy ? b : a);
+}
+function anaAsk(m) {
+  const x = anaWorker(), libs = {};
+  if (ARMLIB && !x.libs.arm) { libs.armLib = ARMLIB; x.libs.arm = true }
+  if (BODYLIB && !x.libs.body) { libs.bodyLib = BODYLIB; x.libs.body = true }
+  x.busy++;
   return new Promise((res, rej) => {
     const id = ++anaSeq; anaWait.set(id, [res, rej]);
-    anaW.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
+    x.w.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
     setTimeout(() => { if (anaWait.has(id)) anaDrop("timed out") }, 180000);
-  });
+  }).finally(() => { x.busy-- });
 }
 // same answer as analyse()/detectSlowFactor() on the page; an error in the worker re-runs it on the page, which then
 // shows the analysis's own message if the clip itself is the problem
@@ -1009,7 +1019,7 @@ $("cmpGo").onclick = async () => {
       if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
       return { data, label: savedLabel(it) };
     };
-    const [A, B] = [await load(ids[0]), await load(ids[1])];
+    const [A, B] = await Promise.all([load(ids[0]), load(ids[1])]);   // side by side when there are two workers
     $("cmpEyebrow").textContent = "Side by side"; $("cmpTitle").textContent = "Compare two pitches"; renderCompare($("cmpBody"), A, B); show("compare");
   } catch (e) { alert("Those two pitches could not be compared. Try opening each one from Recent first.") }
   go.disabled = false; go.textContent = was;
@@ -1019,9 +1029,15 @@ $("trendGo").onclick = async () => {
   try {
     await armLibReady();
     const items = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => a.date - b.date), pts = [];
-    for (let i = 0; i < items.length; i++) { const it = items[i]; go.textContent = `Reading ${i + 1} of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
-      let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
-      if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) }
+    // read side by side (several background workers on a multi-core phone or laptop), kept in date order
+    const read = async it => { let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} } return data };
+    const got = new Array(items.length); let next = 0, done = 0;
+    go.textContent = `Reading 0 of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
+    await Promise.all(Array.from({ length: anaOk ? anaMax : 1 }, async () => {
+      while (next < items.length) { const i = next++; got[i] = await read(items[i]); go.textContent = `Reading ${++done} of ${items.length}…` }
+    }));
+    items.forEach((it, i) => { const data = got[i];
+      if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) });
     $("cmpEyebrow").textContent = "Over time"; $("cmpTitle").textContent = "One reading across saved pitches";
     show("compare"); renderTrend($("cmpBody"), pts);   // shown first so the chart can size itself to the screen
   } catch (e) { alert("Those pitches could not be read. Try opening each one from Recent first.") }
