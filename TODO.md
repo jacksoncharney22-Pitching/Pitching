@@ -224,6 +224,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   (app only) bench 5.61 (baseline 5.53, inside the check limit), unusual 6.07 (was 7.93); slot - 3: 5.63 / 6.04. So ship
   = shoulder change + slot - 2, after perview (side_back views), comparecheck --check, slowmo, export_check, and a look at
   Maher/Staumont numbers; patch saved as scratch shoulder_mean.diff (gone with this sandbox: re-type from the recipe).
+  11:40 FULL CHECK DONE, NOT SHIPPED: with shoulder change + slot-2: perview no reading clearly worse, measures --check ok,
+  regress ok, slowmo 240/240, export_check ok, comparecheck needed new limits (leadHip|mer 12 -> 8, slot|d 8 -> 9, ...).
+  BLOCKER: Maher MAX side tilt at release 8 -> -13 deg and slot 20 -> 14 (Maher FAST unchanged: tilt 7 -> 8, slot 24 -> 21):
+  Fast and Max of the same pitch now disagree by 21 deg on tilt (they agreed before). So on Max's tracker output the
+  MediaPipe shoulder mean depth is bad. Next: understand Maher max (its world points come from a different MediaPipe pass /
+  fused looks?), maybe use the MediaPipe mean only when it agrees with the learned one, or only for Fast/High. Hackimer
+  tilt -17 -> -13, Staumont 21 -> 20.
 - 11:40 FINDING (test data, don't chase as an app bug): unusual-set LEFTIES at side cameras read side tilt ~40 deg wrong
   (1718, 2655, 3132 side_back/side_open -34 to -46), but the app is mirror-consistent (mirrored raw gives identical angles)
   and lefties from behind are fine: `unusual_make.py` pastes a right-handed donor's side-view tracker error onto a lefty seen
