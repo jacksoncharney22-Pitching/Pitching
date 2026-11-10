@@ -74,3 +74,4 @@ jobs:
           python3 tools/test/storage_check.py
           python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
           python3 tools/test/anaworker_check.py tools/test/fixtures/*.json.gz
+          python3 tools/test/ortproxy_check.py tools/test/fixtures/maher_fast.json.gz --rtm

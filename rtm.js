@@ -4,6 +4,8 @@
 // If anything here can't load (an older browser, or the page is shown somewhere that blocks downloads), JP Pitching
 // carries on with its built-in tracker.
 
+import { ortReady } from "./ortboot.js";
+
 const ORT_VER = "1.20.1";
 export const RTM_URL = "https://huggingface.co/Tau-J/RTMPose/resolve/main/rtmposev1/onnx_sdk/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.zip";
 const IN_W = 288, IN_H = 384, SPLIT = 2.0;
@@ -17,18 +19,7 @@ const H2M = [[0, 0], [1, 2], [2, 5], [1, 1], [1, 3], [2, 4], [2, 6], [3, 7], [4,
 
 let session = null, loading = null, backend = null;
 
-// Without a graphics chip the model runs on the processor (WebAssembly), and on the page that froze it for seconds
-// at a time; onnxruntime's "proxy" runs that same code in a background worker instead (same numbers). It has to be
-// chosen before the first model loads, and isn't used with the graphics chip (WebGPU), which already runs off the page.
-// Trial only (?ortproxy=1) until it's been seen working on an iPhone and an Android phone: if the proxy fails to start there,
-// the stronger tracker and learned 3D would quietly drop out.
-async function wasmProxy() {
-  if (window.__ortInit) return; window.__ortInit = true;
-  try {
-    const gpu = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
-    if (!gpu && /[?&]ortproxy=1/.test(location.search)) window.ort.env.wasm.proxy = true;
-  } catch (e) {}
-}
+// onnxruntime is started by ortboot.js (tries its background worker so the page doesn't freeze, falls back safely).
 function loadScript(src, globalName) {
   return new Promise((res, rej) => { if (window[globalName]) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("couldn't load " + src)); document.head.append(s) });
 }
@@ -49,10 +40,7 @@ async function loadBundled(onProgress) {
   let man;
   try { const r = await fetch(base + "rtm/manifest.json"); if (!r.ok) return null; man = await r.json() } catch (e) { return null }
   const all = man.runtime === "all";                                     // the website copy can also use the graphics chip
-  await loadScript(base + (all ? "ort/ort.all.min.js" : "ort/ort.wasm.min.js"), "ort");
-  window.ort.env.wasm.wasmPaths = base + "ort/";
-  window.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
-  await wasmProxy();
+  await ortReady(base + (all ? "ort/ort.all.min.js" : "ort/ort.wasm.min.js"), base + "ort/", self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1, true);
   const buf = new Uint8Array(man.bytes); let got = 0;
   await Promise.all(man.parts.map(async (n, i) => {
     const r = await fetch(base + "rtm/" + n); if (!r.ok) throw new Error("tracker part missing: " + n);
@@ -61,11 +49,8 @@ async function loadBundled(onProgress) {
   return { model: buf, eps: all && navigator.gpu ? ["webgpu", "wasm"] : ["wasm"] };
 }
 async function loadRemote(onProgress) {
-  await loadScript(`https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/ort.all.min.js`, "ort");
+  await ortReady(`https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/ort.all.min.js`, `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/`, Math.min(4, navigator.hardwareConcurrency || 2), true);
   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js", "JSZip");
-  window.ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/`;
-  window.ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 2);
-  await wasmProxy();
   const zipBuf = await fetchCached(RTM_URL, onProgress);
   const zip = await window.JSZip.loadAsync(zipBuf);
   const entry = Object.values(zip.files).find(f => /end2end\.onnx$/.test(f.name));
