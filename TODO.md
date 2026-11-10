@@ -304,9 +304,9 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   steps key off foot strike; worth understanding, it makes every leg change look like an arm change).
 - 13:40 re-checked after the feet fix: `_spOff` 0.06 (arm side views worse) / 0.1 (layback at release 20.6 -> 21.3, the
   reading perview guards) / `_footZ` -0.25 (same): current 0.08 / -0.2 / knee 0.3 stay.
-- 13:40 wrap-up: shipped fb46678 (shoulders), 4a452ba (feet), 7587f1f (knees); tests green for fb46678 and 4a452ba (run 235),
-  7587f1f accuracy/unusual/regression green, slow-motion and exports were still running at 14:18 (both passed locally):
-  check run 236 first. Today's skeleton total: benchmark joints 9.2 -> 8.1 cm, arm 9.8 -> 8.4, angles 6.5 -> 6.2.
+- 13:40 wrap-up (14:23): shipped fb46678 (shoulders), 4a452ba (feet), 7587f1f (knees), 296f5e0 (throwing arm mid-stride ->
+  release); tests green for all but 296f5e0, whose run was still going at wrap-up (all checks passed locally): check it
+  first. Session total: benchmark joints 9.2 -> 8.1 cm, arm 9.8 -> 8.3, angles 6.5 -> 6.1, slot 5.6 -> 4.7 deg.
 - **13:40 LEAD for the next accuracy session (measured, not tried):** between foot strike and release (hip-centred error
   along the camera axis, benchmark): throwing elbow/wrist sit 1-5 / 1-6 cm too NEAR the camera on every camera (behind
   2.2/4.1, behind_3b 4.9/6.2, front_3b 1.4/1.3, side_back 3.3/5.2, side_open 2.6/3.8) -> a depth bias like the shoulders'
@@ -319,7 +319,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   6.1 -> 6.0, slot 4.97 -> 4.71, extension 0.118 -> 0.115; unusual arm -0.3 cm. Starting the shift AT foot strike made the
   elbow at FS worse (8.1 -> 8.3/8.9 at -0.03/-0.05); -0.05 mid: layback at arm cocked worse. perview, regress, slowmo
   240/240, comparecheck, fitguard, export_check ok.
-- **Next session (after 13:40):** (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
+- **Next session (after 13:40):** (0) glove arm body-frame error FS->BR (lead above); (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
   D.cameraDir, per camera, bench + unusual set) on elbows/wrists by phase, and the glove shoulder; (2) why arm error follows
   foot strike timing (3228_1_behind_3b); (3) Tuesday items in the list. Lab data for the unusual set: tests.yml steps.
 - **Next session (after 12:40):** (1) Tuesday: Max pass-3 skip still needs a real clip; long/4K video check (synthetic clip,
