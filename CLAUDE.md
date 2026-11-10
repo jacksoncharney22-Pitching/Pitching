@@ -91,6 +91,15 @@ detected as a net.
   at desktop and phone width, keep everything that worked working, and tell him what changed (with a screenshot or
   a clear description) in the notification and the end-of-day summary.
 
+## Working with Jarvis
+
+Jackson also runs **Jarvis**, a Claude Managed Agent with its own copy of this repo (`/workspace/Pitching`), pushing
+to `main` like the hourly sessions. Jarvis and the hourly sessions coordinate only through `TODO.md`:
+- Before starting an item, write "(<who> working on this, <time ET>)" next to it in "Today", commit and push, so two
+  workers never take the same item. Skip items another worker has claimed in the last 2 hours.
+- Pull (rebase) right before every push; never force-push `main`.
+- Sign "Today" notes with who wrote them ("Jarvis 10:15:", "9:40 session:").
+
 ## Daily work sessions
 
 Work runs all day, every day: a planning session at 8:15 ET, then a work session every hour at :40, round the clock
