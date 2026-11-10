@@ -39,12 +39,19 @@ export async function clipKeeper(W, H, fps) {
           g.drawImage(v, 0, 0, w, h);
           const fr = new VideoFrame(cv, { timestamp: Math.round(n * step), duration: Math.round(step) });
           enc.encode(fr, { keyFrame: n % keyEvery === 0 }); fr.close(); n++;
-          if (enc.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 0));
-        } catch (e) { err = e }
+          // the tracker is much slower than any encoder, but on a struggling phone frames could pile up in memory:
+          // give the encoder up to 2 s to catch up; if it's still far behind, stop keeping (the whole upload is saved)
+          if (enc.encodeQueueSize > 8) {
+            const t0 = performance.now();
+            while (enc.encodeQueueSize > 8 && performance.now() - t0 < 2000) await new Promise(r => setTimeout(r, 20));
+            if (enc.encodeQueueSize > 24) throw new Error("video writer fell behind");
+          }
+        } catch (e) { err = e; try { enc.close() } catch (e2) {} console.warn("Feole: stopped keeping the trimmed pitch video", e) }
       },
       // the finished MP4, or null if it failed
       async finish() {
         if (done) return null; done = true;
+        if (err) return null;
         try { await enc.flush(); enc.close(); if (err || !n) return null; muxer.finalize(); return new Blob([muxer.target.buffer], { type: "video/mp4" }) }
         catch (e) { console.warn("Feole: couldn't keep the trimmed pitch video", e); return null }
       },

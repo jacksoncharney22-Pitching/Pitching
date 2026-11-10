@@ -35,6 +35,7 @@ picture or numbers from a real clip rather than describing a change.
 | `editor.js` | Trim editor. |
 | `poseworker.js` | Runs the MediaPipe pose models (pitch finder, Fast/High tracker) in a background worker so the page doesn't freeze (falls back to the page; `?poseworker=0` forces that). Checked by `tools/test/finder_check.py [--compare]`. |
 | `analysisworker.js` | Runs the skeleton build (`analyse`, `detectSlowFactor`) after tracking in a background worker so the page doesn't freeze (falls back to the page; `?analysisworker=0` forces that). Checked by `tools/test/anaworker_check.py` (identical results). |
+| `keepclip.js` | Recent saves just the analysed pitch as a small MP4 (written while the tracker steps through it) instead of the whole upload; `?keepclip=0` keeps the whole upload. Checked by `tools/test/keepclip_check.py` (frames line up) and `keepclip_run.py` (full run, re-open, hand-moved event). |
 | `compare.js` | Compare two saved pitches, and one reading over time. Bold limits come from `tools/test/comparecheck.mjs --json`. |
 | `report.js`, `pdf.js` | Coaching report and PDF export. |
 | `opencap.js` | Imports OpenCap `.trc` marker files as a skeleton. |

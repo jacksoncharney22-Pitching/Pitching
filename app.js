@@ -71,7 +71,7 @@ import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
 import { clipKeeper } from "./keepclip.js";
-const KEEPCLIP = /[?&]keepclip=1/.test(location.search);   // trial until checked on real clips: Recent keeps only the analysed pitch
+const KEEPCLIP = !/[?&]keepclip=0/.test(location.search);   // Recent keeps only the analysed pitch as a small video (?keepclip=0: the whole upload, as before)
 
 const $ = id => document.getElementById(id);
 const views = ["home", "compare", "prep", "progress", "results"];
@@ -809,8 +809,10 @@ function openResults(data, url, meta = {}) {
     const btn = $("phaseSet"); if (btn) { if (btn.disabled) return; btn.disabled = true }   // re-built off the page: one at a time
     let d2; try { d2 = tagResult(await analyseAsync(meta.raw, { hand: data.throwHand, phases }), data) } finally { if (btn) btn.disabled = false }
     d2.userPhases = phases;   // kept for re-opening
-    if (meta.id != null) updateHistory(meta.id, d2);
-    openResults(d2, url, { ...meta, changed: null, startFrame: frame });
+    if (meta.id != null) updateHistory(meta.id, d2);   // saved in the upload's time, like every saved pitch
+    // a re-opened pitch-only video starts at the trimmed window (see Recent): shift the rebuilt skeleton the same way
+    const shown = meta.clipStart != null ? { ...d2, start: (d2.start || 0) - meta.clipStart } : d2;
+    openResults(shown, url, { ...meta, changed: null, startFrame: frame });
   } : null;
   $("phaseEditNote").hidden = !!onPhases;
   viewer = window.startViewer(data, url, { onPhases, startFrame: meta.startFrame });
@@ -955,7 +957,7 @@ async function renderHistory() {
       }
       // a saved pitch-only video starts at the trimmed window's start (time 0 there), not where it was in the upload
       if (it.blob && it.clipStart != null && data) data = { ...data, start: (data.start || 0) - it.clipStart };
-      openResults(data, url, { id: it.id, raw: it.raw, changed });
+      openResults(data, url, { id: it.id, raw: it.raw, changed, clipStart: it.blob ? it.clipStart : null });
     };
     // file names like IMG_2041 tell a coach nothing a week later; the new name also shows on Compare, Over time and the PDF
     li.querySelector(".rec-ren").onclick = async () => {
