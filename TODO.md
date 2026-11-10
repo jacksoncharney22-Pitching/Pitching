@@ -316,7 +316,17 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
   TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
   on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
-- 3:40 session working on: Max worker identity check on `wip-max-worker` (one run at a time) (3:40 session working on this, 3:41 ET)
+- 3:40 session (Max worker identity check, NOT finished): ran the worker side ALONE on the branch (`--only worker`, maher_max
+  fixture, 30 frames): it HUNG. The browser's graphics process worked ~21 min, then sat idle from ~4:03 ET; the page never
+  reached the results and showed no page error (killed at 4:20). The earlier parallel run finished both sides in 17 min,
+  so this is new: suspects are a promise with no time limit, most likely onnxruntime's proxy (`session.run` for RTMPose/
+  lifter inside ort's own worker has no timeout; the pose worker's own calls do time out at 20 s and fall back).
+  Pushed to the branch (5449e61): maxworker_check.py now prints each progress step and reports "HUNG ... at <step>" after 5 min
+  without progress. NEXT: (1) re-run `--only worker` alone (start it first thing; ~25 min; THREE_JS = three.min.js from
+  `npm pack three@0.128.0`, the CDN is blocked here) and read where it hangs; (2) if it's in the stronger tracker / 3D depth
+  step, re-run with `?ortproxy=0` on the worker side: if that finishes, (b) the proxy is the hang AND the likely cause of the
+  differing output, so ship (a) alone (MediaPipe in the worker) after an identical-output run, and drop or time-limit (b);
+  (3) then the page side alone and compare `first`/`dup`. 2 cores here: never run both sides at once.
 - **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (0) confirm test run 148 (0ed4df1, High in the worker) passed; its website deploy already succeeded. (1) Max accuracy's MediaPipe calls into the pose worker
   (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
   raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
