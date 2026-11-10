@@ -110,12 +110,24 @@ function fit2D(raw, A, ev, height) {
   const map = USED.map(([j, m]) => [j, lefty ? swap(m) : m]), W = raw.width, H = raw.height;
   const img = (f, m) => { const a = Math.max(0, Math.min(raw.frames.length - 1, Math.floor(f))), b = Math.min(raw.frames.length - 1, a + 1), w = f - a;
     const P = raw.frames[a], Q = raw.frames[b] || P; if (!P) return null; return [(P.img[m][0] * (1 - w) + Q.img[m][0] * w) * W, (P.img[m][1] * (1 - w) + Q.img[m][1] * w) * H, Math.min(P.img[m][2] ?? 1, Q.img[m][2] ?? 1)] };
-  const obsA = sf.map(f => map.map(([, m]) => img(f, m))), obsB = sf.map(f => map.map(([, m]) => img(f, swap(m))));
+  const obsA0 = sf.map(f => map.map(([, m]) => img(f, m))), obsB0 = sf.map(f => map.map(([, m]) => img(f, swap(m))));
+  let obsA = obsA0, obsB = obsB0;
+  // --dist d: perspective, camera d body heights from the library origin (POSIT-style: each point's picture position is
+  // scaled by (1 + its depth / d) about the picture centre, then the orthographic steps run on that); --r3 picks which way
+  // the depth axis points (the sign the orthographic camera can't tell)
+  const DIST = arg("--dist", 0), R3S = arg("--r3", 1);
   let c = init.c.slice(), cam = null, use = sf.map(() => 0);
   const lib = y => sf.map((_, s) => map.map(([j]) => [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]));
   const LAM = arg("--lam2d", 0.3);   // prior weight against pixel residuals (pixels^2 per unit coefficient^2)
   for (let it = 0; it < 15; it++) {
     const X = lib(recon(c));
+    if (DIST > 0 && cam) {
+      const n1 = Math.hypot(...cam.r1), u1 = cam.r1.map(v => v / n1), u2 = cam.r2.map(v => v / Math.hypot(...cam.r2));
+      const r3 = [u1[1] * u2[2] - u1[2] * u2[1], u1[2] * u2[0] - u1[0] * u2[2], u1[0] * u2[1] - u1[1] * u2[0]].map(v => v * R3S);
+      const corr = O => O.map((row, s) => row.map((o, u) => { if (!o) return o; const x = X[s][u], e = (r3[0] * x[0] + r3[1] * x[1] + r3[2] * x[2]) / DIST;
+        return [(o[0] - W / 2) * (1 + e) + W / 2, (o[1] - H / 2) * (1 + e) + H / 2, o[2]] }));
+      obsA = corr(obsA0); obsB = corr(obsB0);
+    }
     // camera: rows r1,r2 (3) + offsets: solve u = r1.x + o1, v = r2.x + o2 by least squares, then make rigid
     const N = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], bu = [0,0,0,0], bv = [0,0,0,0];
     sf.forEach((_, s) => map.forEach((__, u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const x = [...X[s][u], 1], w = o[2];

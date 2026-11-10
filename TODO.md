@@ -153,7 +153,14 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   release reads +3 to +6 high on most cameras. A view-dependent bias = depth, which points at the orthographic camera.
   Tried `--apppelvis` (app's hip line on the fitted hips): pelvis back to the app's 6.7/6.0/5.6 but separation MER
   4.6 -> 5.9 (trunk and hips from different sources disagree): not the answer.
-- **NEXT SESSION, in order (supersedes the list below):** (0) perspective camera in `fit2D` (camera distance as a
+- 19:40 tried perspective (`--dist d --r3 ±1`, POSIT-style, report only): pelvis NOT fixed (6.8/7.1/6.6 at d 10). d 10 r3 +1:
+  joints 6.22 -> 5.99 cm, arm 7.61 -> 7.37, front knee 5.4/5.2/6.6 -> 5.1/4.7/6.0, trunk BR 6.5 -> 7.0; d 4 similar;
+  r3 -1 much worse (8.2 cm), so the sign must be picked by fit residual. The bench camera distance is unknown, so don't
+  tune d on it: if perspective goes in, fit d from the picture. So the pelvis over-turn is not the camera model; next
+  idea: the lab hip joint centres vs the tracker's hip points (MediaPipe hips sit wider/higher); compare the library's
+  hip width with the benchmark truth's, and try weighting the hips down in the 2D fit (`map` weights).
+- **NEXT SESSION, in order (supersedes the list below):** (0) pelvis over-turn (see the line above: hip point definition
+  / hip weights in the fit), then (0b) perspective with d fitted from the picture; (0c) old step: perspective camera in `fit2D` (camera distance as a
   parameter, e.g. Gauss-Newton on distance with the linear steps inside) and re-check the signed pelvis; (1) pelvis: find why it's 1° worse late (signed bias by camera;
   try perspective camera, or keep the app's hip turn and only take legs/trunk from the fit); (2) the "as the coach sees
   it" table (angles at the app's event frames); (3) put the hybrid (fitted body + app arm) into pipeline.js behind
