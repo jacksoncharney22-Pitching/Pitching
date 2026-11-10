@@ -427,6 +427,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10 (23:40 Mon session): analysis after tracking 42% faster with identical results (24 test clips 9.5 -> 5.5 s); Over time/Compare instant on second open; pitch finder shows time left on long clips; `samecheck.mjs`.
 - 2026-11-09 (17:40): Event timing from the lab's own gaps: arm cocked 11 -> 6 ms off motion capture, foot strike 23 -> 14 ms; as the coach sees it layback at foot strike 25 -> 15°, at arm cocked 11 -> 7°, trunk at arm cocked 15 -> 10°; tempo 24 -> 15 ms.
 - 2026-11-09: Foot strike 34 -> 23 ms off motion capture; arm cocked 27 -> 11 ms; as the coach sees it, layback at arm cocked 33.9 -> 11.1° off. Pitcher box and different-spot note.
 - 2026-11-09: Recent keeps 30 pitches (newest 6 with video), renaming, "Track a reading over time", Compare bolds by each reading's own measured limit, warnings for different camera spots and accuracy settings; "What to trust" gives measured numbers.
