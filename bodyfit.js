@@ -161,7 +161,13 @@ export function bodyFit(raw, D, L, opts = {}) {
   const rot = yawAlign(FR, AR), P = A.map(F => F.map(p => p.slice()));
   // Outside the window the fit's last offset from the app's skeleton is carried on and faded out over 0.25 s (a fade
   // inside the window made the glove hand and front foot jump at its edges: 1.6 -> 6.2 jumps per lab view)
-  const target = (q, u, t) => rot(FR[q * JOINTS.length + u]).map((v, k) => v + hipOf(A[t])[k]);
+  const target0 = (q, u, t) => rot(FR[q * JOINTS.length + u]).map((v, k) => v + hipOf(A[t])[k]);
+  // the fit's offset from the app's skeleton, lightly smoothed over time (opts.smooth passes of 1-2-1): the time-warped
+  // samples meet at the events with small kinks in speed
+  const DL = FT.map((t, q) => JOINTS.map((j, u) => target0(q, u, t).map((v, k) => v - A[t][j][k])));
+  for (let pass = 0; pass < (opts.smooth ?? 3); pass++) { const C = DL.map(r => r.map(p => p.slice()));
+    for (let q = 1; q < DL.length - 1; q++) for (let u = 0; u < JOINTS.length; u++) for (let k = 0; k < 3; k++) DL[q][u][k] = (C[q - 1][u][k] + 2 * C[q][u][k] + C[q + 1][u][k]) / 4 }
+  const target = (q, u, t) => A[t][JOINTS[u]].map((v, k) => v + DL[q][u][k]);
   const edge = q => JOINTS.map((j, u) => target(q, u, FT[q]).map((v, k) => v - A[FT[q]][j][k]));
   const d0 = edge(0), d1 = edge(FT.length - 1), out = Math.max(2, Math.round((opts.fadeOut ?? 0.25) * fps)), FOLLOW = { 27: [29, 31], 28: [30, 32] };
   const sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x) };
