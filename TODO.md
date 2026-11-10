@@ -416,11 +416,20 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   6.6 s at anastall=6 (old code: still waiting at 120 s), worker that quits -> 8.5 s, broken script -> 0.5 s, slow-but-alive
   (10 s) stays in the worker; same angle table every way. trend_time 20 pitches 17.6 s, no drop. Gaps between "still here"
   in Node are at most 1/3 of a build (guard stage), so 45 s = a build of 2+ minutes with no sign of life.
-- **15:40 (in progress) browser-level odd uploads: `tools/test/badclip_check.py`** (not-a-video, sound-only, 0.3 s, no person,
+- **15:40 SHIPPED (d8853c8) browser-level odd uploads: `tools/test/badclip_check.py`** (not-a-video, sound-only, 0.3 s, no person,
   portrait 4K; Fast). FOUND + FIXED: a sound-only file said "This browser blocked the tracking engine (WebAssembly)" after
   pressing Build; random bytes called .mp4 sat 18 s then said "The video stopped responding". Now both show the right
   message at once ("This file has sound but no picture..." / "can't play that video file") and Build skeleton stays off
-  until another video is chosen (`badVideo` in app.js).
+  until another video is chosen (`badVideo` in app.js; checked bad -> good file re-enables it). On a phone (iPhone 13
+  emulation) every trim-screen message was BELOW the screen: it now scrolls into view (`errInView`). A clip with nobody
+  in it says "couldn't find anyone" instead of "0 of 9 frames". Results: 0.3 s clip -> plain message in 25 s; 2 s
+  no-person 60 fps -> message in 148 s (testsrc gives 17/120 false detections); portrait 4K 1.5 s -> message in 67 s, no
+  memory trouble; no page errors anywhere. NOT in CI (Fast tracking takes minutes); run it after upload/prep changes.
+  Note: d8853c8's commit names the wrong session link (copied); harmless.
+- 15:40 started: `tools/test/eta_check.py <clip> [cpu x] [fast|high]` (CDP CPU throttling; compares each "about N s left"
+  with the real time). RESULT (slow-device item CLOSED): CPU slowed 3x, Fast, 2 s 60 fps clip: tracking 196 s; the
+  "about N left" was within 0.8-1.4x of the real time from 8% on (worst after 25%: x1.36, then x1.66 only at "5 s left").
+  Honest enough; nothing to fix. (Before 25% it rounds to whole minutes: "3 min" for 2.3 min.)
 
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)
 - Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
@@ -958,13 +967,14 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
-- Browser-level damaged-input run (new 2026-11-10): robust.mjs covers analyse() in Node; do the same through the real page
-  (upload a 1-second clip, a clip with no person, a portrait 4K clip, an audio-only/odd-codec file) and check the plain
-  messages and that nothing hangs on "Building" (pattern: scratch recent_bad.py injected records via IndexedDB).
-- Worker failure paths: kill the analysis/pose worker mid-run (terminate from the page) and check the page carries on
-  (anaDrop/fallback) with identical numbers; today only "can't start" is tested.
-- Slow devices: time Fast mode with CPU throttling (Chromium CDP Emulation.setCPUThrottlingRate 4x) on a 4 s clip and make
-  sure the progress/ETA stays honest.
+- DONE 15:40 (badclip_check.py, d8853c8) Browser-level odd uploads through the real page.
+- New: a 60 s phone clip (1080p, 30 fps) through the pitch finder: memory and time (badclip-style test pattern, `-t 60`).
+- New: odd-codec video (HEVC .mov from iPhone) in Chromium: does it say "can't play" at once? (needs an HEVC sample; ffmpeg
+  libx265 can make one if installed.)
+- Worker failure paths: analysis worker DONE 15:40 (anastall_check.py: silent/quits/broken/slow, identical numbers).
+  Still open: the POSE worker (Fast/High tracking) dying mid-run: it has a 20 s per-frame timeout; check the page carries
+  on from that frame with the same tracking (a poseworker stub like anastall's, through clip_run on a short clip).
+- DONE 15:40 (eta_check.py, 3x slower CPU: guesses within 0.8-1.4x) Slow devices: progress/ETA honest under CPU throttling.
 - Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
   (the worker only does VIDEO mode today: add a mode to init).
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
