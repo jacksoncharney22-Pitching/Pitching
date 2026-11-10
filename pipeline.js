@@ -1731,7 +1731,7 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
     // 1.49 vs 1.53), so it's scaled up by that: error 4.9 -> 3.3% of height (benchmark), 5.3 -> 4.8% (unusual)
     strideM = Math.hypot(dx, dz) * (D.truth || D.bodyFit ? 1 : 1.04);   // the lab-matched body (trial) reads it differently: left as is
   const ground = Math.min(P[fs][lead][1], stance[1]);
-  const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot3 = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
+  const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot3 = (() => { let a = 0, c = 0, vy = 0, vz = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++; const [p, q] = SA(t); vy += q[1] - p[1]; vz += Math.abs(q[2] - p[2]) } return (globalThis.__slotVec ?? 1) ? Math.atan2(vy, vz) * 180 / Math.PI : a / c })();
   // From a camera straight behind or in front, the slot is right there in the picture (the plain shoulder-to-wrist angle
   // on screen), while the 3D arm has to guess the depth and gets pulled toward a typical arm (sidearm read high, very high
   // slots low). Unusual lab deliveries seen from behind: picture angle 3-4 deg off and keeps the pitcher's whole
@@ -1746,14 +1746,20 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   // picture can't show), then half of that is mixed in. 60 benchmark views: slot 5.8 -> 5.4 deg off, no camera worse
   // (45-deg views 5.1/4.1 -> 3.9/4.0, side_open 4.3 -> 3.6); 70 unusual-delivery views 10.2 -> 9.5. All the way (not half)
   // was better on average but made the behind-third-base camera worse on both sets.
+  // Both readings add up the arm's direction over the frames before release and take ONE angle (until 2026-11-10 each
+  // frame's angle was averaged): two frames before release the arm still points back toward second base, so its sideways
+  // part is short and its angle swings wildly (Maher: 43-56 deg from one trim to another). Adding the directions lets the
+  // long, nearly-released arm count most. 60 lab views 4.71 -> 4.39 deg off; Maher's slot moved 3-5 deg with where the
+  // trim started and ended, now 1-3 (`__slotVec` 0 = old).
   const geoW = globalThis.__slotGeo ?? 0.5;
   if (geoW && cd && I && D.width) {
     const hz = Math.hypot(cd[0], cd[2]) || 1, ez = [cd[0] / hz, 0, cd[2] / hz], ex = [ez[2], 0, -ez[0]];
     const win = []; for (let t = Math.max(0, br - back_); t <= br; t++) { const [a, b] = SA(t), A = I[t] && I[t][sh], B = I[t] && I[t][wr]; if (A && B) win.push([sub(b, a), (B[0] - A[0]) * D.width, -(B[1] - A[1]) * D.height]) }
     const sg = Math.sign(win.reduce((q, [d, px]) => q + dot(d, ex) * px, 0)) || 1;
     if (win.length) { const g = win.reduce((q, [d, px, py]) => { const inP = Math.hypot(dot(d, ex), d[1]), pl = Math.hypot(px, py) || 1, dz = dot(d, ez);
-      const v = add(add(mul(ex, sg * inP * px / pl), [0, inP * py / pl, 0]), mul(ez, dz)); return q + Math.atan2(v[1], Math.abs(v[2])) * 180 / Math.PI }, 0) / win.length;
-      slot = slot + (g - slot) * geoW }
+      const v = add(add(mul(ex, sg * inP * px / pl), [0, inP * py / pl, 0]), mul(ez, dz)); if (globalThis.__slotVec ?? 1) { q.y += v[1]; q.z += Math.abs(v[2]); return q } return q + Math.atan2(v[1], Math.abs(v[2])) * 180 / Math.PI }, (globalThis.__slotVec ?? 1) ? { y: 0, z: 0 } : 0);
+      const gg = (globalThis.__slotVec ?? 1) ? Math.atan2(g.y, g.z) * 180 / Math.PI : g / win.length;
+      slot = slot + (gg - slot) * geoW }
   }
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
   return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: (releaseReach(D) ?? w[0]) - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };

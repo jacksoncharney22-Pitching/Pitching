@@ -463,6 +463,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   0.15-0.24 deg, stride 3-5 cm. Normal trims untouched: bench 0 change, regress, measures --check, robust 96/96, fitguard;
   export_check on a padded Maher (6 s before, 4 s after) passes incl. hand-moved foot strike after re-opening (slot 26).
   Not cropped: Hackimer-style 480-frame-a-second clips padded only 0.5 s (extension +0.14 m there; not shown).
+- **16:40 SHIPPED: arm slot read from the arm's summed direction over the frames before release** (was the average of
+  each frame's angle). Found while checking trim lengths: 2 frames before release the arm still points back, its sideways
+  part is short and that frame's slot swings 43-56 deg on Maher with where the trim starts/ends, so the card moved 3-5 deg
+  with the trim (Maher max 23.3-28.7). Now 19.8-22.8 (fast 19.0-20.1). Benchmark slot 4.71 -> 4.39 deg off, r 0.92 -> 0.93
+  (measures baseline updated); comparecheck limits still fit; bench/regress unchanged. Real clips: Maher fast/max 26.1/23.4
+  -> 19.5/20.1 (now agree), Staumont 53.3 -> 50.2, Hackimer -5.6 same. `__slotVec` 0 = old. Unusual set not re-scored here
+  (slot isn't in bench.mjs; worth a `measures.mjs` run with BENCHDIR=<unusual set> next time the lab data is local).
 - 16:40: item "(1) Max's MediaPipe calls into the pose worker" is ALREADY DONE (trackMax uses poseModels with IMAGE/VIDEO
   specs since the overnight sessions); removed from the Tuesday list.
 
