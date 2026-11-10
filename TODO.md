@@ -218,6 +218,15 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   evens 2653 (8 vs 11.6) but makes 3035 go the other way (8.2 -> 6.0). So no single fix of the clue; the 22 misreads
   of 480 stay (report only). Next idea if anyone retries: don't use hand speed when the camera is behind (cameraDir x <
   -0.5) on the FIRST pass, measure 1x losses with `slowmo.mjs --late 20/30` (14:40 numbers) before shipping.
+- 22:40 tried, no gain (body fit): smoothing the fit's offset 6 passes instead of 3 (`glitch.mjs` now takes FITOPTS):
+  jumps 1.7 same, shake 0.92 -> 0.91, separation BR 4.7 -> 4.4, trunk 6.6/6.0 -> 6.5/5.9, but front knee FS 5.3 -> 5.5,
+  pelvis 5.9/5.6 -> 6.0/5.7. A wash, kept 3.
+- **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
+  trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
+  no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
+  long/large clips. Night sessions can start on Tuesday items now (Monday accuracy items are blocked on clips or at
+  their measured floor). Website: deploy run 143 (TODO-only push) failed with no log again; code commits since 3059814
+  deployed fine; check the run for the 22:40 pushes.
 - **NEXT SESSION (after 21:40):** body fit items (3) `pelvisMix` by camera, (4) visible trial switch; Hackimer with the fit
   needs his video (separation at foot strike 88°, a bit above the lab's 38-73). Tuesday theme from 8:15: profile Max, phones.
   Late-started slow motion still 13/11 of 240 wrong (`slowmo.mjs --late 20/30`): 12 of the 22 are behind/behind_3b cameras,

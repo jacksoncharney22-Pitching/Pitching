@@ -27,7 +27,7 @@ function score(P, M, caps) {
 const rows = [];
 for (const f of readdirSync(dir).filter(f => f.endsWith(".raw.json.gz")).sort()) {
   const v = f.replace(".raw.json.gz", ""), raw = L(f), tr = L(v + ".truth.json.gz"), T = truthD(tr);
-  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
+  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true, bodyFitOpts: process.env.FITOPTS ? JSON.parse(process.env.FITOPTS) : {} } : {}) });
   const caps = {}; for (const j of J) { let m = 0; for (let t = 1; t < tr.P.length - 1; t++) m = Math.max(m, acc(tr.P, t, j)); caps[j] = 1.5 * m }
   rows.push({ v, caps, a: score(D.pose, D.metrics, caps), t: score(tr.P, T.metrics) });
 }
