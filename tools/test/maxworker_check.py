@@ -71,9 +71,14 @@ def run(vid, flag, tag):
         pg.evaluate("(()=>{const s=document.getElementById('trimStart'),e=document.getElementById('trimEnd');s.value=0;e.value=(%f).toFixed(2);s.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('input'))})()" % (NF / 60))
         pg.wait_for_timeout(500); pg.evaluate("window.__beat=[]")
         pg.click('#analyze'); t0 = time.time()
+        last, lastT = '', time.time()
         while time.time() - t0 < 5400 and pg.evaluate("document.body.dataset.view") != 'results':
             if errs: break
             pg.wait_for_timeout(3000)
+            # where it is: a run that hangs (no progress for 5 min) is reported with the step it stopped on
+            st = pg.evaluate("[...document.querySelectorAll('#stModel,#stTrack,#stBuild')].map(e=>e.dataset.state+':'+e.querySelector('small').textContent).join(' | ')")
+            if st != last: last, lastT = st, time.time(); print(f'  {tag} {round(time.time()-t0)}s {st[:160]}', flush=True)
+            elif time.time() - lastT > 300: errs.append('HUNG for 5 min at: ' + st[:200]); break
         secs = round(time.time() - t0)
         raw = pg.evaluate('JSON.stringify(window.__lastRaw && {frames: window.__lastRaw.frames, fps: window.__lastRaw.fps})')
         looks = pg.evaluate('JSON.stringify(window.__lastLooks)')
