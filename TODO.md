@@ -148,7 +148,13 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   alone is worse (elbow 6.9/8.0/6.5 -> 9.4/12.3/9.6, layback FS 5.4 -> 12.3): the lab-throw arm match is better, so
   `--keeparm` keeps the app's arm in the trunk's own axes, hung on the fitted shoulders (arm angles then unchanged).
   Prior: lam 1 gives pelvis 6.7/6.8/6.3 and slightly worse tilts/separation FS; lam 0.3 kept.
-- **NEXT SESSION, in order (supersedes the list below):** (1) pelvis: find why it's 1° worse late (signed bias by camera;
+- 19:40 pelvis finding (`--signed`): the fitted pelvis turns TOO FAR from side/front cameras late (signed at MER/BR:
+  front_3b +4.2/+3.9, side_back +4.0/+5.2, side_open +2.4/+2.1) and too little from behind (-2 to -4), so separation at
+  release reads +3 to +6 high on most cameras. A view-dependent bias = depth, which points at the orthographic camera.
+  Tried `--apppelvis` (app's hip line on the fitted hips): pelvis back to the app's 6.7/6.0/5.6 but separation MER
+  4.6 -> 5.9 (trunk and hips from different sources disagree): not the answer.
+- **NEXT SESSION, in order (supersedes the list below):** (0) perspective camera in `fit2D` (camera distance as a
+  parameter, e.g. Gauss-Newton on distance with the linear steps inside) and re-check the signed pelvis; (1) pelvis: find why it's 1° worse late (signed bias by camera;
   try perspective camera, or keep the app's hip turn and only take legs/trunk from the fit); (2) the "as the coach sees
   it" table (angles at the app's event frames); (3) put the hybrid (fitted body + app arm) into pipeline.js behind
   `_bodyFit`, blend to the app's pose outside the window, then bench/perview/regress/glitch, and Maher/Hackimer/Staumont

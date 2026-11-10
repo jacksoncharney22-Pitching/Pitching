@@ -202,6 +202,9 @@ for (const v of views) {
     FT.forEach(([t], q) => { if (t >= Tn) return; const ha = hip(A.pose[t]);
       JOINTS.forEach((j, u) => { const p = rfa(FR[q * JOINTS.length + u]).map((v, k) => v + ha[k]), d = p.map((v, k) => v - A.pose[t][j][k]); P[t][j] = p; for (const f of FOLLOW[j] || []) P[t][f] = A.pose[t][f].map((v, k) => v + d[k]) });
       // --keeparm: the app's own arms (lab-throw arm match) hung on the fitted shoulders
+      // --apppelvis: the app's own hip line (direction), centred on the fitted hips
+      if (argv.includes("--apppelvis")) { const mh = [0, 1, 2].map(k => (P[t][23][k] + P[t][24][k]) / 2), hl = Math.hypot(...[0, 1, 2].map(k => P[t][24][k] - P[t][23][k])) / 2,
+        ad = unit([0, 1, 2].map(k => A.pose[t][24][k] - A.pose[t][23][k])); P[t][24] = mh.map((v, k) => v + ad[k] * hl); P[t][23] = mh.map((v, k) => v - ad[k] * hl) }
       // the arm is kept in the trunk's own axes (so layback/abduction stay the app's), turned with the fitted trunk
       if (KEEPARM) { const Fa = trunkAxes(A.pose[t]), Ff = trunkAxes(P[t]);
         const rot = v => { const c = Fa.map(ax => ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2]); return [0, 1, 2].map(k => Ff[0][k] * c[0] + Ff[1][k] * c[1] + Ff[2][k] * c[2]) };
@@ -209,7 +212,8 @@ for (const v of views) {
     const ev = tr.events, TT = truthD(tr).metrics, MA = truthD({ ...tr, P: A.pose.slice(0, Tn) }).metrics, MF = truthD({ ...tr, P }).metrics;
     angA = {}; angF = {};
     for (const k of Object.keys(ANG)) for (const e of ["fs", "mer", "br"]) { const b = TT[k]?.[ev[e]], a = MA[k]?.[ev[e]], f = MF[k]?.[ev[e]]; if (b == null || a == null || f == null) continue;
-      const d = x => Math.abs(ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b); angA[k + "|" + e] = d(a); angF[k + "|" + e] = d(f) }
+      const d = x => Math.abs(ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b); angA[k + "|" + e] = d(a); angF[k + "|" + e] = d(f);
+      const sg = x => ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b; angA["s:" + k + "|" + e] = sg(a); angF["s:" + k + "|" + e] = sg(f) }
   }
   const cn = Math.hypot(...F.c);
   res.push({ v, angA, angF, app: 100 * ea / n, fit: 100 * ef / n, appArm: 100 * aa / an, fitArm: 100 * af / an, cn });
@@ -225,3 +229,6 @@ if (argv.includes("--angles")) {
   for (const k of Object.keys(ANG)) { const line = ["fs", "mer", "br"].map(e => { const A1 = ok.map(r => r.angA?.[k + "|" + e]).filter(Number.isFinite), F1 = ok.map(r => r.angF?.[k + "|" + e]).filter(Number.isFinite);
     return A1.length ? `${e} ${(A1.reduce((s, x) => s + x, 0) / A1.length).toFixed(1)} -> ${(F1.reduce((s, x) => s + x, 0) / F1.length).toFixed(1)}` : `${e} -` }); console.log(`  ${ANG[k].padEnd(20)} ${line.join("   ")}`) }
 }
+
+if (argv.includes("--signed")) for (const k of ["pelvisRot", "trunkRot", "separation"]) { console.log(`signed ${k} by camera (app -> fit), fs/mer/br:`);
+  for (const [a, R] of Object.entries(byAngle)) console.log(`  ${a.padEnd(10)} ` + ["fs", "mer", "br"].map(e => { const m = (o) => { const x = R.map(r => r[o]?.["s:" + k + "|" + e]).filter(Number.isFinite); return x.reduce((s, v) => s + v, 0) / x.length }; return `${m("angA").toFixed(1)} -> ${m("angF").toFixed(1)}` }).join("   ")) }
