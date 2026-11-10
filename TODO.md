@@ -444,6 +444,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   Foot strike timing is 14 ms off on average (~1 frame at 60 fps) and the pelvis turns fast there, so most of the gap is
   timing. Ideas: read FS-time angles as the mean over +-1 frame (less sensitive to a 1-frame miss), or sharpen foot strike
   timing (`bench.mjs --views` to see which views carry it). bench.mjs runs in 10 s.
+  15:40 tried (scratch copy of bench.mjs): averaging the app's reading over +-1 / +-2 frames at its foot strike: pelvis
+  9.9 -> 9.8 / 9.5, trunk 10.8 -> 10.7 / 10.6 (little); reading 1 frame later: pelvis 11.7, trunk 12.4 (worse). The app's
+  FS is 1 frame early on about half the views and exact on the rest (--views), so no fixed shift helps; better FS timing
+  on the early views is the only real route. Low priority.
 - **Next session (after 15:40):** Tuesday list: (1) Max's MediaPipe calls into the pose worker (IMAGE mode; trackMax),
   check with maxworker_check.py; (2) DONE 15:40 posestall_check.py on GitHub (pose worker quits mid-finder -> page carries on, 45 s); (3) DONE 15:40 HEVC .mov (iPhone-style, `badclip_check.py <out> hevc`): this Chromium can't play it and says so at once
   ("can't play that video file... MP4 (H.264)... Safari"), Build stays off. Real-device check of HEVC in Chrome on Windows/Mac (which can) still open. Accuracy leads from 14:40 still open (glove abduction FS
