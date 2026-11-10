@@ -193,6 +193,14 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   Next: find where the shoulder line's depth goes wrong from side cameras (`_snap` stages like the extension trace), fix it
   in the skeleton rather than correcting the angle; score with unusual.mjs (righties) + bench.mjs + perview.
   Scratch scripts: tilt2.mjs (per-camera signed error at FS/AC/BR).
+- 11:40 follow-up (side tilt trace): the side-camera tilt bias is already there at the FIRST 3D lift ("rot" snap: side_back
+  +13.8 at arm cocked, side_open -5.4), nothing later changes it much, like extension. Experiment (OPTS, not shipped):
+  shoulders' depth from MediaPipe instead of the learned 3D model (`learnedParts: [13,14,15,16]`, default [11..16]):
+  benchmark joints -0.5 cm, arm -0.6, angles -0.2 deg; side tilt 4.8/7.2/7.1 -> 4.6/6.4/6.4, forward tilt 5.8/5.6 -> 4.7/4.8,
+  side_open tilt bias -6.4 -> -0.4, slot 5.5 -> 5.4 (unusual 7.9 -> 6.6!) BUT side_back arm +2.2 cm, hand height 6.6 -> 7.6 cm,
+  unusual peak separation 5.9 -> 8.3 deg (bias +5). `learnedParts:"all"` (hips too): side_back tilt bias 1.4 but front_3b -18.
+  Next: per camera choose (or blend) the shoulder depth source, e.g. learned depth only when the camera is on the arm
+  side (cameraDir z < 0) — check separation on the unusual set, perview, regress before shipping.
 - 11:40 FINDING (test data, don't chase as an app bug): unusual-set LEFTIES at side cameras read side tilt ~40 deg wrong
   (1718, 2655, 3132 side_back/side_open -34 to -46), but the app is mirror-consistent (mirrored raw gives identical angles)
   and lefties from behind are fine: `unusual_make.py` pastes a right-handed donor's side-view tracker error onto a lefty seen
