@@ -316,7 +316,16 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
   TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
   on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
-- (4:40 session working on this, 4:44 ET: re-run worker side alone, find the hang)
+- **4:40 session: the "hang" was Max failing, now fixed on main (7d6c0eb).** The worker run never hung: Max returned to the upload
+  screen with "Cannot read properties of undefined (reading '0')" (maxworker_check only watched for the results page, so it
+  looked like a hang). Cause: `fuseSoft` (fuse.js) crashed on a frame with exactly one built-in look + one stronger-tracker look
+  (frame 27 of the synthetic clip had only 'full' and 'rtm'): the single built-in look has no `spread`. Live bug for any Max run
+  where most passes miss a frame. Fixed (how sure = distance between the two looks), `tools/test/fuse_check.mjs` (27 mixes, on
+  GitHub; old code fails 3). Normal frames unchanged (regress all ok). wip-max-worker has the fix too, and its check now prints
+  "STOPPED with: <error>" instead of HUNG. A worker-side re-run with the fix was started 5:20 (results in scratch, may not finish).
+  NEXT: (1) worker side alone on wip-max-worker should now reach results; then page side alone (`--only page`), then `--only compare`
+  (first/dup/raw identical?). Why the worker run had only 2 looks on frame 27 while the page run had more is the same open
+  question as "pass 2 zoom differs" (worker vs page tracker output); 2 cores: one side at a time, ~11-15 min each.
 - 3:40 session (Max worker identity check, NOT finished): ran the worker side ALONE on the branch (`--only worker`, maher_max
   fixture, 30 frames): it HUNG. The browser's graphics process worked ~21 min, then sat idle from ~4:03 ET; the page never
   reached the results and showed no page error (killed at 4:20). The earlier parallel run finished both sides in 17 min,
