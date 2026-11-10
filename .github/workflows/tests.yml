@@ -18,6 +18,8 @@ jobs:
           node-version: "22"
       - name: Reference clips (event times, speed, throwing hand, lefty copies)
         run: node tools/test/regress.mjs
+      - name: Max accuracy combines frames with only a few looks
+        run: node tools/test/fuse_check.mjs
   slow-motion:
     runs-on: ubuntu-latest
     steps:
