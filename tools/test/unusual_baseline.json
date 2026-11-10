@@ -1,7 +1,7 @@
 {
  "behind": {
   "views": 14,
-  "joint": 7.82,
+  "joint": 7.81,
   "arm": 8.15,
   "ang": {
    "throwElbow": {
@@ -56,11 +56,12 @@
    "br": 4.76
   },
   "angAll": 5.85,
+  "glove": 4.89,
   "seenAll": 8.45
  },
  "behind_3b": {
   "views": 14,
-  "joint": 8.83,
+  "joint": 8.8,
   "arm": 9.54,
   "ang": {
    "throwElbow": {
@@ -115,11 +116,12 @@
    "br": 3.57
   },
   "angAll": 7.06,
+  "glove": 4.39,
   "seenAll": 9.41
  },
  "front_3b": {
   "views": 14,
-  "joint": 8.73,
+  "joint": 8.72,
   "arm": 9.99,
   "ang": {
    "throwElbow": {
@@ -174,11 +176,12 @@
    "br": 5.95
   },
   "angAll": 6.36,
+  "glove": 5.86,
   "seenAll": 9.74
  },
  "side_back": {
   "views": 14,
-  "joint": 8.36,
+  "joint": 8.32,
   "arm": 9.54,
   "ang": {
    "throwElbow": {
@@ -233,11 +236,12 @@
    "br": 5.95
   },
   "angAll": 5.47,
+  "glove": 10.78,
   "seenAll": 9.25
  },
  "side_open": {
   "views": 14,
-  "joint": 8.72,
+  "joint": 8.69,
   "arm": 8.16,
   "ang": {
    "throwElbow": {
@@ -292,11 +296,12 @@
    "br": 5.95
   },
   "angAll": 5.98,
+  "glove": 8.27,
   "seenAll": 9.77
  },
  "all": {
   "views": 70,
-  "joint": 8.49,
+  "joint": 8.47,
   "arm": 9.08,
   "ang": {
    "throwElbow": {
@@ -351,6 +356,7 @@
    "br": 5.24
   },
   "angAll": 6.15,
+  "glove": 6.84,
   "seenAll": 9.32
  }
 }

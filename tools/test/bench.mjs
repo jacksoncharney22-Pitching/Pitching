@@ -30,6 +30,8 @@ const wrap = d => ((d + 180) % 360 + 360) % 360 - 180;
 const JOINTS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
 const ANGLES = { throwElbow: "throwing elbow", throwAbd: "shoulder abduction", throwER: "layback", leadKnee: "front knee",
   pelvisRot: "pelvis rotation", trunkRot: "trunk rotation", separation: "hip-shoulder sep.", trunkFwd: "forward tilt", trunkLat: "side tilt" };
+// the glove arm is scored on its own (not in the "angles" average, so that number stays comparable with earlier sessions)
+const GLOVE = { gloveElbow: "glove elbow", gloveAbd: "glove abduction" };
 const ROT = new Set(["pelvisRot", "trunkRot", "separation", "throwER"]);
 const EVENTS = { fs: "Foot strike", mer: "Arm cocked", br: "Release" };
 
@@ -57,6 +59,7 @@ for (const v of views) {
   for (const [e, name] of Object.entries(EVENTS)) {
     const af = (D.phases.find(p => p.name === name) || {}).frame;
     row.ev[e] = af == null ? null : (af - tr.events[e]) / fps * 1000;
+    for (const k of Object.keys(GLOVE)) { const a = D.metrics[k]?.[tr.events[e]], b = TD.metrics[k]?.[tr.events[e]]; if (a != null && b != null) (row.glove ??= {})[k + "|" + e] = Math.abs(a - b) }
     for (const k of Object.keys(ANGLES)) {
       const a = D.metrics[k][tr.events[e]], b = TD.metrics[k][tr.events[e]];
       if (a == null || b == null) continue;
@@ -76,6 +79,7 @@ for (const g of groups) {
   for (const k of Object.keys(ANGLES)) for (const e of Object.keys(EVENTS)) { const m = mean(R.map(r => r.ang[k]?.[e]).filter(v => v != null).map(Math.abs)); if (m != null) (s.ang[k] ??= {})[e] = m }
   for (const e of Object.keys(EVENTS)) s.ev[e] = mean(R.map(r => r.ev[e]).filter(v => v != null).map(Math.abs));
   s.angAll = mean(Object.values(s.ang).flatMap(o => Object.values(o)));
+  s.glove = mean(R.flatMap(r => Object.values(r.glove || {})));   // glove elbow + glove abduction at the three events
   s.seenAll = mean(R.flatMap(r => Object.values(r.seen || {})));   // average of the coach's-view table below
   summary[g] = s;
 }
@@ -89,6 +93,7 @@ for (const [k, name] of Object.entries(ANGLES)) {
   const s = summary.all.ang[k] || {}, per = groups.filter(g => g !== "all").map(g => [g, mean(Object.values(summary[g].ang[k] || {}))]).sort((a, b) => b[1] - a[1])[0];
   console.log(`${name.padEnd(28)} ${f1(s.fs).padStart(14)} ${f1(s.mer).padStart(12)} ${f1(s.br).padStart(8)}   | ${per[0]} (${f1(per[1])})`);
 }
+for (const [k, name] of Object.entries(GLOVE)) console.log(`${name.padEnd(28)} ${Object.keys(EVENTS).map((e, i) => f1(mean(rows.map(r => r.glove?.[k + "|" + e]))).padStart([14, 12, 8][i])).join(" ")}`);
 // signed timing: does the app mark events early or late?
 console.log(`\nevents, average signed (ms, + = app late): foot strike ${f0(mean(rows.map(r => r.ev.fs)))}, arm cocked ${f0(mean(rows.map(r => r.ev.mer)))}, release ${f0(mean(rows.map(r => r.ev.br)))}`);
 console.log("\nangle error as the coach sees it (at the frame the app marked; °)   foot strike  arm cocked  release");
@@ -107,7 +112,7 @@ const cmp = (label, now, was, tol, unit) => { if (now == null || was == null) re
 console.log("\nchange since baseline (negative = better):");
 for (const g of groups) {
   const s = summary[g], b = base[g]; if (!b) continue;
-  const parts = [`joints ${cmp(g + " joints", s.joint, b.joint, 0.3, "cm") || "0"} cm`, `arm ${cmp(g + " arm", s.arm, b.arm, 0.3, "cm") || "0"} cm`, `angles ${cmp(g + " angles", s.angAll, b.angAll, 1, "°") || "0"}°`, `as seen ${cmp(g + " as seen", s.seenAll, b.seenAll, 1, "°") || "0"}°`,
+  const parts = [`joints ${cmp(g + " joints", s.joint, b.joint, 0.3, "cm") || "0"} cm`, `arm ${cmp(g + " arm", s.arm, b.arm, 0.3, "cm") || "0"} cm`, `angles ${cmp(g + " angles", s.angAll, b.angAll, 1, "°") || "0"}°`, `as seen ${cmp(g + " as seen", s.seenAll, b.seenAll, 1, "°") || "0"}°`, `glove arm ${cmp(g + " glove arm", s.glove, b.glove, 1, "°") || "0"}°`,
     ...Object.keys(EVENTS).map(e => `${e} ${cmp(g + " " + e, s.ev[e], b.ev[e], 5, "ms") || "0"} ms`)];
   console.log(`  ${g.padEnd(12)} ${parts.join(", ")}`);
 }
