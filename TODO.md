@@ -437,6 +437,13 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   anastall_check): the finder waits one 20 s per-frame timeout, then carries on on the page (`__poseFellBack` "worker timed
   out"), finished in 46 s vs 21 s normal, no page errors. Acceptable; not changed. A silent INIT waits 60 s (model start-up
   on a phone can legitimately take long) — leave it.
+- 15:40 shipped late (9495bdf): trim screen no longer shows an empty box above a "can't read this file" message (phone
+  screenshot checked; good file after a bad one still shows "The skeleton is built from ..." and Build is on).
+- 15:40 LEAD (accuracy, Saturday/Monday, measured not tried): bench "as the coach sees it" (at the app's own event frame)
+  vs same-frame: pelvis rotation at foot strike 9.9 vs 6.7 deg, trunk rotation 10.8 vs 8.2, layback at release 34.9 vs 20.5.
+  Foot strike timing is 14 ms off on average (~1 frame at 60 fps) and the pelvis turns fast there, so most of the gap is
+  timing. Ideas: read FS-time angles as the mean over +-1 frame (less sensitive to a 1-frame miss), or sharpen foot strike
+  timing (`bench.mjs --views` to see which views carry it). bench.mjs runs in 10 s.
 - **Next session (after 15:40):** Tuesday list: (1) Max's MediaPipe calls into the pose worker (IMAGE mode; trackMax),
   check with maxworker_check.py; (2) DONE 15:40 posestall_check.py on GitHub (pose worker quits mid-finder -> page carries on, 45 s); (3) DONE 15:40 HEVC .mov (iPhone-style, `badclip_check.py <out> hevc`): this Chromium can't play it and says so at once
   ("can't play that video file... MP4 (H.264)... Safari"), Build stays off. Real-device check of HEVC in Chrome on Windows/Mac (which can) still open. Accuracy leads from 14:40 still open (glove abduction FS
