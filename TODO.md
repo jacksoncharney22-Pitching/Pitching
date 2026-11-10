@@ -548,6 +548,8 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 17:40 (c52a109): the safari job also runs finder_check.py in WebKit as a TRIAL step (continue-on-error). Next session:
   open that run's "safari" log: if the pose model ran in WebKit, drop continue-on-error; if not, that's a real Safari
   finding (what failed: worker, WASM, WebGL, VP9 playback) to fix or to explain on screen.
+- 18:40 session (working on this, 18:50 ET): WebKit finder trial FAILED in CI (pose model fell back to the page, saw the
+  body in 0/45 looks): diagnosing why (video decode / canvas / model in Safari's engine).
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
