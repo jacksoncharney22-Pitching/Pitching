@@ -2,11 +2,13 @@
 // release, peak hip-shoulder separation and when it happens.   node tools/test/measures.mjs [--views]
 import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib";
 import { analyse, deliveryMeasures } from "../../pipeline.js"; import { truthD, armLibFor } from "./truth.mjs";
+// BODYFIT=1: with the whole-body fit (benchmark views use the library built without the benchmark athletes)
+const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(new URL("./bench/bodylib_holdout.json", import.meta.url), "utf8")) : null;
 const dir=new URL("./bench/", import.meta.url).pathname; const load=f=>JSON.parse(gunzipSync(readFileSync(dir+f)).toString());
 const views=readdirSync(dir).filter(f=>f.endsWith(".raw.json.gz")).map(f=>f.replace(".raw.json.gz",""));
 const KEYS=["strideLen","strideM","armSlot","relHeight","extension","peakSep","peakSepMs"], E=Object.fromEntries(KEYS.map(k=>[k,[]])), S=Object.fromEntries(KEYS.map(k=>[k,[]])), A=Object.fromEntries(KEYS.map(k=>[k,[]])), T=Object.fromEntries(KEYS.map(k=>[k,[]]));
 const CAM={};
-for(const v of views){const raw=load(v+".raw.json.gz"),tr=load(v+".truth.json.gz"),D=analyse({...raw,heightIn:tr.height/.0254},{armLib:armLibFor(tr.sp),...(process.env.OPTS?JSON.parse(process.env.OPTS):{})}),TD=truthD(tr);
+for(const v of views){const raw=load(v+".raw.json.gz"),tr=load(v+".truth.json.gz"),D=analyse({...raw,heightIn:tr.height/.0254},{armLib:armLibFor(tr.sp),...(BODYLIB?{bodyLib:BODYLIB,bodyFit:true}:{}),...(process.env.OPTS?JSON.parse(process.env.OPTS):{})}),TD=truthD(tr);
  const a=deliveryMeasures(D,tr.height),b=deliveryMeasures(TD,tr.height,0);
  if(process.argv.includes("--views"))console.log(v,KEYS.map(k=>k+" "+(a[k]?.toFixed(2))+"/"+(b[k]?.toFixed(2))).join("  "));
  {const c=v.replace(/^\d+_\d+_/,"");(CAM[c]=CAM[c]||[]).push(a.strideM-b.strideM)}

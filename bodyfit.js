@@ -159,12 +159,17 @@ export function bodyFit(raw, D, L, opts = {}) {
     FR.push(...JOINTS.map(j => fp[j].map((v, k) => v - hf[k]))); AR.push(...JOINTS.map(j => A[t][j].map((v, k) => v - ha[k]))); FT.push(t);
   }
   const rot = yawAlign(FR, AR), P = A.map(F => F.map(p => p.slice()));
-  // blended in and out over 0.1 s at each end of the window so the skeleton doesn't jump there
-  const ramp = Math.max(2, Math.round((opts.ramp ?? 0.1) * fps)), FOLLOW = { 27: [29, 31], 28: [30, 32] };
-  FT.forEach((t, q) => {
-    const w = Math.min(1, (t - t0 + 1) / ramp, (t1 - t + 1) / ramp), ha = hipOf(A[t]);
+  // Outside the window the fit's last offset from the app's skeleton is carried on and faded out over 0.25 s (a fade
+  // inside the window made the glove hand and front foot jump at its edges: 1.6 -> 6.2 jumps per lab view)
+  const target = (q, u, t) => rot(FR[q * JOINTS.length + u]).map((v, k) => v + hipOf(A[t])[k]);
+  const edge = q => JOINTS.map((j, u) => target(q, u, FT[q]).map((v, k) => v - A[FT[q]][j][k]));
+  const d0 = edge(0), d1 = edge(FT.length - 1), out = Math.max(2, Math.round((opts.fadeOut ?? 0.25) * fps)), FOLLOW = { 27: [29, 31], 28: [30, 32] };
+  const sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x) };
+  for (let t = Math.max(0, t0 - out); t <= Math.min(T - 1, t1 + out); t++) {
+    const q = t - t0, inside = t >= t0 && t <= t1, w = inside ? 1 : t < t0 ? sm(1 - (t0 - t) / out) : sm(1 - (t - t1) / out);
+    if (w <= 0) continue;
     for (const [u, j] of JOINTS.entries()) { if (j === 13 || j === 14 || j === 15 || j === 16) continue;
-      const f = rot(FR[q * JOINTS.length + u]).map((v, k) => v + ha[k]), p = A[t][j].map((v, k) => v * (1 - w) + f[k] * w), d = p.map((v, k) => v - A[t][j][k]);
+      const f = inside ? target(q, u, t) : A[t][j].map((v, k) => v + (t < t0 ? d0 : d1)[u][k]), p = A[t][j].map((v, k) => v * (1 - w) + f[k] * w), d = p.map((v, k) => v - A[t][j][k]);
       P[t][j] = p; for (const g of FOLLOW[j] || []) P[t][g] = A[t][g].map((v, k) => v + d[k]) }
     // pelvis direction: part-way back to the app's own hip line (opts.pelvisMix; the fit's pelvis over-turns from side-on
     // cameras late, the app's hip turn was tuned for that). Only the hip points turn, about their midpoint.
@@ -175,11 +180,14 @@ export function bodyFit(raw, D, L, opts = {}) {
     // the arms keep their place in the trunk's own axes (the app's arm reading), hung on the fitted shoulders
     const Fa = trunkAxes(A[t]), Ff = trunkAxes(P[t]);
     const tr = v => { const cc = Fa.map(ax => ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2]); return [0, 1, 2].map(k => Ff[0][k] * cc[0] + Ff[1][k] * cc[1] + Ff[2][k] * cc[2]) };
-    for (const [sh, ...rest] of [[11, 13, 15, 17, 19, 21], [12, 14, 16, 18, 20, 22]]) for (const j of rest) { const dd = tr(A[t][j].map((v, k) => v - A[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + dd[k]) }
+    // the glove arm (opts.gloveAxes off) only moves with its shoulder: turned with the trunk its long lever made the glove hand jump
+    const th = D.throwHand === "L" ? 11 : 12, gl = th === 11 ? 12 : 11, GA = { 11: [13, 15, 17, 19, 21], 12: [14, 16, 18, 20, 22] };
+    if (!opts.gloveAxes) for (const j of GA[gl]) P[t][j] = A[t][j].map((v, k) => v + P[t][gl][k] - A[t][gl][k]);
+    for (const [sh, ...rest] of [[11, ...GA[11]], [12, ...GA[12]]]) if (sh === th || opts.gloveAxes) for (const j of rest) { const dd = tr(A[t][j].map((v, k) => v - A[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + dd[k]) }
     // the head goes with the shoulders
     const ms = [0, 1, 2].map(k => (P[t][11][k] + P[t][12][k] - A[t][11][k] - A[t][12][k]) / 2);
     for (let j = 0; j <= 10; j++) P[t][j] = A[t][j].map((v, k) => v + ms[k]);
-  });
+  }
   if (P.some(F => F.some(p => p.some(v => !Number.isFinite(v))))) return null;
   return { pose: P, window: [t0, t1], coef: c };
 }

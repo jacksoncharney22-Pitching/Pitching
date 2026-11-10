@@ -6,8 +6,14 @@ let ARMLIB = null;
 const armLibLoad = fetch("armlib.json?v=2").then(r => r.ok ? r.json() : null).then(j => { ARMLIB = j }).catch(() => {});
 // analyses that can start the moment the page opens (a saved one from Recent, an OpenCap file) wait for the library,
 // or a slow connection gives a different throwing arm than the first time (elbow 96° at foot strike read 114° on Maher)
-const armLibReady = () => Promise.race([armLibLoad, new Promise(r => setTimeout(r, 20000))]);
-const analyse = (raw, o = {}) => analyseRaw(raw, ARMLIB ? { ...o, armLib: ARMLIB } : o);
+// Trial: open the app with ?bodyfit=1 and legs, hips and trunk are fitted to 366 real lab deliveries (bodyfit.js; 60 lab
+// views: joints 9.9 -> 8.2 cm, front knee and trunk tilts several degrees closer). Off for everyone else until it has
+// been checked against real videos.
+const BODYFIT = (() => { try { return new URLSearchParams(location.search).has("bodyfit") } catch (e) { return false } })();
+let BODYLIB = null;
+const bodyLibLoad = BODYFIT ? fetch("bodylib.json?v=1").then(r => r.ok ? r.json() : null).then(j => { BODYLIB = j }).catch(() => {}) : Promise.resolve();
+const armLibReady = () => Promise.race([Promise.all([armLibLoad, bodyLibLoad]), new Promise(r => setTimeout(r, 20000))]);
+const analyse = (raw, o = {}) => analyseRaw(raw, { ...o, ...(ARMLIB ? { armLib: ARMLIB } : {}), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
 import { combineViews, findOffset, verticalMismatch, SAME_PITCH_LIMIT } from "./multiview.js";
 import { loadRTM, rtmLook, toLook, rtmBackend } from "./rtm.js";

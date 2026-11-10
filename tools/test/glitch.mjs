@@ -9,6 +9,8 @@
 import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib";
 import { dirname, join } from "path"; import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js"; import { truthD, armLibFor } from "./truth.mjs";
+// BODYFIT=1: with the whole-body fit (benchmark views use the library built without the benchmark athletes)
+const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(new URL("./bench/bodylib_holdout.json", import.meta.url), "utf8")) : null;
 const dir = join(dirname(fileURLToPath(import.meta.url)), "bench"), L = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))));
 const J = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28], mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
 const rel = (F, j) => [0, 1, 2].map(k => F[j][k] - (F[23][k] + F[24][k]) / 2);
@@ -25,14 +27,14 @@ function score(P, M, caps) {
 const rows = [];
 for (const f of readdirSync(dir).filter(f => f.endsWith(".raw.json.gz")).sort()) {
   const v = f.replace(".raw.json.gz", ""), raw = L(f), tr = L(v + ".truth.json.gz"), T = truthD(tr);
-  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp) });
+  const D = analyse({ ...raw, heightIn: tr.height / 0.0254 }, { armLib: armLibFor(tr.sp), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
   const caps = {}; for (const j of J) { let m = 0; for (let t = 1; t < tr.P.length - 1; t++) m = Math.max(m, acc(tr.P, t, j)); caps[j] = 1.5 * m }
   rows.push({ v, caps, a: score(D.pose, D.metrics, caps), t: score(tr.P, T.metrics) });
 }
 // the saved real clips have no truth: judged with the hardest speed change seen in any lab pitch
 const FX = join(dirname(fileURLToPath(import.meta.url)), "fixtures"), arm = JSON.parse(readFileSync(new URL("../../armlib.json", import.meta.url)));
 const labCap = {}; for (const j of J) labCap[j] = Math.max(...rows.map(r => r.caps[j]));
-const clips = readdirSync(FX).filter(f => f.endsWith(".json.gz")).sort().map(f => { const raw = JSON.parse(gunzipSync(readFileSync(join(FX, f)))), D = analyse(raw, { armLib: arm }), k = 240 / D.fps, c = {}; for (const j of J) c[j] = labCap[j] * k * k; return { f, s: score(D.pose, D.metrics, c), fps: D.fps } });
+const clips = readdirSync(FX).filter(f => f.endsWith(".json.gz")).sort().map(f => { const raw = JSON.parse(gunzipSync(readFileSync(join(FX, f)))), D = analyse(raw, { armLib: arm, ...(BODYLIB ? { bodyLib: JSON.parse(readFileSync(new URL("../../bodylib.json", import.meta.url), "utf8")), bodyFit: true } : {}) }), k = 240 / D.fps, c = {}; for (const j of J) c[j] = labCap[j] * k * k; return { f, s: score(D.pose, D.metrics, c), fps: D.fps } });
 const col = (s, k) => mean(rows.map(r => r[s][k]).filter(Number.isFinite)).toFixed(k === "shake" ? 2 : 1);
 console.log(`views ${rows.length}`);
 console.log("            shake(cm/f²)   jumps/view   flips/view   impossible%");
