@@ -8,7 +8,7 @@
 import { readFileSync, readdirSync } from "fs"; import { gunzipSync } from "zlib";
 import { dirname, join } from "path"; import { fileURLToPath } from "url";
 import { analyse, detectSlowFactor } from "../../pipeline.js";
-const here = dirname(fileURLToPath(import.meta.url)), fx = join(here, "fixtures");
+const here = dirname(fileURLToPath(import.meta.url)), fx = process.env.ROBDIR || join(here, "fixtures")   // ROBDIR: other clips in the same format;
 const LIB = JSON.parse(readFileSync(join(here, "../../armlib.json"), "utf8"));
 let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -29,6 +29,10 @@ const DAMAGE = {
   "claimed 240 fps": r => { r.fps = 240; r.videoFps = 240 },
   "tiny picture": r => { r.width = 64; r.height = 48 },
   "reversed in time": r => { r.frames.reverse() },
+  "every 3rd frame doubled": r => { r.frames = r.frames.flatMap((f, i) => i % 3 ? [f] : [f, clone(f)]) },   // phones' variable frame rate
+  "someone else for 5 frames": r => { const n = r.frames.length, k = Math.floor(n / 2); for (let i = k; i < k + 5 && i < n; i++) if (r.frames[i]) for (const p of r.frames[i].img) { p[0] = 1 - p[0] * 0.5; p[1] = p[1] * 0.6 } },
+  "points off the picture": r => { for (const f of r.frames) if (f && rnd() < 0.2) for (const p of f.img) { p[0] = p[0] * 3 - 1; p[1] = p[1] * 3 - 1 } },
+  "glove hand twice as fast": r => { for (const f of r.frames) if (f && rnd() < 0.5) { const a = f.img[15], b = f.img[16]; f.img[15] = b.slice(); f.img[16] = a.slice() } },
 };
 const files = readdirSync(fx).filter(f => /\.json(\.gz)?$/.test(f));
 let bad = 0, n = 0;

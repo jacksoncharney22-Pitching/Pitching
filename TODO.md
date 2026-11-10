@@ -341,6 +341,14 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 14:40 FINDING (not fixed): glove readings left: glove elbow at FS 10.7 is outliers (single views -43..+53), not a bias;
   glove elbow at arm cocked from front_3b reads 11.6 deg too straight (10 of 12); glove abduction FS bias by camera
   (behind +5, side_back -6, same sign on the unusual set): small, camera-specific.
+- **14:40 SHIPPED (5f92c32, Tuesday reliability): `tools/test/robust.mjs`** (on GitHub, regression job): every fixture damaged
+  20 ways (frames lost at random / 70% / middle third, 12/3/1/0-frame clips, NaN points, throwing arm never seen, no 3D,
+  no learned depth, standing still, reversed, 240 fps, tiny picture, doubled frames, another person for 5 frames, points
+  off the picture, hands swapped); must give events in order + finite numbers or a plain Error message. Found + fixed two
+  on Hackimer: a 12-frame cut put arm cocked BEFORE foot strike (the 17-50 ms arm-cocked window reached before FS), and a
+  still pitcher crashed the second foot-slide look (read P[t-h] before frame 0). samecheck bit-identical, 24 clips.
+  `ROBDIR=<dir>` runs it on other clips (5 bench views + 1 unusual: 120/120 ok). Also checked: Maher layback at foot strike
+  now reads -25/-28 deg (lab range -11..64) with the arm library, so the Monday "219 deg" item is stale (closed).
 - Still open (accuracy): before foot strike, side tilt on 2653 side_back reads +2 vs truth -21 in every version (the
   pitcher leans toward 1B/3B in the stride and the app misses it from that camera); side_back arm slot still +10.5 high.
 - (old) **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
@@ -915,7 +923,7 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
   picture-scale jump (body ~580 px tall at the start and at the finish), so the zoom can't be seen without the video.
   The data does show Fast mode flipping the whole body left/right for 5 frames just after release (1.78-1.85 s); it's
   corrected, but that's where the finish wobbles.
-- Layback reads over 180° at foot strike on Maher (219° in fast and max). On the benchmark (lab arm match on, as in
+- (CLOSED 2026-11-10 14:40: with the lab arm library Maher reads -25/-28 deg at foot strike) Layback reads over 180° at foot strike on Maher (219° in fast and max). On the benchmark (lab arm match on, as in
   the app) layback at foot strike is only 5.6° off, so look at Maher's own arm around 1.58 s: probably the forearm
   pointing the wrong way toward/away from the camera there.
 - Trunk rotation at foot strike and release (see Today): the worst angle reading left, 11-18° off.
