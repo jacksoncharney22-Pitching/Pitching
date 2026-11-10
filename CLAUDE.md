@@ -27,6 +27,7 @@ picture or numbers from a real clip rather than describing a change.
 | `fuse.js` | Picks the pitcher among detected people; fuses tracker candidates. |
 | `rtm.js` + `rtm/`, `ort/` | RTMPose-x tracker (onnxruntime-web, WebGPU/WASM), used by Max accuracy. Weights split into `rtm/*.wasm` parts. |
 | `lib/vision_bundle.mjs`, `model/`, `wasm/` | MediaPipe pose landmarker (fast/high, and fallback). |
+| `ortboot.js` | Starts onnxruntime once for rtm.js and lifter.js. In Max the stronger tracker runs in onnxruntime's background worker (page doesn't freeze); if that worker can't start or doesn't answer in 30 s it reloads onnxruntime on the page (`window.__ortProxy` says which; `?ortproxy=0` forces the page). Checked by `tools/test/ortproxy_check.py [--rtm]` (identical numbers all ways). |
 | `lifter.js` + `lifter/` | Learned 3D depth model (ONNX) that adds how far joints are from the camera. |
 | `armzoom.js` | Re-tracks the throwing arm in zoomed crops (Max accuracy). |
 | `net.js` | Detects a net/backstop between camera and pitcher and cleans it out of the frames the tracker reads (never out of what the user sees). |

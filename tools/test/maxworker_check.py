@@ -10,7 +10,7 @@ filled-in figure as finder_check.py (not real footage, nothing committed) for a 
 with ?poseworker=0, and fails unless both raw tracker outputs are byte-identical, the worker run stayed in the worker,
 and there were no page errors. Prints both times and the page's longest freeze. --nortm blocks the stronger tracker
 (RTMPose) so Max's "still look" MediaPipe models are used instead. The page run also turns off onnxruntime's
-background proxy (`--pageflag`), so it is the old way end to end; `--workerflag ?ortproxy=1` tries the proxy (a trial, off by default). `--only worker|page` runs one side (two can run at
+background proxy (`--pageflag`), so it is the old way end to end; the worker side uses the default (onnxruntime background worker on, since 2026-11-10). `--only worker|page` runs one side (two can run at
 once in separate shells), `--only compare` then compares them. Max is slow headless: keep --frames small.
 """
 import gzip, json, sys, os, subprocess, time, shutil, hashlib

@@ -333,8 +333,25 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   shipped (stays on `wip-max-worker`, untimed: `tools/test/trend_time.py`).
   SHIPPED 5:40 (fc5f299): (a) live; worker run on the shipped code: raw 189d65882e42 / looks 3de9d1b584ac (identical), longest
   freeze 24.5-32 -> 17.2 s, freezes over 0.3 s 117-119 -> 53. The 17 s left is RTMPose on the page: (b) removes it (0.6 s).
+- **6:40 session:** SHIPPED f03c69b (tests + deploy passed): onnxruntime background worker ON by default for the stronger
+  tracker (Max), with a safe fallback: `ortboot.js` tries the worker with a 62-byte test model (30 s limit); if it's refused
+  or silent, onnxruntime is loaded again on the page. `tools/test/ortproxy_check.py [--rtm]` (on GitHub): learned 3D and a
+  tracker look byte-identical worker / ?ortproxy=0 / worker refused / worker silent; tracker start-up page freeze 15.7 ->
+  0.07 s. Fast/High keep onnxruntime on the page (the learned 3D alone freezes 0.1 s; worker adds ~0.5-1.4 s start-up).
+  Max end to end with the worker on (maxworker_check --only worker, 30 synthetic frames): raw 189d65882e42 / looks
+  3de9d1b584ac, identical to before; longest page freeze 17.2 -> 0.37 s; 692 -> 653 s.
+  Still worth a real iPhone/Android look (`window.__ortProxy` in the console says what happened).
+  IN PROGRESS (trial, flag `?keepclip=1`, off by default): Recent keeps only the analysed pitch as a small MP4
+  (`keepclip.js`: each frame pass 1 of the tracker visits is also encoded, ≤1280 px, frame i at i/fps; saved only if <80%
+  of the upload; rec.clipStart = window start, re-open shifts data.start by it). `tools/test/keepclip_check.py <video>`:
+  60 frames of a 1080p test pattern, 2.6 MB -> 0.34 MB, every frame lines up (0 off by one). history_check has a re-open
+  check for clipStart. NEXT: (1) full Fast run with `?keepclip=1` on a synthetic clip (`finder_check.py` makes one) via
+  clip_run, re-open from Recent, check the overlay video and screenshots match the first open; (2) multi-angle and
+  Ultra keep the whole upload (only K===1 Fast/High/Max); (3) then default ON and add keepclip_check to GitHub
+  (needs a generated test video: ffmpeg testsrc2 in the workflow). history_check flaked here under CPU load (a Max run
+  in the background): re-run it on a quiet sandbox.
 - **NEXT SESSION (after 5:40), Tuesday speed and reliability:** (0) check tests/deploy for fc5f299 and later; (1) make the
-  onnxruntime proxy safe to turn on by default: if the proxy's worker fails to start, fall back (6:40 session working on this, 06:50 ET) (e.g. load a second
+  onnxruntime proxy safe to turn on by default: if the proxy's worker fails to start, fall back (DONE 6:40, f03c69b) (e.g. load a second
   copy of ort without proxy, or detect support up front) and say so in `window.__ortProxy`; test by blocking the proxy
   worker's script in Playwright; then default ON (freeze 17 -> 0.6 s); (2) time the parallel re-read pool (c) with
   `tools/test/trend_time.py` on a quiet sandbox (nothing else running), ship if faster; (3) keep only the trimmed pitch

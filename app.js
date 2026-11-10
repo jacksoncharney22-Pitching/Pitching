@@ -70,6 +70,8 @@ import { armZoom } from "./armzoom.js";
 import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
+import { clipKeeper } from "./keepclip.js";
+const KEEPCLIP = /[?&]keepclip=1/.test(location.search);   // trial until checked on real clips: Recent keeps only the analysed pitch
 
 const $ = id => document.getElementById(id);
 const views = ["home", "compare", "prep", "progress", "results"];
@@ -282,7 +284,7 @@ async function run() {
     await holdWake();
     const span = 0.93 / K, views = [], hints = [null];
     // main angle: the trimmed window
-    const m = keepOneShot(await trackOne(q, { url: angles[0].url, start: S, end: E, prog: { prefix: `Angle 1 of ${K} (${angles[0].label})`, from: 0, to: span } }));
+    const m = keepOneShot(await trackOne(q, { url: angles[0].url, start: S, end: E, keep: KEEPCLIP && K === 1, prog: { prefix: `Angle 1 of ${K} (${angles[0].label})`, from: 0, to: span } }));
     views.push({ fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames, label: angles[0].label });
     if (K === 1) {                                    // one video: the standard single-camera skeleton
       step("stTrack", "done", `${m.N} frames at ${m.sampleFps} fps${m.repeats ? ` · ${m.repeats} repeated frames skipped` : ""}`);
@@ -303,7 +305,10 @@ async function run() {
       data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
       bar(1); step("stBuild", "done", "Done");
       closeTrackers(); releaseWake();
-      const id = await saveHistory(data, current.blob);
+      // Recent keeps just the analysed pitch as a small video when that's much smaller than the upload (keepclip.js)
+      let vid = current.blob, clipStart = null;
+      if (m.keep) { const c = await m.keep.finish(); if (c && (!vid || c.size < vid.size * 0.8)) { vid = c; clipStart = m.clipStart } }
+      const id = await saveHistory(data, vid, clipStart);
       return openResults(data, current.url, { id, raw });
     }
     for (let k = 1; k < K; k++) {
@@ -411,10 +416,12 @@ async function trackSimple(q, src) {
   const sampleFps = Math.max(1, Math.min(want, capF / Math.max(0.05, end - start))), N = Math.max(1, Math.min(capF, Math.floor((end - start) * sampleFps)));
   const frames = [], passes = high ? 2 : 1, diffs = []; let prevSig = null;
   const seekTo = async (i, box) => { v.currentTime = start + (i + 0.5) / sampleFps; await once(v, "seeked"); S = nc.frame(v, box) };
+  const keep = src.keep ? await clipKeeper(W, H, sampleFps) : null;   // the pitch alone, for Recent (keepclip.js)
   let lastBox = null;
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
     await seekTo(i, lastBox);
+    if (keep) await keep.add(v);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
     const r = await lmA.detect(S, Math.round(i * 1000 / sampleFps) + 1);
     lastBox = r.landmarks && r.landmarks[0] ? poseBox({ img: r.landmarks[0].map(p => [p.x, p.y]) }, W, H) : null;
@@ -457,7 +464,7 @@ async function trackSimple(q, src) {
   runModels.forEach(m => m.close()); runModels = [];                    // frees the worker and its models
   const nReal = N - dupS.filter(Boolean).length, found = frames.filter(Boolean).length;
   if (found < nReal * 0.5) throw new Error(`The tracker only found the pitcher in ${found} of ${nReal} frames of one angle. Use clips where his whole body stays in view.`);
-  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal, diffs };
+  return { frames, N, sampleFps, W, H, start, label: high ? "high" : "fast", repeats: N - nReal, diffs, keep, clipStart: start };
 }
 
 
@@ -707,11 +714,12 @@ async function trackMax(src) {
   const tick = (label, i) => { doneU++; if (doneU % 3 && i !== N - 1) return; say(`${label}: frame ${i + 1} of ${N}`, doneU / units) };
   // pass 1: the whole picture, every frame; pick out the pitcher if other people are in view
   const looks = Array.from({ length: N }, () => []), first = new Array(N).fill(null);
+  const keep = src.keep ? await clipKeeper(W, H, sampleFps) : null;   // the pitch alone, for Recent (keepclip.js)
   let ref = null; const diffs = []; let prevSig = null;
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
     boxOf = () => ref ? poseBox(ref, W, H) : null;
-    await seekTo(i);
+    await seekTo(i); if (keep) await keep.add(v);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
     const who = pickPitcher(await finder.detect(S), null, W, H, ref);   // the pitcher among everyone in view
     const f = pickPitcher(await full.detect(S, ts(i)), null, W, H, who || ref);
@@ -769,7 +777,7 @@ async function trackMax(src) {
   window.__lastLooks = { W, H, fps: sampleFps, looks, dup, first: first.map(f => f && f.img) };   // dup/first: for tools/test/maxworker_check.py
   const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
   if (rtm && opts.armZoom !== false) { try { await armZoom(nc.on ? nc.cv : v, frames, W, H, sampleFps, seekTo, say, () => cancelled) } catch (e) { console.warn("arm close-up skipped", e) } }
-  return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs };
+  return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs, keep, clipStart: start };
 }
 
 
@@ -888,13 +896,13 @@ async function tx(mode, fn) { const db = await idb(); return new Promise((res, r
 let pendingSpot = null, pendingSave = "";
 // Saving must never stand between the coach and the results: a full phone or storage that never answers used to either lose
 // the pitch without a word or leave the page on "Building" for good. Now it gives up after 6-45 s, and the results open with a note.
-async function saveHistory(data, blob) {
+async function saveHistory(data, blob, clipStart = null) {
   // (45 s: writing a long 4K video on a phone can take a while, and a write that does finish later still lands in Recent)
-  const out = await Promise.race([saveHistoryNow(data, blob), new Promise(r => setTimeout(() => r({ id: null, note: "<b>This pitch may not be saved to Recent</b>: this browser's storage is very slow to answer. The results below are fine; download the PDF or CSV to keep them." }), 45000))]);
+  const out = await Promise.race([saveHistoryNow(data, blob, clipStart), new Promise(r => setTimeout(() => r({ id: null, note: "<b>This pitch may not be saved to Recent</b>: this browser's storage is very slow to answer. The results below are fine; download the PDF or CSV to keep them." }), 45000))]);
   pendingSave = window.__saveNote = out.note;
   return out.id;
 }
-async function saveHistoryNow(data, blob) {
+async function saveHistoryNow(data, blob, clipStart = null) {
   try {
     const all = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => b.date - a.date);
     // A new clip from a different spot than this pitcher's last one: say so now, before the coach reads a camera move as a change in the delivery.
@@ -904,7 +912,7 @@ async function saveHistoryNow(data, blob) {
     // tracking (enough to re-open the skeleton and numbers, and to compare), up to 30 pitches, so a coach can look back weeks.
     for (const x of all.slice(HIST_KEEP - 1)) await tx("readwrite", s => s.delete(x.id));
     for (const x of all.slice(HIST_VIDEOS - 1, HIST_KEEP - 1)) if (x.blob) { x.blob = null; await tx("readwrite", s => s.put(x)) }
-    const rec = { date: Date.now(), name: data.name, hand: data.throwHand, frames: data.frames, fps: data.fps, data, blob, raw: lastRaw };
+    const rec = { date: Date.now(), name: data.name, hand: data.throwHand, frames: data.frames, fps: data.fps, data, blob, raw: lastRaw, ...(clipStart != null ? { clipStart } : {}) };
     try { return { id: await tx("readwrite", s => s.add(rec)), note: "" } }
     catch (e) {
       if (!blob) throw e;
@@ -945,6 +953,8 @@ async function renderHistory() {
         const up = it.data && it.data.userPhases, o = { hand: it.hand || "auto", ...(up ? { phases: up } : {}) };
         try { const d = tagResult(await reanalyse(it, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
       }
+      // a saved pitch-only video starts at the trimmed window's start (time 0 there), not where it was in the upload
+      if (it.blob && it.clipStart != null && data) data = { ...data, start: (data.start || 0) - it.clipStart };
       openResults(data, url, { id: it.id, raw: it.raw, changed });
     };
     // file names like IMG_2041 tell a coach nothing a week later; the new name also shows on Compare, Over time and the PDF

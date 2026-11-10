@@ -60,6 +60,15 @@ with sync_playwright() as p:
     if "different spot" not in t: bad.append("no different-spot note")
     pg.evaluate(sv, [0.02, 0, 1]); pg.wait_for_timeout(100); t = note()
     if "different spot" in t: bad.append("spot note on the same spot")
+    # a pitch saved with only its analysed window as video (keepclip.js): the video starts at that window, so the viewer
+    # must be told the pitch starts clipStart seconds earlier than in the upload
+    pg.evaluate("""raw => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onsuccess = () => { const t = r.result.transaction('analyses', 'readwrite'); t.objectStore('analyses').clear();
+      t.objectStore('analyses').add({ date: Date.now(), name: 'Clip pitch', hand: 'auto', frames: raw.frames.length, fps: raw.fps, data: { name: 'Clip pitch' }, blob: new Blob(['x'], { type: 'video/mp4' }), clipStart: (raw.start || 0) - 0.25, raw }); t.oncomplete = res; t.onerror = () => rej(t.error) } })""", raw)
+    pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(1500)
+    pg.evaluate("() => document.querySelector('.rec-open').click()"); pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=60000); pg.wait_for_timeout(1000)
+    st = pg.evaluate("() => window.__lastData && window.__lastData.start")
+    print("pitch-only video: start in the saved video", st, "(want 0.25)")
+    if st is None or abs(st - 0.25) > 1e-6: bad.append(f"pitch-only video start: {st}")
     if len(sys.argv) > 2: pg.screenshot(path=sys.argv[2])
     b.close()
 print("page errors:", errs)
