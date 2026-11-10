@@ -1568,7 +1568,7 @@ function analyseOnce(raw, opts = {}) {
     if (opts.contactSlide !== false) {
       // speed over a fixed 1/30 s, whatever the frame rate (in slow motion, frame-to-frame jitter would swamp it)
       const h = Math.max(1, Math.round(fs / 60));
-      const sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h);
+      const sp = t => { const a = P[Math.max(0, t - h)], b = P[Math.min(T - 1, t + h)]; return Math.hypot(b[Al][0] - a[Al][0], b[Al][2] - a[Al][2]) * fs / (2 * h) };
       // never later than 0.1 s before the arm is cocked: foot strike to max layback takes 0.12 s on a typical pitch
       // (0.09-0.17 s on 90% of 404 lab fastballs), and a filmed foot that looks planted is, near enough, planted
       const last = Math.min(T - 1 - h, contactF + Math.round((opts._slideMax ?? 0.1) * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs));
@@ -1598,11 +1598,13 @@ function analyseOnce(raw, opts = {}) {
     // The arm goes from max layback to release in 17-50 ms on every lab pitch: the arm can't sit "cocked" any longer than that.
     // When the layback reading peaks earlier (a noisy arm on the way back), take the highest layback inside that window instead.
     // ...and never closer than 17 ms either (matters at high frame rates, where one frame is only a few ms)
+    // (on a clip cut short around foot strike the window is kept after foot strike, and the foot speed reads stay inside the
+    // clip: before 2026-11-10 such clips put arm cocked before foot strike or crashed; tools/test/robust.mjs)
     const gapMax = Math.max(1, Math.round((opts._merGap ?? 0.05) * fs)), gapMin = Math.max(1, Math.round(0.017 * fs));
-    if (!opts._noGaps && (rel - best > gapMax || rel - best < gapMin)) { let b2 = rel - gapMax; for (let t = b2; t <= rel - gapMin; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
+    if (!opts._noGaps && (rel - best > gapMax || rel - best < gapMin)) { let b2 = Math.max(fs_, rel - gapMax); for (let t = b2; t <= rel - gapMin; t++) if ((M.throwER[t] ?? -999) > (M.throwER[b2] ?? -999)) b2 = t; best = b2 }
     const moved = best > cock; cock = best;
     // the foot strike limit above leaned on the old arm cocked; when that moved later, a still-sliding foot gets another look
-    if (moved && opts._fs2 !== false && !userFS && opts.contactFix !== false && opts.contactSlide !== false) { const h = Math.max(1, Math.round(fs / 60)), sp = t => Math.hypot(P[t + h][Al][0] - P[t - h][Al][0], P[t + h][Al][2] - P[t - h][Al][2]) * fs / (2 * h), v2 = opts._slideV2 ?? 0.5;
+    if (moved && opts._fs2 !== false && !userFS && opts.contactFix !== false && opts.contactSlide !== false) { const h = Math.max(1, Math.round(fs / 60)), sp = t => { const a = P[Math.max(0, t - h)], b = P[Math.min(T - 1, t + h)]; return Math.hypot(b[Al][0] - a[Al][0], b[Al][2] - a[Al][2]) * fs / (2 * h) }, v2 = opts._slideV2 ?? 0.5;
       if (sp(contactF) >= v2) for (let t = contactF + 1, e = Math.min(T - 1 - h, contactF + Math.round(0.1 * fs), cock - Math.round((opts._slideCock ?? 0.08) * fs)); t <= e; t++) if (sp(t) < v2) { contactF = t; break } }
     // (not while the slow-motion reader is still working out the clip's real speed: seconds aren't real yet, hence _noGaps)
     // foot strike to max layback takes 0.10-0.18 s on the lab pitches (0.09-0.17 s on 90% of 404 lab fastballs): a foot read as planted well outside that was pinned too early or too late

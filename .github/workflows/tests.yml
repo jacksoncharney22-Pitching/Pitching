@@ -22,6 +22,8 @@ jobs:
         run: node tools/test/fuse_check.mjs
       - name: Lab-matched body is refused when it doesn't line up with the video
         run: node tools/test/fitguard.mjs
+      - name: Damaged tracker output (lost frames, very short clips, pitcher standing still) never crashes the build
+        run: node tools/test/robust.mjs
   slow-motion:
     runs-on: ubuntu-latest
     steps:
