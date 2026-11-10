@@ -12,11 +12,11 @@ import { gunzipSync } from "zlib";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js";
-import { armLibFor } from "./truth.mjs";
+import { armLibFor, truthD } from "./truth.mjs";
 const here = dirname(fileURLToPath(import.meta.url)), dir = join(here, "bench");
 const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? +argv[i + 1] : d };
 const only = argv.find((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--"))) || "";
-const SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 80);
+const KEEPARM = argv.includes("--keeparm"), SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 80);
 const load = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))).toString("utf8"));
 
 // ---- the library
@@ -153,7 +153,13 @@ function fit2D(raw, A, ev, height) {
 // best rotation about the vertical (y) taking hip-centred points A onto B (lists of [x,y,z])
 function yawAlign(Apts, Bpts) { let sxx = 0, sxz = 0; for (let i = 0; i < Apts.length; i++) { const a = Apts[i], b = Bpts[i]; sxx += a[0] * b[0] + a[2] * b[2]; sxz += a[0] * b[2] - a[2] * b[0] } const th = Math.atan2(sxz, sxx), c = Math.cos(th), s = Math.sin(th); return p => [c * p[0] - s * p[2], p[1], s * p[0] + c * p[2]] }
 
+const unit = v => { const n = Math.hypot(...v); return v.map(x => x / n) }, cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function trunkAxes(F) { const ms = [0, 1, 2].map(k => (F[11][k] + F[12][k]) / 2), mh = [0, 1, 2].map(k => (F[23][k] + F[24][k]) / 2);
+  const up = unit(ms.map((v, k) => v - mh[k])), r0 = F[12].map((v, k) => v - F[11][k]), fw = unit(cross(up, r0)), r = cross(fw, up); return [r, up, fw] }
 const JOINTS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+const ANG = { throwElbow: "throwing elbow", throwAbd: "shoulder abduction", throwER: "layback", leadKnee: "front knee",
+  pelvisRot: "pelvis rotation", trunkRot: "trunk rotation", separation: "hip-shoulder sep.", trunkFwd: "forward tilt", trunkLat: "side tilt" };
+const ROT = new Set(["pelvisRot", "trunkRot", "separation", "throwER"]);
 const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz") && f.startsWith(only)).map(f => f.replace(".raw.json.gz", "")).sort();
 const res = [];
 for (const v of views) {
@@ -187,11 +193,35 @@ for (const v of views) {
     for (let i = 0; i < FR.length; i++) { const f = rf(FR[i]), a = ra(AR[i]), b = TR[i]; ef += Math.hypot(f[0] - b[0], f[1] - b[1], f[2] - b[2]); ea += Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
       const t = FT[Math.floor(i / JOINTS.length)][0], j = JOINTS[i % JOINTS.length]; if (t >= tr.events.fs && t <= tr.events.br && arm.includes(j)) { af += Math.hypot(f[0] - b[0], f[1] - b[1], f[2] - b[2]); aa += Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) } }
   }
+  let angA = null, angF = null;
+  if (F.rotAlign && argv.includes("--angles")) {
+    // put the fitted limbs into the app's own world (turned onto the app's skeleton, no truth used), keep head/hands/feet
+    // offsets from the app, then read every angle with the same code for app, fitted and truth (truthD)
+    const rfa = yawAlign(FR, AR), Tn = Math.min(A.pose.length, tr.P.length), P = A.pose.slice(0, Tn).map(F2 => F2.map(p => p.slice()));
+    const FOLLOW = { 15: [17, 19, 21], 16: [18, 20, 22], 27: [29, 31], 28: [30, 32] };
+    FT.forEach(([t], q) => { if (t >= Tn) return; const ha = hip(A.pose[t]);
+      JOINTS.forEach((j, u) => { const p = rfa(FR[q * JOINTS.length + u]).map((v, k) => v + ha[k]), d = p.map((v, k) => v - A.pose[t][j][k]); P[t][j] = p; for (const f of FOLLOW[j] || []) P[t][f] = A.pose[t][f].map((v, k) => v + d[k]) });
+      // --keeparm: the app's own arms (lab-throw arm match) hung on the fitted shoulders
+      // the arm is kept in the trunk's own axes (so layback/abduction stay the app's), turned with the fitted trunk
+      if (KEEPARM) { const Fa = trunkAxes(A.pose[t]), Ff = trunkAxes(P[t]);
+        const rot = v => { const c = Fa.map(ax => ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2]); return [0, 1, 2].map(k => Ff[0][k] * c[0] + Ff[1][k] * c[1] + Ff[2][k] * c[2]) };
+        for (const [sh, ...rest] of [[11, 13, 15, 17, 19, 21], [12, 14, 16, 18, 20, 22]]) for (const j of rest) { const d = rot(A.pose[t][j].map((v, k) => v - A.pose[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + d[k]) } } });
+    const ev = tr.events, TT = truthD(tr).metrics, MA = truthD({ ...tr, P: A.pose.slice(0, Tn) }).metrics, MF = truthD({ ...tr, P }).metrics;
+    angA = {}; angF = {};
+    for (const k of Object.keys(ANG)) for (const e of ["fs", "mer", "br"]) { const b = TT[k]?.[ev[e]], a = MA[k]?.[ev[e]], f = MF[k]?.[ev[e]]; if (b == null || a == null || f == null) continue;
+      const d = x => Math.abs(ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b); angA[k + "|" + e] = d(a); angF[k + "|" + e] = d(f) }
+  }
   const cn = Math.hypot(...F.c);
-  res.push({ v, app: 100 * ea / n, fit: 100 * ef / n, appArm: 100 * aa / an, fitArm: 100 * af / an, cn });
+  res.push({ v, angA, angF, app: 100 * ea / n, fit: 100 * ef / n, appArm: 100 * aa / an, fitArm: 100 * af / an, cn });
   console.log(`${v.padEnd(22)} joints ${(100 * ea / n).toFixed(1)} -> ${(100 * ef / n).toFixed(1)} cm   throwing arm FS-BR ${(100 * aa / an).toFixed(1)} -> ${(100 * af / an).toFixed(1)} cm   shape size ${cn.toFixed(1)}`);
 }
 const ok = res.filter(r => !r.skip), m = k => ok.reduce((s, r) => s + r[k], 0) / ok.length;
 console.log(`\n${ok.length} views (${res.length - ok.length} skipped)   joints ${m("app").toFixed(2)} -> ${m("fit").toFixed(2)} cm   throwing arm ${m("appArm").toFixed(2)} -> ${m("fitArm").toFixed(2)} cm   (K ${K}, sigma ${SIGMA})`);
 const byAngle = {}; ok.forEach(r => { const a = r.v.replace(/^\d+_\d+_/, ""); (byAngle[a] ??= []).push(r) });
 for (const [a, R] of Object.entries(byAngle)) console.log(`  ${a.padEnd(10)} joints ${(R.reduce((s, r) => s + r.app, 0) / R.length).toFixed(1)} -> ${(R.reduce((s, r) => s + r.fit, 0) / R.length).toFixed(1)}   arm ${(R.reduce((s, r) => s + r.appArm, 0) / R.length).toFixed(1)} -> ${(R.reduce((s, r) => s + r.fitArm, 0) / R.length).toFixed(1)}`);
+
+if (argv.includes("--angles")) {
+  console.log("\nangle error at the true event frames (deg, app -> fitted), same angle code for both:");
+  for (const k of Object.keys(ANG)) { const line = ["fs", "mer", "br"].map(e => { const A1 = ok.map(r => r.angA?.[k + "|" + e]).filter(Number.isFinite), F1 = ok.map(r => r.angF?.[k + "|" + e]).filter(Number.isFinite);
+    return A1.length ? `${e} ${(A1.reduce((s, x) => s + x, 0) / A1.length).toFixed(1)} -> ${(F1.reduce((s, x) => s + x, 0) / F1.length).toFixed(1)}` : `${e} -` }); console.log(`  ${ANG[k].padEnd(20)} ${line.join("   ")}`) }
+}

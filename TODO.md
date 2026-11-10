@@ -141,7 +141,19 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   0.3 6.22, 1 6.45, 3 7.05, 10 7.94; K 30 only 8.3 (too coarse), K 50 7.3. Comparison is fair but not yet the bench's:
   both skeletons turned about the vertical onto the truth (the fit has no world frame yet), only over leg lift -0.25 s
   to release +0.09 s, joints only (no angles yet). 3036 (the lefty-stored-as-righty) is the worst pitch.
-- **NEXT SESSION, in order:** (1) angles: turn the fitted delivery into a full 33-point pose over the window (head/feet
+- 19:40 angles measured (`bodyproj.mjs --2d --angles --keeparm`, at the true event frames, same angle code for app and fit):
+  the fitted body WINS on front knee FS/MER/BR 8.1/7.3/7.2 -> 5.4/5.2/6.6, trunk rotation 8.2/6.3/7.7 -> 6.2/6.2/6.5,
+  separation 6.5/4.6/6.1 -> 5.9/4.6/5.8, forward tilt 4.3/5.8/5.6 -> 3.0/4.3/3.9, side tilt 4.8/7.2/7.1 -> 3.2/3.2/3.5;
+  LOSES on pelvis rotation 6.7/6.0/5.6 -> 6.8/7.2/6.6 (the app's hip gains were tuned on this bench). The fitted ARM
+  alone is worse (elbow 6.9/8.0/6.5 -> 9.4/12.3/9.6, layback FS 5.4 -> 12.3): the lab-throw arm match is better, so
+  `--keeparm` keeps the app's arm in the trunk's own axes, hung on the fitted shoulders (arm angles then unchanged).
+  Prior: lam 1 gives pelvis 6.7/6.8/6.3 and slightly worse tilts/separation FS; lam 0.3 kept.
+- **NEXT SESSION, in order (supersedes the list below):** (1) pelvis: find why it's 1° worse late (signed bias by camera;
+  try perspective camera, or keep the app's hip turn and only take legs/trunk from the fit); (2) the "as the coach sees
+  it" table (angles at the app's event frames); (3) put the hybrid (fitted body + app arm) into pipeline.js behind
+  `_bodyFit`, blend to the app's pose outside the window, then bench/perview/regress/glitch, and Maher/Hackimer/Staumont
+  strips; ship if it wins.
+- (older) NEXT SESSION, in order: (1) angles: turn the fitted delivery into a full 33-point pose over the window (head/feet
   from the app's own pose, offsets kept) and score the bench angle table (elbow, layback, rotations, tilts at FS/MER/BR,
   "as the coach sees it") vs the app; (2) refine timing inside the fit (event frames ±2 as parameters, pick best 2D
   fit) and add perspective (camera distance) instead of orthographic; (3) frames outside the window: blend back to the
