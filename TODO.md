@@ -349,6 +349,11 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   still pitcher crashed the second foot-slide look (read P[t-h] before frame 0). samecheck bit-identical, 24 clips.
   `ROBDIR=<dir>` runs it on other clips (5 bench views + 1 unusual: 120/120 ok). Also checked: Maher layback at foot strike
   now reads -25/-28 deg (lab range -11..64) with the arm library, so the Monday "219 deg" item is stale (closed).
+- 14:40 also shipped (reliability): coach never sees programmer words if the analysis trips (friendlyError: TypeError /
+  "undefined" etc. -> plain "try trimming it" message); a pitch record with no frame rate opens at 30 fps (`withFps`);
+  robust.mjs also runs the lab-matched body and odd typed heights (0 / 700 in / text): 96/96 ok, ~1.5 min;
+  Recent: a saved record with no skeleton gives a plain message instead of an empty results page (checked headless with
+  damaged records: before "undefined frames · NaN fps" + page error). export_check (Staumont, Maher fast) + history_check ok.
 - Still open (accuracy): before foot strike, side tilt on 2653 side_back reads +2 vs truth -21 in every version (the
   pitcher leans toward 1B/3B in the stride and the app misses it from that camera); side_back arm slot still +10.5 high.
 - (old) **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
@@ -932,6 +937,13 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
+- Browser-level damaged-input run (new 2026-11-10): robust.mjs covers analyse() in Node; do the same through the real page
+  (upload a 1-second clip, a clip with no person, a portrait 4K clip, an audio-only/odd-codec file) and check the plain
+  messages and that nothing hangs on "Building" (pattern: scratch recent_bad.py injected records via IndexedDB).
+- Worker failure paths: kill the analysis/pose worker mid-run (terminate from the page) and check the page carries on
+  (anaDrop/fallback) with identical numbers; today only "can't start" is tested.
+- Slow devices: time Fast mode with CPU throttling (Chromium CDP Emulation.setCPUThrottlingRate 4x) on a 4 s clip and make
+  sure the progress/ETA stays honest.
 - Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
   (the worker only does VIDEO mode today: add a mode to init).
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
