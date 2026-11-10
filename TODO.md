@@ -237,8 +237,18 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   from his OTHER side (a lefty's "side_open" camera sees his back). Fix in unusual_make.py: for a lefty, borrow the noise
   from the donor's opposite side view mirrored (side_open <- donor side_back), or mirror the lefty into a righty first.
   Until then, score side views of the unusual set on righties only.
-- (12:40 session working on (1) shoulder mean depth / Maher Max, 12:45 ET)
-- **Next session (after 11:40):** (1) shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
+- **12:40 SHIPPED (80aa04d): trunk tilt.** Shoulder MEAN depth from MediaPipe (learned model keeps the left/right difference),
+  plus the cause of the Maher Max blocker: the 21-deg tilt swing was a toward/away SIGN choice on the spine bone (hip centre ->
+  shoulder centre) in `lift`, made on a near-zero hint: a gate on MP-vs-learned agreement showed the jump is a cliff
+  (gate 0.15 -> tilt +9, gate 0.2 -> -13; the `rot` snap already has it). Fix: spine dz = w*sign*sqrt + (1-w)*clamp(hint),
+  w = |hint|/(0.5*spine length) (`_softSpine`, `_spineSign:true` = old; `_shMean` 0 = old shoulders). Benchmark joints 9.9 ->
+  9.1 cm, arm 11.1 -> 9.6, angles 6.8 -> 6.4, side tilt FS/MER/BR 4.8/7.2/7.1 -> 4.1/5.2/5.6, forward 4.3/5.8/5.6 -> 3.6/3.5/4.1,
+  hand height 6.6 -> 5.7 cm, slot 5.53 -> 5.58, trunk rot/sep at FS +0.6/+0.5 (2653 side_back +26, one view). Lab-matched body
+  7.6 -> 7.5. No slot -2 needed. Maher fast/max tilt at release 7/9 -> 0/-8 (8 apart; with no spine fix it was 21): judge with
+  his video. Pure hint (`_softSpine` 100) agrees better on Maher (-3/-5) and tilts best but behind arm +1.0/+1.6 cm (bench CI
+  fails). Tried, no gain: moving elbows/wrists with the shoulder shift (`_shArm`). Baselines (bench, measures, compare limits)
+  updated. Unusual set NOT re-scored (needs the lab download): next session could check it.
+- **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
   benchmark slot 5.53 -> 5.81 blocks it); (2) fix unusual_make.py
   lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on
   ordinary pitchers (today 12.4 cm vs 12.3).
