@@ -16,7 +16,7 @@ import { armLibFor, truthD } from "./truth.mjs";
 const here = dirname(fileURLToPath(import.meta.url)), dir = join(here, "bench");
 const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? +argv[i + 1] : d };
 const only = argv.find((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--"))) || "";
-const KEEPARM = argv.includes("--keeparm"), SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 80);
+const SEEN = argv.includes("--seen"), KEEPARM = argv.includes("--keeparm"), SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 80);
 const load = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))).toString("utf8"));
 
 // ---- the library
@@ -223,9 +223,9 @@ for (const v of views) {
       if (KEEPARM) { const Fa = trunkAxes(A.pose[t]), Ff = trunkAxes(P[t]);
         const rot = v => { const c = Fa.map(ax => ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2]); return [0, 1, 2].map(k => Ff[0][k] * c[0] + Ff[1][k] * c[1] + Ff[2][k] * c[2]) };
         for (const [sh, ...rest] of [[11, 13, 15, 17, 19, 21], [12, 14, 16, 18, 20, 22]]) for (const j of rest) { const d = rot(A.pose[t][j].map((v, k) => v - A.pose[t][sh][k])); P[t][j] = P[t][sh].map((v, k) => v + d[k]) } } });
-    const ev = tr.events, TT = truthD(tr).metrics, MA = truthD({ ...tr, P: A.pose.slice(0, Tn) }).metrics, MF = truthD({ ...tr, P }).metrics;
+    const tev = tr.events, TT = truthD(tr).metrics, MA = truthD({ ...tr, P: A.pose.slice(0, Tn) }).metrics, MF = truthD({ ...tr, P }).metrics;
     angA = {}; angF = {};
-    for (const k of Object.keys(ANG)) for (const e of ["fs", "mer", "br"]) { const b = TT[k]?.[ev[e]], a = MA[k]?.[ev[e]], f = MF[k]?.[ev[e]]; if (b == null || a == null || f == null) continue;
+    for (const k of Object.keys(ANG)) for (const e of ["fs", "mer", "br"]) { const b = TT[k]?.[tev[e]], a = MA[k]?.[SEEN ? ev[e] : tev[e]], f = MF[k]?.[SEEN ? ev[e] : tev[e]]; if (b == null || a == null || f == null) continue;
       const d = x => Math.abs(ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b); angA[k + "|" + e] = d(a); angF[k + "|" + e] = d(f);
       const sg = x => ROT.has(k) ? ((x - b + 180) % 360 + 360) % 360 - 180 : x - b; angA["s:" + k + "|" + e] = sg(a); angF["s:" + k + "|" + e] = sg(f) }
   }
@@ -239,7 +239,7 @@ const byAngle = {}; ok.forEach(r => { const a = r.v.replace(/^\d+_\d+_/, ""); (b
 for (const [a, R] of Object.entries(byAngle)) console.log(`  ${a.padEnd(10)} joints ${(R.reduce((s, r) => s + r.app, 0) / R.length).toFixed(1)} -> ${(R.reduce((s, r) => s + r.fit, 0) / R.length).toFixed(1)}   arm ${(R.reduce((s, r) => s + r.appArm, 0) / R.length).toFixed(1)} -> ${(R.reduce((s, r) => s + r.fitArm, 0) / R.length).toFixed(1)}`);
 
 if (argv.includes("--angles")) {
-  console.log("\nangle error at the true event frames (deg, app -> fitted), same angle code for both:");
+  console.log(`\nangle error at the ${SEEN ? "APP's event frames (as the coach sees it)" : "true event frames"} (deg, app -> fitted), same angle code for both:`);
   for (const k of Object.keys(ANG)) { const line = ["fs", "mer", "br"].map(e => { const A1 = ok.map(r => r.angA?.[k + "|" + e]).filter(Number.isFinite), F1 = ok.map(r => r.angF?.[k + "|" + e]).filter(Number.isFinite);
     return A1.length ? `${e} ${(A1.reduce((s, x) => s + x, 0) / A1.length).toFixed(1)} -> ${(F1.reduce((s, x) => s + x, 0) / F1.length).toFixed(1)}` : `${e} -` }); console.log(`  ${ANG[k].padEnd(20)} ${line.join("   ")}`) }
 }
