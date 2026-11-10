@@ -131,7 +131,8 @@ jobs:
           python-version: "3.12"
       - name: Install WebKit (test tools only)
         run: |
-          pip install -q playwright && playwright install --with-deps webkit
+          sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+          pip install -q playwright numpy pillow && playwright install --with-deps webkit
           mkdir -p "$RUNNER_TEMP/t3" && cd "$RUNNER_TEMP/t3" && npm i --silent three@0.128.0
       - name: Safari engine opens the app and a saved pitch with no page errors
         env:
@@ -143,3 +144,13 @@ jobs:
           python3 tools/test/serve.py . 8766 &
           sleep 2
           python3 tools/test/phone_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/phone"
+      - name: (trial, not yet required) Safari engine runs the pitch finder's pose model on a synthetic clip
+        continue-on-error: true
+        env:
+          ORBIT_JS: tools/test/orbit_stub.js
+          BROWSER: webkit
+        run: |
+          export THREE_JS="$RUNNER_TEMP/t3/node_modules/three/build/three.min.js"
+          python3 tools/test/serve.py . 8766 &
+          sleep 2
+          timeout 900 python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
