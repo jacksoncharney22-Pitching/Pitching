@@ -979,10 +979,10 @@ function analyseOnce(raw, opts = {}) {
   // A foot strike moved by hand is treated like the app's own final foot strike: the skeleton is built around the app's first
   // guess (as it is without a hand-set foot strike) and only the moment that is reported moves. Before, the steps that key off
   // foot strike (shoulders the right way round, the arm work) were rebuilt around the hand-set frame, so moving foot strike to
-  // the very frame the app had chosen changed the separation card ~5 deg (Maher: 21 -> 16). A big move (more than 0.1 s: the
-  // first guess was wrong) still rebuilds around the hand-set frame.
+  // the very frame the app had chosen changed the separation card ~5 deg (Maher: 21 -> 16). A big move (more than 0.2 s: the
+  // first guess was wrong) still rebuilds around the hand-set frame. 0.2 s, not 0.1: on Hackimer's 16x slow motion the first guess sits 0.15 s before the final foot strike, and at 0.1 moving any event changed his slot -5.6 -> -10.5.
   const fsUser = fs_;
-  if (userFS && opts._fsKeep !== false && Math.abs(fs_ - fsGuess) <= Math.round(0.1 * fs) && fsGuess < rel && fsGuess > legLift) fs_ = fsGuess;
+  if (userFS && opts._fsKeep !== false && Math.abs(fs_ - fsGuess) <= Math.round((opts._fsKeepS ?? 0.2) * fs) && fsGuess < rel && fsGuess > legLift) fs_ = fsGuess;
   // the foot-repair pass (analyseCore) only needs where the lead foot lands and which hand throws: both are settled here
   if (opts._early) return { fsReach: fs_, throwHand: hand };
 
