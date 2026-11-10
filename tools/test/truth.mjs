@@ -38,7 +38,7 @@ export function truthD(tr) {
   const bones = {}; for (const [a, b] of [[23, 25], [25, 27]]) { const ma = LH ? mir(a) : a, mb = LH ? mir(b) : b; bones[a + "," + b] = median(P.map(F => dist(F[ma], F[mb]))) }
   // rubber: the back (pivot) foot before the leg lift
   const bk = LH ? 27 : 28, rub = [median(P.slice(0, Math.max(1, ll)).map(F => F[bk][0])), 0];
-  return { metrics: M, frames: T, fps: tr.fps || 60, pose: P, plantFrame: fs, gradeAll: true, throwHand: hand, bones, cameraDir: [0, 0, 1], rubber: rub,
+  return { truth: true, metrics: M, frames: T, fps: tr.fps || 60, pose: P, plantFrame: fs, gradeAll: true, throwHand: hand, bones, cameraDir: [0, 0, 1], rubber: rub,
     phases: [{ name: "Start", frame: 0 }, { name: "Peak leg lift", frame: ll }, { name: "Foot strike", frame: fs }, { name: "Arm cocked", frame: mer }, { name: "Release", frame: br }, { name: "Finish", frame: T - 1 }] };
 }
 

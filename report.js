@@ -80,6 +80,8 @@ function gradePct(v, p, side = "both") {
 const VELO = { ms: [65, 72], hs: [80, 87], col: [88, 92], pro: [94, 96] };
 const GROUPS = { health: "Arm health", perf: "Performance", style: "Style" };
 
+import { releaseReach } from "./pipeline.js";
+
 export function buildReport(D, levelKey) {
   const lv = LEVELS[levelKey] ? levelKey : (LEVELS[D.level] ? D.level : "hs"), L = LEVELS[lv], lvl = L.toLowerCase();
   const M = D.metrics, T = D.frames, FPS = D.fps, P = D.pose;
@@ -214,7 +216,7 @@ export function buildReport(D, levelKey) {
   }
   if (realH) {
     const fx = Math.sign((P[FS] ? P[FS][lead][0] : 1) - (P[0] ? P[0][back][0] : 0)) || 1;
-    const rub = (D.rubber || [0, 0])[0], hx = P[R] ? P[R][wrist][0] : null;
+    const rub = (D.rubber || [0, 0])[0], hx = P[R] ? (releaseReach(D) ?? P[R][wrist][0]) : null;   // steady read, camera-corrected (pipeline.js)
     const ext = hx != null ? toIn(Math.max(0, (hx - rub) * fx)) : null;
     if (ext) add({ id: "ext", group: "style", num: ext, name: "Release extension", value: `${ftin(ext)} in front of the rubber`, target: "MLB pitchers are often around 6–7 ft", src: null, frame: R, conf: "rough",
       why: "How far toward the plate the ball is let go: more extension gets the pitch to the hitter sooner. Measured from the hand, so slightly short of the ball." });

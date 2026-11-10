@@ -1614,6 +1614,27 @@ function analyseOnce(raw, opts = {}) {
   return out;
 }
 
+// Where the throwing hand is along the line to the plate (x) at release, read steadily. The hand moves ~30 cm per frame
+// there (60 fps), so the plain release-frame position swings 10-30 cm with a few ms of timing, and from behind the
+// pitcher the 3D arm under-reads how far the hand reaches toward the plate. So: the hand's position at the moment the
+// forearm points 60% toward the plate (interpolated between frames, found within 4 frames of release), with a fixed
+// correction for the camera angle (from straight behind it reads ~37 cm short, from the side and front about right).
+// 60 benchmark views: extension 23 -> 13 cm off (r 0.22 -> 0.55); 70 unusual lab deliveries 23 -> 13 cm (r 0.55 -> 0.76),
+// each set checked with the correction fitted on the other one. Motion-capture truth (D.truth) is read as-is.
+export function releaseReach(D) {
+  const br = (D.phases.find(p => p.name === "Release") || {}).frame, P = D.pose;
+  if (br == null || !P[br]) return null;
+  const R = D.throwHand !== "L", el = R ? 14 : 13, wr = R ? 16 : 15;
+  if (D.truth) return P[br][wr][0];
+  const cd = D.cameraDir, bh = cd ? Math.max(0, -cd[0] / (Math.hypot(cd[0], cd[2]) || 1)) : 0;
+  const fx = t => { const d = sub(P[t][wr], P[t][el]), n = Math.hypot(d[0], d[1], d[2]); return n > 1e-9 ? d[0] / n : null };
+  for (let t = br - 4; t < br + 4; t++) {
+    if (!P[t] || !P[t + 1]) continue; const a = fx(t), b = fx(t + 1);
+    if (a != null && b != null && a < 0.6 && b >= 0.6) return P[t][wr][0] + (P[t + 1][wr][0] - P[t][wr][0]) * (0.6 - a) / (b - a) - 0.03 + 0.375 * bh;
+  }
+  return P[br][wr][0] + 0.05 + 0.40 * bh;   // no clean crossing: release frame with the same camera correction
+}
+
 // Delivery measurements a coach reads off the skeleton. All from the finished 3D pose in the body's own frame:
 // x = toward home, y = up, z = across. Lengths need the pitcher's height entered to be in real units.
 //   strideLen   stride from the rubber to the front ankle at foot strike, as a share of height
@@ -1655,7 +1676,7 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
       slot = slot + (g - slot) * geoW }
   }
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
-  return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
+  return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: (releaseReach(D) ?? w[0]) - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
 }
 
 // The delivery numbers as shown to a coach (screen, PDF, compare). Only the ones that held up against motion capture on
