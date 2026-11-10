@@ -211,6 +211,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   all on the 'foot strike to release' clue, estimates near the halfway point between speeds (2x read 1.14-1.38, 4x read
   2.44-2.77, 8x read 4.7-5.5: all ~0.6x too short), 2653 behind wrong at every speed. Next idea: foot strike reads late
   (or release early) from behind on slowed clips; check the clue's foot strike vs truth on those views at 4x.
+  Checked: the same views at 1x read 0.72-0.85 (fine), at 2x 2653 behind reads 1.14: so the slowed clip itself reads ~0.6x
+  short (same as the 18:40 wrist-speed finding), not the pitch. Try the 18:40 window idea (fixed fraction, interpolated).
 - **NEXT SESSION (after 20:40), body fit, in order:** (1) (done 21:40) Hackimer isn't fitted because his clip starts at the leg lift
   (leg lift read at frame 0; the fit needs 0.25 s before it). Idea: let the fit start at the first frame when the clip
   starts late (drop the samples before it from the 2D fit; the library still spans them) and check on the lab views cut
