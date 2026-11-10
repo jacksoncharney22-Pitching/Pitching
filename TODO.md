@@ -514,6 +514,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   15.9/14.5; the falling trend is partly real: later FS = later start of the peak search) but bench "behind" arm 7.8 -> 8.2 cm
   (CI's "clearly worse"); 0.3 same pattern. `_sepNear` 0 vs 15 makes no difference on Maher. So try the per-stretch decision
   idea rather than a longer window.
+- 16:40 tried, NOT shipped: extending a flipped stretch past the window end while the flip still fits (`_shExt` 0.25 s):
+  hand-FS sweep smooth (88..97: 26.2/25.2/20.3/19.7/15.9/14.5), bench 0 change, BUT the automatic Maher fast run then moves
+  foot strike 1.55 -> 1.60 s and arm cocked onto release (regress FAIL) and its slot reads 0.7-14.6 across trims. The flip
+  feeds back into the later foot strike refinement; a fix must keep the automatic events (regress) as they are.
 - **Next session (after 16:40):** (1) the FS-keyed trunk jump above (concrete, measurable with trimspread.mjs: goal Maher
   fast sep spread < 2 deg without bench/perview loss); (2) Tuesday list: real 20 s trim through Fast tracking in the page;
   (3) unusual-set `measures.mjs` with the new slot (lab data via tests.yml steps). All 16:40 work is live; tests green for
