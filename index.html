@@ -483,6 +483,14 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .vidsave:not([hidden]) { animation: vsPulse 1.2s ease 2 }
 @keyframes vsPulse { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.25) } }
 .dlmenu > div p { margin: 2px 4px 0; color: var(--muted); font-size: 11.5px }
+/* Phones and tablets: a thumb needs a bigger target than a mouse. The camera views, speeds, frame step and phase
+   buttons were 23-28 px tall; make every button at least 40 px on touch screens (desktop unchanged).
+   Underlined text links (.linkbtn) stay as text. */
+@media (pointer: coarse) {
+  button:not(.linkbtn), select, summary { min-height: 40px }
+  .seg button { min-width: 40px; justify-content: center }
+  .phases button { flex-wrap: wrap; align-content: center }  /* keep "FS Foot strike 1.58 s" in the middle, not at the top */
+}
 </style>
 
 

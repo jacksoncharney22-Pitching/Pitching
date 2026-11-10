@@ -9,7 +9,7 @@ Measure before and after every change. The accuracy benchmark (`tools/test/bench
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
 ## Today (2026-11-10, Tuesday: speed and reliability; Monday notes below)
-- Code chat 8:05: (Code chat working on this, 8:05 ET) phone check: open the app as an iPhone/Android in headless Chromium, upload a clip, Fast to results, Recent, PDF; list what breaks or is cramped at phone width, fix what is clear.
+- Code chat 8:05-8:40 shipped (phone check): opened the app as an iPhone 13 and a Pixel 7 (Chromium emulation, `tools/test/phone_check.py`): home, Recent, results: no page errors, no sideways scrolling, nothing wider than the screen. Only problem: 25 buttons on the results screen were 23-28 px tall (camera views, speeds, frame step, phase buttons, full screen), small for a thumb. Fixed: on touch screens every button is at least 40 px (`@media (pointer: coarse)` at the end of the CSS; desktop unchanged, checked). Now 0 small buttons. regress ok, export_check ok. Still worth a look on a REAL iPhone (Safari isn't tested here) and a real upload + Fast run on a phone.
 - **7:40 session: Recent's pitch-only video is ON by default (6d67bd9).** The 6:40 "noisy clip stalled" was not the keeper:
   the same 31 MB noisy synthetic clip (5.6 s, ffmpeg noise=alls=12, 25 Mb/s) runs Fast to results in 226 s without the keeper
   (`FLAGS=keepclip=0 keepclip_run.py`) and 229 s with it; saved video 31 MB -> 1.1 MB, re-opened pictures match (diff 0.15-0.35/255).
