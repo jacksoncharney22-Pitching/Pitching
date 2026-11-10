@@ -147,6 +147,15 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   profile does not show a real computer's split. Idea (needs a real clip to measure accuracy, NOT done): when RTMPose
   loaded (weight 3 vs 1 in fuseSoft), skip pass 3 (backwards) to save ~30% of Max; test by saving `window.__lastLooks`
   from one full Max run on a real clip and re-fusing with and without the "back"/"backMirror" looks.
+- 10:40 FINDING (extension, Wednesday item): release extension reads ~22 cm SHORT on the benchmark (bias -0.22 m, r 0.22:
+  close to useless per pitcher) even at the truth's release frame. Two causes: (i) timing: the hand moves ~30 cm per
+  frame at release (60 fps), so 1 frame off = +-30 cm (app 1 frame early: -0.55, late: -0.05); (ii) from behind the
+  wrist is 16 cm (behind) / 12 cm (behind_3b) less far in front of the shoulder than truth at release, ~0 from the side
+  and front_3b, while the shoulder-to-wrist DISTANCE is right (-2 cm after the guard step). So from behind the arm's
+  direction is under-read in depth (pointing less toward the plate), not its length; also stride -8 cm. Ideas: use the
+  lab-throw arm's depth more at release when the camera is behind; read extension over a short window around release
+  matched to the lab hand path instead of one frame. Scripts were scratch (`ext*.mjs`: deliveryMeasures at app vs truth
+  release frame; wrist-minus-shoulder x by camera; `_snap` per stage).
 - **Next session (after 9:40):** (1) DONE 10:40 (see above) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
   background FIRST, then time passes 2/3/arm zoom; (3) slot: side_back reads 10.9 deg high on all 12 benchmark pitchers; full-weight geometric slot if behind_3b can be fixed;
