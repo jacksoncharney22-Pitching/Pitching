@@ -179,6 +179,18 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Real clips: Maher front knee at arm cocked 88 -> 44°, separation at foot strike 20 -> 53° (fit's numbers sit inside the
   12 lab pitchers' ranges, the app's didn't), Hackimer (slow-mo) not fitted (frames don't line up). Needs Jackson's eye on
   Maher/Staumont videos before it becomes the default.
+- 20:40 later: stride keeps the app's own front-foot reading (`strideFoot`): with the fit 6.9 -> 4.0% of height off (app
+  alone 4.9). Fit offset smoothed over time (`smooth` 3): jumps per view 2.6 -> 1.7 (app 1.6), shake 0.92 (app 0.92),
+  separation 4.7/3.6/4.7, trunk BR 6.0. Tried, off: `armWorld` (throwing arm keeps its world direction): arm 9.0 -> 8.1 cm
+  and arm slot back to 6.2°, but abduction 4.1/3.8/4.9 -> 5.5/7.5/6.6, layback worse. Arm slot with the fit 7.6° (app 6.2).
+  Jackson notified (trial link = site address + `?bodyfit=1`). export_check passes with and without `?bodyfit=1`
+  (cloud: `npm pack three@0.128.0`, THREE_JS=package/build/three.min.js, ORBIT_JS=tools/test/orbit_stub.js).
+- **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer (speed-ramped) isn't fitted (`bodyFit` returns null:
+  find which check fails; probably frames/fps after the slow-motion reading); (2) arm slot with the fit 7.6 vs 6.2°: read
+  arm slot from the app's arm direction only, or find why the trunk-axes arm tilts the slot; (3) `pelvisMix` by camera
+  (fit over-turns side-on, under-turns behind); (4) a visible "Lab-matched body (trial)" switch instead of the URL flag, if
+  Jackson likes it; (5) default ON only after Jackson has looked at Maher/Staumont with `?bodyfit=1`. Speed: the fit adds
+  ~0.4-0.7 s per analysis in Node.
 - **NEXT SESSION (after 19:40), in order:** (done 20:40 as a trial, see above) (1) put the hybrid into pipeline.js behind `_bodyFit` (fit2D from
   tools/test/bodyproj.mjs: library K 80 + hipw 4 + lam 0.6, app's arm kept in trunk axes, app pose outside the window
   with a short blend), load `bodylib.json` in app.js like armlib (bench must use the holdout copy), then run bench (incl.
