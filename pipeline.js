@@ -16,7 +16,20 @@ const unit = a => { const n = norm(a) || 1e-12; return [a[0] / n, a[1] / n, a[2]
 const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const DEG = 180 / Math.PI;
-const median = arr => { const s = [...arr].filter(Number.isFinite).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0 };
+// median: the despike pass takes thousands of medians per joint on slow-motion clips, so no copying and sorting.
+// The middle value is found by quickselect (no full sort): the same value a sort would put there.
+let _medBuf = new Float64Array(256);
+const median = arr => {
+  if (_medBuf.length < arr.length) _medBuf = new Float64Array(arr.length * 2);
+  const a = _medBuf; let n = 0; for (const v of arr) if (Number.isFinite(v)) a[n++] = v; if (!n) return 0;
+  const m = n >> 1; let lo = 0, hi = n - 1;
+  while (lo < hi) {
+    const p = a[(lo + hi) >> 1]; let i = lo, j = hi;
+    while (i <= j) { while (a[i] < p) i++; while (a[j] > p) j--; if (i <= j) { const x = a[i]; a[i] = a[j]; a[j] = x; i++; j-- } }
+    if (m <= j) hi = j; else if (m >= i) lo = i; else break;
+  }
+  return a[m];
+};
 const percentile = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[clamp(Math.round((p / 100) * (s.length - 1)), 0, s.length - 1)] };
 const sstep = (t, t0, t1) => { const x = clamp((t - t0) / Math.max(t1 - t0, 1e-6), 0, 1); return x * x * (3 - 2 * x) };
 
@@ -134,14 +147,14 @@ function despike(frames, K) {
   const T = frames.length, k = Math.max(2, Math.round(3 * K));
   const fix = (get, set, floor, visOf) => {
     for (let j = 0; j < 33; j++) {
-      const S = frames.map(f => get(f, j)), out = S.map(v => v.slice());
+      const S = frames.map(f => get(f, j)), out = S.map(v => v.slice()), D = S[0].length, buf = new Array(2 * k + 1);
       for (let t = 0; t < T; t++) {
-        const lo = Math.max(0, t - k), hi = Math.min(T - 1, t + k), win = [];
-        for (let i = lo; i <= hi; i++) win.push(S[i]);
-        const med = S[0].map((_, d) => median(win.map(v => v[d])));
-        const dev = win.map(v => Math.hypot(...v.map((x, d) => x - med[d])));
-        const mad = median(dev), thr = Math.max(floor, 3 * 1.4826 * mad);
-        const mine = Math.hypot(...S[t].map((x, d) => x - med[d]));
+        const lo = Math.max(0, t - k), hi = Math.min(T - 1, t + k), n = hi - lo + 1; buf.length = n;
+        const med = new Array(D);
+        for (let d = 0; d < D; d++) { for (let i = 0; i < n; i++) buf[i] = S[lo + i][d]; med[d] = median(buf) }
+        for (let i = 0; i < n; i++) { const v = S[lo + i]; let q = 0; for (let d = 0; d < D; d++) q += (v[d] - med[d]) ** 2; buf[i] = Math.sqrt(q) }
+        const mad = median(buf), thr = Math.max(floor, 3 * 1.4826 * mad);
+        let q0 = 0; for (let d = 0; d < D; d++) q0 += (S[t][d] - med[d]) ** 2; const mine = Math.sqrt(q0);
         const vis = visOf ? visOf(frames[t], j) : 1;
         // where the tracking looks agree on this joint, a big jump is real motion (the arm at release), not a glitch
         const sure = frames[t].spread && frames[t].spread[j] != null && frames[t].spread[j] < 0.03;
