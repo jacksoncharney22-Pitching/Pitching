@@ -742,7 +742,8 @@ export function analyse(raw, opts = {}) {
 
 function analyseCore(raw, opts = {}) {
   if (opts.faithful === false || opts.footRepair === false || opts._inner) return analyseOnce(raw, opts);
-  const first = analyseOnce(raw, { ...opts, _inner: true });
+  // a first look for where the foot lands (stops before the arm work, which it doesn't need: half the time on a normal clip)
+  const first = analyseOnce(raw, { ...opts, _inner: true, _early: true });
   const fsF = first.fsReach ?? first.phases.find(p => p.name === "Foot strike").frame, W = raw.width, H = raw.height;
   const lead = first.throwHand === "L" ? [28, 30, 32] : [27, 29, 31], back = lead.map(j => j - (first.throwHand === "L" ? 1 : -1));
   const kneeL = first.throwHand === "L" ? 26 : 25, kneeB = first.throwHand === "L" ? 25 : 26;
@@ -750,7 +751,7 @@ function analyseCore(raw, opts = {}) {
   const T = frames.length, ft = (f, js) => { let x = 0, y = 0; for (const j of js) { x += f.img[j][0] * W; y += f.img[j][1] * H } return [x / js.length, y / js.length] };
   const hgt = median(frames.filter(Boolean).map(f => { const ys = f.img.map(p => p[1] * H); return Math.max(...ys) - Math.min(...ys) })) || H / 2;
   const near0 = []; for (let t = fsF + 1; t < Math.min(T, fsF + 1 + Math.round(raw.fps * 0.12)); t++) if (frames[t]) near0.push(t);
-  if (!near0.length) return first;
+  if (!near0.length) return analyseOnce(raw, { ...opts, _inner: true });
   const spotJ = lead.map(j => [median(near0.map(t => frames[t].img[j][0])), median(near0.map(t => frames[t].img[j][1]))]);
   const spot = [spotJ.reduce((a, p) => a + p[0] * W, 0) / 3, spotJ.reduce((a, p) => a + p[1] * H, 0) / 3];
   const off = (f, js) => { const q = ft(f, js); return Math.hypot(q[0] - spot[0], q[1] - spot[1]) / hgt };
@@ -905,6 +906,8 @@ function analyseOnce(raw, opts = {}) {
   const userFS = !!(opts.phases && opts.phases.footStrike != null);
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);
   fs_ = clamp(fs_, 1, T - 3); rel = clamp(rel, fs_ + 1, T - 2); cock = clamp(cock, fs_, rel); legLift = clamp(legLift, 0, fs_ - 1);
+  // the foot-repair pass (analyseCore) only needs where the lead foot lands and which hand throws: both are settled here
+  if (opts._early) return { fsReach: fs_, throwHand: hand };
 
   // ---- throwing arm: which way it points toward/away from the camera, decided with how arms move.
   // When the forearm or upper arm passes edge-on to the camera, both depth directions look identical on screen and
