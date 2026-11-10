@@ -438,8 +438,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   out"), finished in 46 s vs 21 s normal, no page errors. Acceptable; not changed. A silent INIT waits 60 s (model start-up
   on a phone can legitimately take long) — leave it.
 - **Next session (after 15:40):** Tuesday list: (1) Max's MediaPipe calls into the pose worker (IMAGE mode; trackMax),
-  check with maxworker_check.py; (2) the pose-worker-quits check above turned into a CI test (finder only, testsrc clip,
-  ~1 min); (3) odd-codec (HEVC) upload if ffmpeg has libx265. Accuracy leads from 14:40 still open (glove abduction FS
+  check with maxworker_check.py; (2) DONE 15:40 posestall_check.py on GitHub (pose worker quits mid-finder -> page carries on, 45 s); (3) odd-codec (HEVC) upload if ffmpeg has libx265. Accuracy leads from 14:40 still open (glove abduction FS
   camera bias, side_back slot +10.5). All 15:40 work is live and green (0001318, d8853c8; 58fbdd4 to-do only).
 
 ## Session log 2026-11-09 to 11-10 (what shipped and what was tried: read before retrying anything)

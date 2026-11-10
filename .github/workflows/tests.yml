@@ -110,6 +110,7 @@ jobs:
           python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
           python3 tools/test/anaworker_check.py tools/test/fixtures/*.json.gz
           python3 tools/test/anastall_check.py tools/test/fixtures/staumont_fast.json.gz "$RUNNER_TEMP/anastall"
+          python3 tools/test/posestall_check.py "$RUNNER_TEMP/posestall"
           python3 tools/test/ortproxy_check.py tools/test/fixtures/maher_fast.json.gz --rtm
           ffmpeg -v error -f lavfi -i testsrc2=size=1920x1080:rate=60 -t 3 -c:v libvpx-vp9 -b:v 4M -an "$RUNNER_TEMP/testsrc.webm"
           python3 tools/test/keepclip_check.py "$RUNNER_TEMP/testsrc.webm"
