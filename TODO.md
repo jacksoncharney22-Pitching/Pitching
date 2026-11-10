@@ -119,6 +119,19 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 18:40 also tried, dropped: the wrist's raw 2D speed (tracker points, unsmoothed) as the clue. At real speed it's good (`slowclues.mjs`: raw 0.7 + foot-strike-to-release 0.3 gives 7+3 wrong of 60 vs 13+6 now), but `slowmo.mjs --late 20/30` fell 205/223 -> 144-150/167-173 of 240: slowed clips read ~0.65x as fast. Likely the measuring window (h = (R-FS)/8 frames, rounded) covers a different real time span at each speed, plus foot strike/release landing differently. Next try, if anyone retries: measure over a span fixed as a fraction of foot strike to release, interpolated rather than rounded, and check at 2x first (`SPEEDS=2 node tools/test/slowmo.mjs 1612 --late 30`).
 - **Next session (after 18:40):** late-started slow-motion still 205/223 of 240 (unchanged; two clue tries dropped, see above). Options: (1) the window-rounding idea above (cheap to test at 2x); (2) separation/trunk at foot strike as seen (10-11°); (3) Tuesday theme from the 8:15 plan: profile Max, phones. NOTE: this sandbox's clock and container restarted mid-session (uptime reset), so `date` can understate elapsed time; track time by your own runs.
 
+- **19:40 session: rebuild step 1 started (the lab data downloads fine, checksum OK).** Built `tools/bodylib_build.py`
+  -> `bodylib.json` (281 KB, not loaded by the app yet) and `tools/test/bench/bodylib_holdout.json` (benchmark athletes
+  left out): 366 of 411 lab deliveries (74 lefties mirrored), right-handed, divided by height, stride turned to +x, time-warped
+  to leg lift / foot strike / max layback / release (66 samples, 17 joints), PCA. How well K shapes rebuild the held-out
+  benchmark pitches from their TRUE 3D (`--eval`): K 10: 8.8 cm, K 30: 6.0 cm (throwing hand 8.4), K 60: 4.3, K 80: 3.7.
+  The app's skeleton today is 9.7 cm on the same frames.
+- 19:40 finding (`node tools/test/bodyproj.mjs`, report only): pulling the app's OWN 3D skeleton onto the library makes it
+  worse, at every K and prior strength: joints 9.7 -> 10.7 (K 30) / 10.0 (K 60) / 9.8 (K 80) cm, throwing arm 11.1 -> 12.1
+  / 11.6 / 11.3 cm (only front_3b's arm improves, 14.6 -> 13.4). So the app's 3D errors are themselves believable
+  deliveries (mostly depth), and a 3D-only "snap to real motion" can't remove them. Step 2 must fit the library to the
+  tracker's 2D points with the camera inside the fit (where the depth ambiguity is actually decided), and needs K 60+
+  (or per-phase shapes): 30 shapes are too coarse to be a hard constraint. Don't retry the 3D projection.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
