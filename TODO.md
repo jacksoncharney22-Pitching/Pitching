@@ -470,6 +470,15 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   (measures baseline updated); comparecheck limits still fit; bench/regress unchanged. Real clips: Maher fast/max 26.1/23.4
   -> 19.5/20.1 (now agree), Staumont 53.3 -> 50.2, Hackimer -5.6 same. `__slotVec` 0 = old. Unusual set not re-scored here
   (slot isn't in bench.mjs; worth a `measures.mjs` run with BENCHDIR=<unusual set> next time the lab data is local).
+- **16:40 LEAD (reliability of the cards, measured not fixed):** within ordinary trims (0.3 s before leg lift .. whole clip)
+  Maher max peak separation reads 24.7-32.6 deg and the slot still 19.8-22.8, depending only on where the trim starts/ends
+  (scratch ts2/ts3.mjs: slice the fixture, analyse, deliveryMeasures). Likely driver: `lift` sets each bone's length as
+  max(90th percentile of its in-picture length, median 3D length) over the WHOLE trim, and depth = sqrt(L^2 - inplane^2)
+  is very sensitive to L; also the plate direction (stride at its widest frame) and bodyH (median bone lengths) are
+  whole-trim. Benchmark clips are all tight (80 frames), so bench can't see this: build the check first (trim each
+  fixture + 10 bench views at 4-5 trims, report the spread of slot/sep/stride/tilts; goal: spread < 2 deg), then try
+  taking those statistics from a fixed window around the delivery (e.g. leg lift -> release + 0.3 s, from a first pass,
+  like the long-trim crop in `analyse`).
 - 16:40: item "(1) Max's MediaPipe calls into the pose worker" is ALREADY DONE (trackMax uses poseModels with IMAGE/VIDEO
   specs since the overnight sessions); removed from the Tuesday list.
 
