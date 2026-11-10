@@ -326,6 +326,21 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   memory + honest progress) is the doable speed/reliability item; (2) accuracy leads above (spine softness vs arm from
   behind; side tilt before foot strike from side_back; side_back slot +10.5); (3) extension card only if it beats a
   constant guess. The unusual set now runs on GitHub, so any skeleton change is checked on it automatically.
+- **14:40 SHIPPED (5243728): glove arm from foot strike to release no longer reaches too far toward the plate.** jbias by
+  phase (scratch jb.mjs: hip-centred error per joint in world x/y/z and along D.cameraDir): FS->BR the glove elbow/wrist read
+  5-8 cm too far toward the plate on behind/behind_3b/front_3b (x +5..+8 in world, so in camera terms it flips: a body-frame
+  error) and 9-12 cm too far from the camera on side_back (glove arm hidden behind the body there); side_open ~1; before FS
+  no bias. Fix (after `_armZ`, same fades at FS and release): along-camera shift = arm length x (-0.03*u_x + 0.08*max(0,-u_z)),
+  elbow half (`_gloveX/_gloveS/_gloveE`). Bench glove elbow FS/MER/BR 11.1/7.6/5.8 -> 10.7/7.2/5.8, glove abduction
+  4.4/6.8/6.8 -> 4.3/6.1/6.8; unusual set elbow 12.1/7.1/5.3 -> 12.2/6.5/4.9, abduction 5.4/6.6/5.9 -> 5.4/6.3/5.8. Grid:
+  gx 0.03-0.07, gs 0.04-0.1, elbow 0.5-1 (elbow share 0.8+ makes glove elbow worse). Every other reading identical (perview).
+- 14:40 SHIPPED (d4838e2): bench.mjs now scores the glove arm (glove elbow + abduction at FS/MER/BR) as its own "glove arm"
+  number, guarded at 1 deg per camera (bench + unusual baselines; the "angles" average is unchanged).
+- 14:40 CLOSED lead (2) "arm error follows foot strike timing": hand-set foot strike +-3 frames on 3228_1_behind_3b and
+  1612_1_behind moves the arm error only 0.3-0.9 cm (scratch fsarm.mjs, `phases.footStrike` in frames). Not a real coupling.
+- 14:40 FINDING (not fixed): glove readings left: glove elbow at FS 10.7 is outliers (single views -43..+53), not a bias;
+  glove elbow at arm cocked from front_3b reads 11.6 deg too straight (10 of 12); glove abduction FS bias by camera
+  (behind +5, side_back -6, same sign on the unusual set): small, camera-specific.
 - Still open (accuracy): before foot strike, side tilt on 2653 side_back reads +2 vs truth -21 in every version (the
   pitcher leans toward 1B/3B in the stride and the app misses it from that camera); side_back arm slot still +10.5 high.
 - (old) **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
