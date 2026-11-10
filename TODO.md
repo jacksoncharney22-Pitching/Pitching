@@ -18,6 +18,11 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
   video; keepclip_run.py now checks that (start 0 -> 0). Writer now waits up to 2 s if it falls behind and gives up (whole upload
   saved) if still >24 frames behind. `keepclip_check.py` on GitHub (testsrc2 clip). `?keepclip=0` = old behaviour.
   Still worth a real-phone look (iPhone Safari VideoEncoder H.264): if it can't write video it silently saves the whole upload.
+- 7:40 shipped (1153829): parallel re-read pool from `wip-max-worker` (c) moved to main: up to 3 analysis workers (cores-1),
+  Compare reads its two pitches at once, Over time reads in date order with several workers. `trend_time.py` (10 Maher pitches,
+  quiet 2-core sandbox, alternating runs): main 3.4/3.4 s -> pool 2.9/2.9 s (cores=3), longest freeze <0.1 s both; old page-only
+  path (`?analysisworker=0`) 2.7 s but freezes 0.5-0.7 s. history_check, anaworker_check, export_check pass. Phones with more cores
+  should gain more (not measured). The rest of `wip-max-worker` is on main already; the branch can be deleted.
 Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40); each picks up here and leaves this section up to date.
 - **Big project: the throwing elbow reads ~7° too straight from late stride through max layback** (signed error -7.4° at foot
   strike, -6.0° at max layback, -2.6° at release; 2D matches the truth within 1°, so it happens in the 3D arm lock `lockArms`). Steps:
