@@ -74,6 +74,8 @@ def run(vid, flag, tag):
         last, lastT = '', time.time()
         while time.time() - t0 < 5400 and pg.evaluate("document.body.dataset.view") != 'results':
             if errs: break
+            if pg.evaluate("document.body.dataset.view") == 'prep':   # back on the upload screen: the run stopped with an error
+                errs.append('STOPPED with: ' + pg.evaluate("document.getElementById('prepErr').textContent")[:200]); break
             pg.wait_for_timeout(3000)
             # where it is: a run that hangs (no progress for 5 min) is reported with the step it stopped on
             st = pg.evaluate("[...document.querySelectorAll('#stModel,#stTrack,#stBuild')].map(e=>e.dataset.state+':'+e.querySelector('small').textContent).join(' | ')")

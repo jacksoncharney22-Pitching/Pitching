@@ -83,7 +83,10 @@ export function fuseSoft(cands, W, H, { srcW = {}, iters = 3, k = 2, floor = 0.0
       const ws = rt.map(c => Math.max(0.05, c.img[j][2])), S = ws.reduce((a, b) => a + b, 0);
       const x = rt.reduce((a, c, i) => a + c.img[j][0] * ws[i], 0) / S, y = rt.reduce((a, c, i) => a + c.img[j][1] * ws[i], 0) / S;
       out.img[j] = [x, y, rt.reduce((a, c) => a + c.img[j][2], 0) / rt.length];
-      out.spread[j] = rt.length > 1 ? Math.round(med(rt.map(c => Math.hypot((c.img[j][0] - x) * W, (c.img[j][1] - y) * H))) / size * 1e4) / 1e4 : base.spread[j];
+      // one stronger-tracker look: how sure comes from the built-in looks agreeing, or, when there was only one of those
+      // too (a frame most passes missed), from how far that look is from the stronger tracker's
+      out.spread[j] = rt.length > 1 ? Math.round(med(rt.map(c => Math.hypot((c.img[j][0] - x) * W, (c.img[j][1] - y) * H))) / size * 1e4) / 1e4
+        : base.spread ? base.spread[j] : Math.round(Math.hypot((base.img[j][0] - x) * W, (base.img[j][1] - y) * H) / size * 1e4) / 1e4;
     }
     return out;
   }
