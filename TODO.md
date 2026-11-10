@@ -8,7 +8,7 @@ with the date. When a theme has fewer than 3 items left, add new ones that fit i
 Measure before and after every change. The accuracy benchmark (`tools/test/bench`, 10 real pitches with
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
-## Today (2026-11-09, Monday: accuracy)
+## Today (2026-11-10, Tuesday: speed and reliability; Monday notes below)
 Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40); each picks up here and leaves this section up to date.
 - **Big project: the throwing elbow reads ~7° too straight from late stride through max layback** (signed error -7.4° at foot
   strike, -6.0° at max layback, -2.6° at release; 2D matches the truth within 1°, so it happens in the 3D arm lock `lockArms`). Steps:
@@ -345,7 +345,12 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   (`keepclip.js`: each frame pass 1 of the tracker visits is also encoded, ≤1280 px, frame i at i/fps; saved only if <80%
   of the upload; rec.clipStart = window start, re-open shifts data.start by it). `tools/test/keepclip_check.py <video>`:
   60 frames of a 1080p test pattern, 2.6 MB -> 0.34 MB, every frame lines up (0 off by one). history_check has a re-open
-  check for clipStart. NEXT: (1) full Fast run with `?keepclip=1` on a synthetic clip (`finder_check.py` makes one) via
+  check for clipStart. 7:10: full Fast run with the flag (`tools/test/keepclip_run.py <clip> <outdir>`) on the 112 KB
+  synthetic mannequin clip: no errors, re-open identical, but the pitch-only MP4 wasn't smaller so the upload was kept
+  (correct). On a noisier 3.6 MB copy (ffmpeg noise=alls=12, 25 Mb/s) the Fast run had NOT reached results after 10 min
+  (killed at 7:25): FIRST find out whether that's the keeper (VP9 software encoding / encodeQueue wait in headless) or
+  the noise breaking the finder/tracker: run the same clip without `?keepclip=1` (edit the URL in keepclip_run.py).
+  If it's the keeper, add a time budget (skip keeping if encoding falls behind). NEXT after that: (1) full Fast run with `?keepclip=1` on a synthetic clip (`finder_check.py` makes one) via
   clip_run, re-open from Recent, check the overlay video and screenshots match the first open; (2) multi-angle and
   Ultra keep the whole upload (only K===1 Fast/High/Max); (3) then default ON and add keepclip_check to GitHub
   (needs a generated test video: ffmpeg testsrc2 in the workflow). history_check flaked here under CPU load (a Max run
