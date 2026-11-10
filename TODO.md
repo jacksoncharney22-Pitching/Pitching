@@ -237,6 +237,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   + `slowmo.mjs`. Where: in analyseOnce, `relWindow` is first used at the release search (~pipeline.js:835); fixSwaps,
   learned depth, despike and `lift()` all come before it. Check that later code doesn't change `frames`/`Pc`/`imgSmooth` in
   place before caching them (or hand out copies).
+  Measured first: Hackimer speed reading 1.0 s + skeleton 1.3 s, Maher 0.2 + 0.5 s, so the cache saves at most ~0.6 s on
+  slow motion; the arm-match scoring (half of the skeleton time) is the bigger target.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
