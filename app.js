@@ -431,11 +431,56 @@ async function trackSimple(q, src) {
 let scan = null;                                                           // { forUrl, promise, pitches, cuts }
 function clk2(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(2).padStart(5, "0")}` }
 function fmtClock(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m}:${s.toFixed(1).padStart(4, "0")}` }
+// The pitch finder's pose model: in a background worker when the browser allows it (the page stays responsive while
+// it scans), otherwise on the page as before. Same model and settings either way. `?finderworker=0` forces the page.
+let finderWorkerOk = !/[?&]finderworker=0/.test(location.search) && typeof Worker !== "undefined" && typeof createImageBitmap === "function";
+async function finderModel() {
+  const onPage = async () => {
+    let t = await makeTracker("fast", { mode: "VIDEO" });
+    const drop = () => { try { t.close() } catch (e) {} trackers = trackers.filter(x => x !== t) };
+    return {
+      where: "page",
+      async detect(v, ts) { const r = t.detectForVideo(v, ts), L = r.landmarks && r.landmarks[0]; return L ? L.map(q => [q.x, q.y]) : null },
+      async reset() { drop(); t = await makeTracker("fast", { mode: "VIDEO" }) },
+      close: drop,
+    };
+  };
+  if (!finderWorkerOk) return onPage();
+  let w;
+  try {
+    w = new Worker(new URL("finderworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    let seq = 0; const wait = new Map();
+    w.onmessage = ({ data }) => { const f = wait.get(data.id); if (f) { wait.delete(data.id); data.ok ? f[0](data) : f[1](new Error(data.err)) } };
+    w.onerror = e => { for (const f of wait.values()) f[1](new Error(e.message || "worker failed")); wait.clear() };
+    const ask = (m, tr) => new Promise((res, rej) => {
+      const id = ++seq; wait.set(id, [res, rej]); w.postMessage({ ...m, id }, tr || []);
+      setTimeout(() => { if (wait.has(id)) { wait.delete(id); rej(new Error("worker timed out")) } }, m.type === "init" ? 60000 : 20000);
+    });
+    const bytes = (await modelBytes("fast")).slice();
+    await ask({ type: "init", base: BASE(), bytes }, [bytes.buffer]);
+    let fallback = null;                                     // if the worker breaks mid-scan, finish on the page
+    const api = {
+      where: "worker",
+      async detect(v, ts) {
+        if (fallback) return fallback.detect(v, ts);
+        try { const bm = await createImageBitmap(v); return (await ask({ type: "detect", bitmap: bm, ts }, [bm])).L }
+        catch (e) { console.warn("pitch finder worker, finishing on the page:", e); finderWorkerOk = false; try { w.terminate() } catch (_) {} fallback = await onPage(); api.where = "page"; return fallback.detect(v, ts) }
+      },
+      async reset() { if (fallback) return fallback.reset(); try { await ask({ type: "reset" }) } catch (e) { finderWorkerOk = false; try { w.terminate() } catch (_) {} fallback = await onPage(); api.where = "page" } },
+      close() { if (fallback) fallback.close(); try { w.terminate() } catch (e) {} },
+    };
+    return api;
+  } catch (e) {
+    console.warn("pitch finder worker unavailable, using the page:", e); finderWorkerOk = false;
+    try { w && w.terminate() } catch (_) {}
+    return onPage();
+  }
+}
 async function findPitches(url, onProgress) {
   const v = await openVideo(url), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
   if (!(dur > 0)) return { pitches: [], cuts: [] };
   const sf = Math.min(8, Math.max(5, 400 / dur)), n = Math.max(2, Math.floor(dur * sf));
-  let tr = await makeTracker("fast", { mode: "VIDEO" });
+  const tr = await finderModel();
   const S = []; let prev = null, k0 = 0;
   for (let i = 0; i < n; i++) {
     if (scan && scan.forUrl !== url) break;                                 // another clip was chosen
@@ -444,12 +489,12 @@ async function findPitches(url, onProgress) {
     // a camera cut is a one-off spike in picture change (steady big change is just the camera panning or fast motion)
     const recent = S.slice(-5).map(x => x.dif).sort((p, q) => p - q), med = recent.length ? recent[recent.length >> 1] : 0;
     const cut = dif > 16 && dif > 3.5 * Math.max(med, 2);
-    if (cut) { try { tr.close() } catch (e) {} trackers = trackers.filter(x => x !== tr); tr = await makeTracker("fast", { mode: "VIDEO" }); k0 = i }
-    const r = tr.detectForVideo(v, Math.round((i - k0) * 1000 / sf) + 1), L = r.landmarks && r.landmarks[0];
-    S.push({ t: (i + 0.5) / sf, cut, dif, p: L ? L.map(q => [q.x * W, q.y * H]) : null });
+    if (cut) { await tr.reset(); k0 = i }
+    const L = await tr.detect(v, Math.round((i - k0) * 1000 / sf) + 1);
+    S.push({ t: (i + 0.5) / sf, cut, dif, p: L ? L.map(q => [q[0] * W, q[1] * H]) : null });
     if (onProgress && i % 5 === 0) onProgress(i / n);
   }
-  try { tr.close() } catch (e) {} trackers = trackers.filter(x => x !== tr);
+  tr.close();
   // final cut list: a spike compared with the looks on BOTH sides
   const cuts = [];
   for (let i = 1; i < S.length; i++) {
@@ -496,7 +541,7 @@ async function findPitches(url, onProgress) {
   const ovl = (o, w) => Math.max(0, Math.min(o.end, w.end) - Math.max(o.start, w.start)) / Math.max(1e-6, Math.min(o.end - o.start, w.end - w.start));
   for (const w of wins.sort((x, y) => y.s - x.s)) if (!kept.some(o => (o.start <= w.t && w.t <= o.end) || (w.start <= o.t && o.t <= w.end) || ovl(o, w) > 0.4)) kept.push(w);
   const pitches = kept.sort((x, y) => x.start - y.start).map(w => ({ start: w.start, end: w.end }));
-  try { window.__finderDbg = { t: S.map(x => +x.t.toFixed(2)), stride: stride.map(v => v == null ? null : +v.toFixed(3)), lift: lift.map(v => v == null ? null : +v.toFixed(3)), cand, cuts } } catch (e) {}
+  try { window.__finderDbg = { where: tr.where, t: S.map(x => +x.t.toFixed(2)), stride: stride.map(v => v == null ? null : +v.toFixed(3)), lift: lift.map(v => v == null ? null : +v.toFixed(3)), cand, cuts } } catch (e) {}
   return { pitches, cuts };
 }
 // rough time left for the pitch finder, timed from its first progress step so the model's start-up isn't counted

@@ -270,6 +270,10 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   over typed subarrays is slower: 5.2 -> 5.9 s); caching fixSwaps' per-frame labellings (5.3-5.4 vs 5.4-5.8, noise). Timing
   noise on this sandbox is ~±10%: repeat runs alternately (git stash) before believing a small gain.
 - 23:40 shipped: if you press Build skeleton while the pitch finder is still going, the first step now shows its live progress and time left (was a still "Finding the pitch in this clip"). Checked at phone width, history_check passes.
+- 0:40 session (Tue): pitch finder's pose model moved into a background worker (`finderworker.js`, falls back to the page,
+  `?finderworker=0` forces the page). Headless, 12 s clip: page froze 98 times over 0.25 s (longest 4.7 s, ~0.8 s every
+  look) -> 3 times (longest 0.43 s); same total time (74 s). Synthetic figure clip (`tools/test/finder_check.py`, draws a
+  filled-in body on a fixture's 2D points; not real footage): 136 freezes (longest 5.6 s) -> 1 (0.28 s); 98 vs 104 s.
 - **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
   results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
   can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:
