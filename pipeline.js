@@ -365,10 +365,10 @@ function lift(frames, W, H, fs, opts = {}) {
   }
   if (!opts.measured) for (let j = 0; j < 33; j++) { const z = gauss(out.map(F => F[j][2]), fs / 30); for (let t = 0; t < T; t++) out[t][j][2] = z[t] }
   // the depth models put the ankles and feet 6-13 cm too far from the camera (relative to the hips) on every camera
-  // angle, benchmark and unusual lab deliveries alike: feet moved toward the camera by 20% of the shin, knees half that
+  // angle, benchmark and unusual lab deliveries alike: feet moved toward the camera by 20% of the shin, knees 0.3 of that (`_kneeZ`)
   // (`_footZ`, 0 = old). A shift of both feet together leaves the stride direction (and so the plate line) as it was;
   // changing the shin's depth hint instead also moved the pelvis/trunk turn at foot strike (2026-11-10)
-  { const k = (opts._footZ ?? -0.2) * L["25,27"]; for (const F of out) for (const j of [27, 28, 29, 30, 31, 32]) F[j][2] += k; for (const F of out) for (const j of [25, 26]) F[j][2] += k / 2 }
+  { const k = (opts._footZ ?? -0.2) * L["25,27"]; for (const F of out) for (const j of [27, 28, 29, 30, 31, 32]) F[j][2] += k; for (const F of out) for (const j of [25, 26]) F[j][2] += k * (opts._kneeZ ?? 0.3) }
   return { P: out, imgSmooth: img, scale: s };
 }
 
