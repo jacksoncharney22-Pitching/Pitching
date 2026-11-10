@@ -1630,7 +1630,20 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   // (r 0.85 -> 0.87); 70 unusual-delivery views: 10.3 -> 10.2, sidearm from behind 15/11 -> 6/8 deg off.
   const cd = D.cameraDir, I = D.img, face = cd ? cd[0] ** 2 / Math.max(1e-9, cd[0] ** 2 + cd[2] ** 2) : 0, wP = face ** 12;
   const slotPic = (() => { if (!I || !D.width || !D.height) return null; let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { const A = I[t] && I[t][sh], B = I[t] && I[t][wr]; if (!A || !B) continue; a += Math.atan2(-(B[1] - A[1]) * D.height, Math.abs(B[0] - A[0]) * D.width) * 180 / Math.PI; c++ } return c ? a / c : null })();
-  const slot = slotPic == null ? slot3 : slot3 + (slotPic - slot3) * wP;
+  let slot = slotPic == null ? slot3 : slot3 + (slotPic - slot3) * wP;
+  // Every camera: the 3D arm turned so its on-screen direction matches the tracker's, keeping its depth (the part the
+  // picture can't show), then half of that is mixed in. 60 benchmark views: slot 5.8 -> 5.4 deg off, no camera worse
+  // (45-deg views 5.1/4.1 -> 3.9/4.0, side_open 4.3 -> 3.6); 70 unusual-delivery views 10.2 -> 9.5. All the way (not half)
+  // was better on average but made the behind-third-base camera worse on both sets.
+  const geoW = globalThis.__slotGeo ?? 0.5;
+  if (geoW && cd && I && D.width) {
+    const hz = Math.hypot(cd[0], cd[2]) || 1, ez = [cd[0] / hz, 0, cd[2] / hz], ex = [ez[2], 0, -ez[0]];
+    const win = []; for (let t = Math.max(0, br - back_); t <= br; t++) { const [a, b] = SA(t), A = I[t] && I[t][sh], B = I[t] && I[t][wr]; if (A && B) win.push([sub(b, a), (B[0] - A[0]) * D.width, -(B[1] - A[1]) * D.height]) }
+    const sg = Math.sign(win.reduce((q, [d, px]) => q + dot(d, ex) * px, 0)) || 1;
+    if (win.length) { const g = win.reduce((q, [d, px, py]) => { const inP = Math.hypot(dot(d, ex), d[1]), pl = Math.hypot(px, py) || 1, dz = dot(d, ez);
+      const v = add(add(mul(ex, sg * inP * px / pl), [0, inP * py / pl, 0]), mul(ez, dz)); return q + Math.atan2(v[1], Math.abs(v[2])) * 180 / Math.PI }, 0) / win.length;
+      slot = slot + (g - slot) * geoW }
+  }
   let pk = fs, M = D.metrics.separation; for (let t = Math.max(0, fs - Math.round(.1 * fps)); t <= br; t++) if (M[t] != null && M[t] > (M[pk] ?? -1e9)) pk = t;
   return { strideM, strideLen: heightM ? strideM / heightM : null, armSlot: slot, relHeight: w[1] - ground, extension: w[0] - stance[0], peakSep: M[pk], peakSepMs: (pk - fs) / fps * 1e3 };
 }
@@ -1646,7 +1659,7 @@ export function deliveryCards(D) {
   if (m.strideLen != null) out.push({ k: "stride", label: "Stride", value: Math.round(m.strideLen * 100) + "% of height", short: Math.round(m.strideLen * 100) + "%", n: m.strideLen * 100, unit: "%", def: "Rubber to front foot at foot strike. Reads about 5% of height short of motion capture; use it to compare pitches filmed from the same spot." });
   // at 30 fps the arm moves about a foot between frames at release, so the slot depends on which frame caught it
   const lowFps = D.fps < 50;   // the true rate: slow motion is plenty of frames even from a 30 fps file
-  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 6\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
+  out.push({ k: "slot", label: "Arm slot", value: (lowFps ? "~" : "") + Math.round(m.armSlot) + "\u00B0", n: m.armSlot, unit: "\u00B0", def: "Shoulder-to-wrist angle above horizontal at release, as seen from home plate. Typical error about 5\u00B0" + (lowFps ? "; rougher on this clip (under 50 fps, the arm moves a lot between frames)." : ".") });
   // real units only with the pitcher's height entered: without it the size of the body is an estimate
   if (D.heightUsed) out.push({ k: "height", label: "Hand height at release", value: "~" + ftIn(m.relHeight), n: m.relHeight / 0.0254, unit: '"', def: "Wrist above the ground. Typical error about 3 inches; the ball leaves a little higher." });
   // tempo: the one timing that held up (60 lab views: 24 ms off, against a 74 ms spread between pitchers, r 0.92). Foot strike to release didn't
