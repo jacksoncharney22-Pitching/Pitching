@@ -973,9 +973,16 @@ function analyseOnce(raw, opts = {}) {
     if (opts._dbgRel) opts._dbgRel.push({ at, rel, fs_ })
   }
   let cock = fs_; for (let t = fs_; t < rel; t++) if (P[t][W_][1] - P[t][S_][1] > P[cock][W_][1] - P[cock][S_][1]) cock = t;
-  const userFS = !!(opts.phases && opts.phases.footStrike != null);
+  const userFS = !!(opts.phases && opts.phases.footStrike != null), fsGuess = fs_;
   if (opts.phases) ({ legLift = legLift, footStrike: fs_ = fs_, armCocked: cock = cock, release: rel = rel } = opts.phases);
   fs_ = clamp(fs_, 1, T - 3); rel = clamp(rel, fs_ + 1, T - 2); cock = clamp(cock, fs_, rel); legLift = clamp(legLift, 0, fs_ - 1);
+  // A foot strike moved by hand is treated like the app's own final foot strike: the skeleton is built around the app's first
+  // guess (as it is without a hand-set foot strike) and only the moment that is reported moves. Before, the steps that key off
+  // foot strike (shoulders the right way round, the arm work) were rebuilt around the hand-set frame, so moving foot strike to
+  // the very frame the app had chosen changed the separation card ~5 deg (Maher: 21 -> 16). A big move (more than 0.1 s: the
+  // first guess was wrong) still rebuilds around the hand-set frame.
+  const fsUser = fs_;
+  if (userFS && opts._fsKeep !== false && Math.abs(fs_ - fsGuess) <= Math.round(0.1 * fs) && fsGuess < rel && fsGuess > legLift) fs_ = fsGuess;
   // the foot-repair pass (analyseCore) only needs where the lead foot lands and which hand throws: both are settled here
   if (opts._early) return { fsReach: fs_, throwHand: hand };
 
@@ -1585,7 +1592,7 @@ function analyseOnce(raw, opts = {}) {
   const rubber = [P[0][28][0] - 0.045 - 0.076, 0];
 
   // ---- foot contact for the report: first frame the lead foot is down (within 1.5 cm of where it settles)
-  contactF = fs_;
+  contactF = userFS ? fsUser : fs_;
   if (!userFS && opts.contactFix !== false) {
     const lf = P.map(F => Math.min(F[Al][1], F[Al + 2][1], F[Al + 4][1]));
     const settle = lf.slice(fs_, Math.min(T, fs_ + Math.max(3, Math.round(0.25 * fs)))).sort((a, b) => a - b);
