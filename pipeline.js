@@ -337,18 +337,22 @@ function lift(frames, W, H, fs, opts = {}) {
   for (let t = 0; t < T; t++) {
     const pos = { "-2": [0, 0, 0] }, F = new Array(33);
     LIFT_TREE.forEach(([a, b]) => {
-      const d2 = sub(nodeOf(XY[t], b), nodeOf(XY[t], a)), hint = nodeOf(XYZ[t], b)[2] - nodeOf(XYZ[t], a)[2], Lb = L[a + "," + b];
+      const d2 = sub(nodeOf(XY[t], b), nodeOf(XY[t], a)), hint = nodeOf(XYZ[t], b)[2] - nodeOf(XYZ[t], a)[2] + (a === -2 && b === -1 ? (opts._spOff ?? 0.08) * L[a + "," + b] : 0), Lb = L[a + "," + b];
       const r2 = Lb * Lb - (d2[0] ** 2 + d2[1] ** 2);
       let vec;
       if (opts.measured) vec = [d2[0], d2[1], hint];     // measured from several cameras: take it as it is
       else if (r2 > 0) {
         const sg = SIGN[a + "," + b] ? SIGN[a + "," + b][t] : Math.sign(hint || 1);
         let dz = sg * Math.sqrt(r2);
+        // the depth models put the shoulder centre ~5 cm too near the camera on every camera angle (benchmark and unusual
+        // lab deliveries alike: shoulders "leaning into" the camera), so the spine's depth hint is moved away from the
+        // camera by 8% of the spine's length (`_spOff`, 0 = old); with that, the hint is good enough to trust up to a
+        // full spine length of lean (`_softSpine` 1, was 0.5) before the toward/away sign choice takes over (2026-11-10)
         // the spine (hip centre -> shoulder centre): when the depth models say it leans only a little toward/away from the
         // camera, take their depth as it is (clamped to the spine's length) instead of a full toward/away sign choice, sliding
         // to the sign choice as the lean gets clear (half a spine length). From a side camera the spine's depth IS the side
         // tilt; a sign choice on a near-zero hint flipped a whole delivery's side tilt by ~25 deg (Maher Max, 2026-11-10)
-        if (a === -2 && b === -1 && opts._spineSign !== true) { const w = Math.min(1, Math.abs(hint) / ((opts._softSpine ?? 0.5) * Lb)); dz = w * dz + (1 - w) * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2)) }
+        if (a === -2 && b === -1 && opts._spineSign !== true) { const w = Math.min(1, Math.abs(hint) / ((opts._softSpine ?? 1) * Lb)); dz = w * dz + (1 - w) * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2)) }
         else if (Math.abs(hint) < 0.25 * Lb) dz = 0.5 * dz + 0.5 * clamp(hint, -Math.sqrt(r2), Math.sqrt(r2));
         vec = [d2[0], d2[1], dz];
       } else { const n2 = Math.hypot(d2[0], d2[1]) || 1; vec = [d2[0] * Lb / n2, d2[1] * Lb / n2, 0] }
