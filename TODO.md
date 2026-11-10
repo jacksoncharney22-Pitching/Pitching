@@ -316,6 +316,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
   TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
   on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
+- (4:40 session working on this, 4:44 ET: re-run worker side alone, find the hang)
 - 3:40 session (Max worker identity check, NOT finished): ran the worker side ALONE on the branch (`--only worker`, maher_max
   fixture, 30 frames): it HUNG. The browser's graphics process worked ~21 min, then sat idle from ~4:03 ET; the page never
   reached the results and showed no page error (killed at 4:20). The earlier parallel run finished both sides in 17 min,
