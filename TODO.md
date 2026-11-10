@@ -200,10 +200,18 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Late by 1/10 s: event timing 33/25/24 -> 14/6/6 ms; by 1/6 s: 44/38/38 -> 14/5/5 ms, joints 18.8 -> 10.4 cm, pelvis
   17.6/22.3/19.8 -> 6.4/6.4/5.5 deg (= full-clip accuracy). Slow-motion reading of late-started clips (`slowmo.mjs --late`):
   1/3 s before foot strike 205 -> 227 of 240 right, 1/2 s 223 -> 229. Full clips, bench and regress unchanged.
-- **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer isn't fitted because his clip starts at the leg lift
+- 21:40 shipped (trial): arm slot with the fit read from the app's own shoulder-to-wrist direction (`slotArm`): 7.5 -> 6.2°
+  off (r 0.74 -> 0.85), same as the app alone. Item (2) below done.
+- 21:40 finding: on clips started 1/6 s after leg lift the fit is now a small win (joints 10.4 -> 9.2 cm, trunk/separation/tilts
+  better) except front knee at release 7.2 -> 8.5°. The `MINLEAD` 0.45 s gate barely separates cases (app's own foot strike
+  decides it); kept so Hackimer (0.456 s) is fitted.
+- **NEXT SESSION (after 21:40):** body fit items (3) `pelvisMix` by camera, (4) visible trial switch; Hackimer with the fit
+  needs his video (separation at foot strike 88°, a bit above the lab's 38-73). Tuesday theme from 8:15: profile Max, phones.
+  Late-started slow motion still 13/11 of 240 wrong (`slowmo.mjs --late 20/30`): list which and why.
+- **NEXT SESSION (after 20:40), body fit, in order:** (1) (done 21:40) Hackimer isn't fitted because his clip starts at the leg lift
   (leg lift read at frame 0; the fit needs 0.25 s before it). Idea: let the fit start at the first frame when the clip
   starts late (drop the samples before it from the 2D fit; the library still spans them) and check on the lab views cut
-  to start at leg lift (`slowmo.mjs --late` has the cutting code); (2) arm slot with the fit 7.6 vs 6.2°: read
+  to start at leg lift (`slowmo.mjs --late` has the cutting code); (2) (done 21:40) arm slot with the fit 7.6 vs 6.2°: read
   arm slot from the app's arm direction only, or find why the trunk-axes arm tilts the slot; (3) `pelvisMix` by camera
   (fit over-turns side-on, under-turns behind); (4) a visible "Lab-matched body (trial)" switch instead of the URL flag, if
   Jackson likes it; (5) default ON only after Jackson has looked at Maher/Staumont with `?bodyfit=1`. Speed: the fit adds
