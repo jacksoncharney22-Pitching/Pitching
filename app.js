@@ -980,6 +980,8 @@ async function renderHistory() {
         const up = it.data && it.data.userPhases, o = { hand: it.hand || "auto", ...(up ? { phases: up } : {}) };
         try { const d = tagResult(await reanalyse(it, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
       }
+      // a damaged record (no skeleton saved and none could be rebuilt) gets a plain message instead of an empty results page
+      if (!data || !Array.isArray(data.pose) || !data.pose.length) { alert("This saved pitch can't be opened any more (its skeleton data is damaged). Analyse the video again from New analysis."); return }
       // a saved pitch-only video starts at the trimmed window's start (time 0 there), not where it was in the upload
       if (it.blob && it.clipStart != null && data) data = { ...data, start: (data.start || 0) - it.clipStart };
       openResults(data, url, { id: it.id, raw: it.raw, changed, clipStart: it.blob ? it.clipStart : null });
