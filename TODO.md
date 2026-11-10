@@ -280,6 +280,23 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   of spine (0.12 a bit better on the benchmark but layback at release worse on 14 views: perview --check failed), 0.12 with
   soft 0.5 (same), 0.05 (less gain). regress, measures --check, slowmo 240/240, comparecheck, fitguard, export_check ok;
   baselines re-recorded. Maher fast/max side tilt at release -0/-6 -> 2/-1.
+- **13:40 SHIPPED (4a452ba): feet/ankles no longer too far from the camera.** Same scratch check per joint (jbias: signed
+  error along the camera axis, hip-centred): ankles -6 to -13 cm (too far) on every camera and both sets, knees -1 to -8,
+  already at the first lift ("rot" snap), unchanged by later stages. Fix at the end of `lift`: feet joints +20% of shin
+  toward the camera, knees half (`_footZ` -0.2, 0 = old), one shift for both feet so the stride direction / plate line is
+  unchanged. Benchmark joints 8.7 -> 8.2 cm, front knee 8.1/7.3/7.2 -> 7.6/6.9/7.1; unusual joints 9.1 -> 8.5, front knee
+  6.6/6.0/5.7 -> 6.1/5.7/5.7. Costs: arm 8.4 -> 8.5 cm (events/arm match shift), hand height 5.7 -> 6.1 cm. Extension
+  correction refitted (0.03 + 0.375*behind -> 0.02 + 0.3: bench 0.118, unusual 0.124; it had been compensating the feet).
+  Tried, dropped: shin/thigh depth-HINT offsets (`_shinOff` -0.1: front knee similar gain but trunk turn at FS 8.2 -> 8.7,
+  separation FS 6.5 -> 6.9, behind_3b arm +0.3; strideOff retune didn't fix it) and `_shMean` 0.5/1 with the new spine
+  (worse). `_footZ` -0.15/-0.25/-0.35 all similar; -0.2 best balance.
+- 13:40 still open (accuracy leads): glove shoulder still +2.5-3.6 cm too near the camera (throwing shoulder 0-4);
+  ankles after the fix within ~3 cm except side_back -3.7/side_open +3 (a per-camera split may help); the arm metric jumps
+  with foot strike timing on some views (3228 behind_3b arm 7.6 -> 10.7 cm when the app's FS moved 33 -> 17 ms: the arm
+  steps key off foot strike; worth understanding, it makes every leg change look like an arm change).
+- **Next session (after 13:40):** (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
+  D.cameraDir, per camera, bench + unusual set) on elbows/wrists by phase, and the glove shoulder; (2) why arm error follows
+  foot strike timing (3228_1_behind_3b); (3) Tuesday items in the list. Lab data for the unusual set: tests.yml steps.
 - **Next session (after 12:40):** (1) Tuesday: Max pass-3 skip still needs a real clip; long/4K video check (synthetic clip,
   memory + honest progress) is the doable speed/reliability item; (2) accuracy leads above (spine softness vs arm from
   behind; side tilt before foot strike from side_back; side_back slot +10.5); (3) extension card only if it beats a
