@@ -109,7 +109,7 @@ if __name__ == '__main__':
     m = pd.read_csv(meta).set_index('session_pitch'); bench_users = {int(m.loc[s, 'user']) for s in bench_sp if s in m.index}
     print(len(P), 'deliveries kept;', sum(p['lefty'] for p in P), 'left-handed (mirrored);', len(bench_users), 'benchmark athletes')
     if '--eval' in sys.argv: evaluate(P, bench_users)
-    K = int(__import__("os").environ.get("BODYLIB_K", 30))
+    K = int(__import__("os").environ.get("BODYLIB_K", 80))
     json.dump(pack(P, K), open(ROOT / 'bodylib.json', 'w'), separators=(',', ':'))
     json.dump(pack([p for p in P if p['user'] not in bench_users], K), open(ROOT / 'tools/test/bench/bodylib_holdout.json', 'w'), separators=(',', ':'))
     print('wrote bodylib.json', (ROOT / 'bodylib.json').stat().st_size // 1024, 'KB')

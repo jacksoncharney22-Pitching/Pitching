@@ -4,7 +4,8 @@
 // (from the app's OWN event frames), find the body's place/turn/size (similarity transform, mirror for lefties) and
 // the delivery shape coefficients (with a prior: unusual shapes cost more), alternating, then compare joint error with
 // the truth for the app as-is and for the fitted delivery, over the frames the library covers.
-//   node tools/test/bodyproj.mjs [pitch] [--sigma 0.05] [--k 30]
+//   node tools/test/bodyproj.mjs [pitch] [--2d] [--k 80] [--lam2d 0.3] [--sigma 0.05]
+//   --2d: fit the library to the tracker's 2D points with the camera inside the fit (the real step 2 test).
 // Uses tools/test/bench/bodylib_holdout.json (the benchmark athletes are not in it).
 import { readFileSync, readdirSync } from "fs";
 import { gunzipSync } from "zlib";
@@ -15,7 +16,7 @@ import { armLibFor } from "./truth.mjs";
 const here = dirname(fileURLToPath(import.meta.url)), dir = join(here, "bench");
 const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? +argv[i + 1] : d };
 const only = argv.find((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--"))) || "";
-const SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 30);
+const SIGMA = arg("--sigma", 0.05), KUSE = arg("--k", 80);
 const load = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))).toString("utf8"));
 
 // ---- the library
@@ -100,6 +101,58 @@ function fitView(Dp, ev, fps, lefty) {
   return { sf, fitted, c, scale: T.s };
 }
 
+// ---- 2D fit: the library delivery + a scaled-orthographic camera, fitted to the tracker's 2D points directly.
+// Alternating linear least squares: for a fixed delivery the camera (2x3 + offset) is linear; for a fixed camera the
+// shape coefficients are linear. The camera is kept rigid (rows orthogonal, equal length) after each step. The tracker's
+// whole-body left/right swaps are handled per sample by taking whichever labelling fits better. Starts from the 3D fit.
+function fit2D(raw, A, ev, height) {
+  const lefty = A.throwHand === "L", init = fitView(A.pose, ev, A.fps, lefty), sf = init.sf;
+  const map = USED.map(([j, m]) => [j, lefty ? swap(m) : m]), W = raw.width, H = raw.height;
+  const img = (f, m) => { const a = Math.max(0, Math.min(raw.frames.length - 1, Math.floor(f))), b = Math.min(raw.frames.length - 1, a + 1), w = f - a;
+    const P = raw.frames[a], Q = raw.frames[b] || P; if (!P) return null; return [(P.img[m][0] * (1 - w) + Q.img[m][0] * w) * W, (P.img[m][1] * (1 - w) + Q.img[m][1] * w) * H, Math.min(P.img[m][2] ?? 1, Q.img[m][2] ?? 1)] };
+  const obsA = sf.map(f => map.map(([, m]) => img(f, m))), obsB = sf.map(f => map.map(([, m]) => img(f, swap(m))));
+  let c = init.c.slice(), cam = null, use = sf.map(() => 0);
+  const lib = y => sf.map((_, s) => map.map(([j]) => [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]));
+  const LAM = arg("--lam2d", 0.3);   // prior weight against pixel residuals (pixels^2 per unit coefficient^2)
+  for (let it = 0; it < 15; it++) {
+    const X = lib(recon(c));
+    // camera: rows r1,r2 (3) + offsets: solve u = r1.x + o1, v = r2.x + o2 by least squares, then make rigid
+    const N = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], bu = [0,0,0,0], bv = [0,0,0,0];
+    sf.forEach((_, s) => map.forEach((__, u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const x = [...X[s][u], 1], w = o[2];
+      for (let a = 0; a < 4; a++) { bu[a] += w * x[a] * o[0]; bv[a] += w * x[a] * o[1]; for (let b = 0; b < 4; b++) N[a][b] += w * x[a] * x[b] } }));
+    const p1 = solve(N, bu), p2 = solve(N, bv);
+    let r1 = p1.slice(0, 3), r2 = p2.slice(0, 3);
+    // nearest scaled rotation rows (SVD of the 2x3), y axis on screen points down
+    const n1 = Math.hypot(...r1), n2 = Math.hypot(...r2), sc = (n1 + n2) / 2;
+    let a1 = r1.map(v => v / n1), a2 = r2.map(v => v / n2); const d = a1.reduce((s, v, k) => s + v * a2[k], 0);
+    const b1 = a1.map((v, k) => v - d / 2 * a2[k]), b2 = a2.map((v, k) => v - d / 2 * a1[k]), m1 = Math.hypot(...b1), m2 = Math.hypot(...b2);
+    r1 = b1.map(v => v / m1 * sc); r2 = b2.map(v => v / m2 * sc);
+    cam = { r1, r2, o: [p1[3], p2[3]] };
+    // left/right labelling per sample
+    const proj = x => [r1[0] * x[0] + r1[1] * x[1] + r1[2] * x[2] + cam.o[0], r2[0] * x[0] + r2[1] * x[1] + r2[2] * x[2] + cam.o[1]];
+    use = sf.map((_, s) => { const e = O => map.reduce((t, __, u) => { const o = O[s][u]; if (!o) return t; const p = proj(X[s][u]); return t + o[2] * Math.min(((p[0] - o[0]) ** 2 + (p[1] - o[1]) ** 2), (0.08 * H) ** 2) }, 0); return e(obsB) < 0.7 * e(obsA) ? 1 : 0 });
+    // shape: residual o - proj(mu) = sum_k c_k * P(comp_k)  (linear), prior LAM * |c|^2
+    const Am = Array.from({ length: K }, () => new Array(K).fill(0)), b = new Array(K).fill(0);
+    const rows = [];
+    sf.forEach((_, s) => map.forEach(([j], u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const i = idx(s, j);
+      for (const [r, off, ob] of [[r1, cam.o[0], o[0]], [r2, cam.o[1], o[1]]]) {
+        const pm = r[0] * MU[i] + r[1] * MU[i + 1] + r[2] * MU[i + 2] + off, ak = COMP.map(v => r[0] * v[i] + r[1] * v[i + 1] + r[2] * v[i + 2]);
+        let res = ob - pm; const cur = ak.reduce((t, v, k) => t + v * c[k], 0), e = res - cur, hub = 0.04 * H, w = o[2] * (Math.abs(e) < hub ? 1 : hub / Math.abs(e));   // Huber: bad frames count less
+        for (let a = 0; a < K; a++) { b[a] += w * ak[a] * res; for (let q = a; q < K; q++) Am[a][q] += w * ak[a] * ak[q] } } }));
+    const pxPerBody = sc;   // pixels per body height: the prior is in body-height units so it scales with the picture
+    for (let a = 0; a < K; a++) { Am[a][a] += LAM * pxPerBody * pxPerBody * 0.0025; for (let q = 0; q < a; q++) Am[a][q] = Am[q][a] }
+    c = solve(Am, b);
+  }
+  // back to metres in a frame with y up: rotate library (x plate, y side, z up) so up = y; the evaluation aligns the
+  // rotation about the vertical separately, so only height scaling matters here
+  const y = recon(c);
+  const fitted = sf.map((_, s) => { const o = {}; map.forEach(([j, m]) => { const p = [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]; o[m] = [p[0] * height, p[2] * height, (lefty ? 1 : -1) * p[1] * height] }); return o });
+  return { sf, fitted, c, scale: 1, rotAlign: true };
+}
+
+// best rotation about the vertical (y) taking hip-centred points A onto B (lists of [x,y,z])
+function yawAlign(Apts, Bpts) { let sxx = 0, sxz = 0; for (let i = 0; i < Apts.length; i++) { const a = Apts[i], b = Bpts[i]; sxx += a[0] * b[0] + a[2] * b[2]; sxz += a[0] * b[2] - a[2] * b[0] } const th = Math.atan2(sxz, sxx), c = Math.cos(th), s = Math.sin(th); return p => [c * p[0] - s * p[2], p[1], s * p[0] + c * p[2]] }
+
 const JOINTS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
 const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz") && f.startsWith(only)).map(f => f.replace(".raw.json.gz", "")).sort();
 const res = [];
@@ -109,10 +162,10 @@ for (const v of views) {
   const ph = n => (A.phases.find(p => p.name === n) || {}).frame;
   const ev = { ll: ph("Peak leg lift"), fs: ph("Foot strike"), mer: ph("Arm cocked"), br: ph("Release") };
   if (ev.ll == null || ev.ll <= 0) { res.push({ v, skip: "no leg lift" }); continue }
-  const F = fitView(A.pose, ev, A.fps, A.throwHand === "L");
+  const F = argv.includes("--2d") ? fit2D(raw, A, ev, tr.height) : fitView(A.pose, ev, A.fps, A.throwHand === "L");
   // compare at whole video frames inside the window: fitted pose interpolated between samples
   const hip = F2 => [0, 1, 2].map(k => (F2[23][k] + F2[24][k]) / 2);
-  let ea = 0, ef = 0, n = 0, aa = 0, af = 0, an = 0;
+  let ea = 0, ef = 0, n = 0, aa = 0, af = 0, an = 0; const FR = [], AR = [], TR = [], FT = [];
   const arm = A.throwHand === "L" ? [11, 13, 15] : [12, 14, 16];
   const T = Math.min(A.pose.length, tr.P.length);
   for (let t = Math.ceil(F.sf[0]); t <= Math.floor(F.sf[NS - 1]) && t < T; t++) {
@@ -120,6 +173,7 @@ for (const v of views) {
     let s = 0; while (s < NS - 2 && F.sf[s + 1] <= t) s++;
     const w = Math.max(0, Math.min(1, (t - F.sf[s]) / (F.sf[s + 1] - F.sf[s])));
     const fp = {}; for (const j of JOINTS) fp[j] = [0, 1, 2].map(k => F.fitted[s][j][k] * (1 - w) + F.fitted[s + 1][j][k] * w);
+    if (F.rotAlign) { FR.push(...JOINTS.map(j => fp[j].map((v, k) => v - hip(fp)[k]))); AR.push(...JOINTS.map(j => A.pose[t][j].map((v, k) => v - hip(A.pose[t])[k]))); TR.push(...JOINTS.map(j => tr.P[t][j].map((v, k) => v - hip(tr.P[t])[k]))); FT.push([t, fp]) }
     const B = tr.P[t], hb = hip(B), ha = hip(A.pose[t]), hf = hip(fp);
     for (const j of JOINTS) {
       const e1 = Math.hypot(...[0, 1, 2].map(k => (A.pose[t][j][k] - ha[k]) - (B[j][k] - hb[k])));
@@ -127,6 +181,11 @@ for (const v of views) {
       ea += e1; ef += e2; n++;
       if (t >= tr.events.fs && t <= tr.events.br && arm.includes(j)) { aa += e1; af += e2; an++ }
     }
+  }
+  if (F.rotAlign) {   // the 2D fit has no world frame of its own: compare both after the best turn about the vertical
+    const rf = yawAlign(FR, TR), ra = yawAlign(AR, TR); ea = ef = aa = af = 0;
+    for (let i = 0; i < FR.length; i++) { const f = rf(FR[i]), a = ra(AR[i]), b = TR[i]; ef += Math.hypot(f[0] - b[0], f[1] - b[1], f[2] - b[2]); ea += Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      const t = FT[Math.floor(i / JOINTS.length)][0], j = JOINTS[i % JOINTS.length]; if (t >= tr.events.fs && t <= tr.events.br && arm.includes(j)) { af += Math.hypot(f[0] - b[0], f[1] - b[1], f[2] - b[2]); aa += Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) } }
   }
   const cn = Math.hypot(...F.c);
   res.push({ v, app: 100 * ea / n, fit: 100 * ef / n, appArm: 100 * aa / an, fitArm: 100 * af / an, cn });

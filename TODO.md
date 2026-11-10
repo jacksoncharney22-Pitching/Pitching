@@ -132,6 +132,23 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   tracker's 2D points with the camera inside the fit (where the depth ambiguity is actually decided), and needs K 60+
   (or per-phase shapes): 30 shapes are too coarse to be a hard constraint. Don't retry the 3D projection.
 
+- **19:40 BREAKTHROUGH (rebuild step 2, test tool only, app unchanged): fitting the library to the tracker's 2D points
+  works.** `node tools/test/bodyproj.mjs --2d` (library K 80 = `bodylib.json` now 720 KB, held-out copy for the bench;
+  scaled-orthographic camera fitted with the delivery by alternating least squares, Huber on bad points, per-sample
+  whole-body left/right relabelling, prior `--lam2d 0.3`; timing from the app's own events): joints 8.72 -> 6.22 cm,
+  throwing arm foot strike to release 10.29 -> 7.61 cm, better on EVERY camera (behind 7.7 -> 6.7, behind_3b 8.3 -> 6.3,
+  front_3b 10.6 -> 6.5 (arm 14.2 -> 7.0), side_back 8.5 -> 5.9, side_open 8.5 -> 5.8). Prior sweep: lam 0.1 6.38,
+  0.3 6.22, 1 6.45, 3 7.05, 10 7.94; K 30 only 8.3 (too coarse), K 50 7.3. Comparison is fair but not yet the bench's:
+  both skeletons turned about the vertical onto the truth (the fit has no world frame yet), only over leg lift -0.25 s
+  to release +0.09 s, joints only (no angles yet). 3036 (the lefty-stored-as-righty) is the worst pitch.
+- **NEXT SESSION, in order:** (1) angles: turn the fitted delivery into a full 33-point pose over the window (head/feet
+  from the app's own pose, offsets kept) and score the bench angle table (elbow, layback, rotations, tilts at FS/MER/BR,
+  "as the coach sees it") vs the app; (2) refine timing inside the fit (event frames ±2 as parameters, pick best 2D
+  fit) and add perspective (camera distance) instead of orthographic; (3) frames outside the window: blend back to the
+  app's pose; (4) put it in pipeline.js behind an option (`_bodyFit`), bench + perview + regress + glitch, then make it
+  the default if it wins (step 5 of the rebuild plan). Lab data: re-download each session (steps in the rebuild section),
+  `python3 tools/bodylib_build.py <landmarks.csv> <metadata.csv> --eval` rebuilds both library files.
+
 ### Notes carried over from 2026-11-06 (elbow and trunk)
 - Elbow, measured: both the video-only arm (`_tmplAll:0`, -7.7°) and the lab-only arm (`_tmplAll:1`, -7.6°) share the bias. Not the 2D,
   not bone lengths (+-5%: <1°), not smoothing of the 2D, not a skewed camera axis. Less lab arm on the upper arm (`_tmplAll` 0.5 -> 0.3):
