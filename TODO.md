@@ -159,7 +159,17 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   tune d on it: if perspective goes in, fit d from the picture. So the pelvis over-turn is not the camera model; next
   idea: the lab hip joint centres vs the tracker's hip points (MediaPipe hips sit wider/higher); compare the library's
   hip width with the benchmark truth's, and try weighting the hips down in the 2D fit (`map` weights).
-- **NEXT SESSION, in order (supersedes the list below):** (0) pelvis over-turn (see the line above: hip point definition
+- 19:40 hips weighted up in the 2D fit (`--hipw`, now default 4; report only): pelvis FS/MER/BR 6.8/7.2/6.6 -> 6.3/6.8/6.2
+  (app 6.7/6.0/5.6), joints 6.22 -> 6.07 cm, arm 7.61 -> 7.28, forward tilt 3.0/4.3/3.9 -> 2.7/3.9/3.5, separation
+  5.9/4.6/5.8 -> 5.5/4.5/5.7, trunk FS 6.2 -> 6.6 (still beats the app's 8.2). hipw 0.3 worse everywhere; 2: between;
+  8: pelvis 6.1/6.6/6.0, trunk FS 6.8. Pelvis late still ~0.6-0.8° behind the app's (tuned) reading.
+- **NEXT SESSION (after 19:40), in order:** (1) put the hybrid into pipeline.js behind `_bodyFit` (fit2D from
+  tools/test/bodyproj.mjs: library K 80 + hipw 4 + lam 0.3, app's arm kept in trunk axes, app pose outside the window
+  with a short blend), load `bodylib.json` in app.js like armlib (bench must use the holdout copy), then run bench (incl.
+  "as the coach sees it"), perview, regress, glitch; (2) if pelvis late is the only loss, try the app's `_hipGain`
+  logic on the fitted hips; (3) Maher/Hackimer/Staumont strips before making it default. Perspective (`--dist`) is a
+  small extra (-0.2 cm) once d can be read from the picture.
+- (superseded) NEXT SESSION: (0) pelvis over-turn (see the line above: hip point definition
   / hip weights in the fit), then (0b) perspective with d fitted from the picture; (0c) old step: perspective camera in `fit2D` (camera distance as a
   parameter, e.g. Gauss-Newton on distance with the linear steps inside) and re-check the signed pelvis; (1) pelvis: find why it's 1° worse late (signed bias by camera;
   try perspective camera, or keep the app's hip turn and only take legs/trunk from the fit); (2) the "as the coach sees

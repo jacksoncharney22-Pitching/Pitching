@@ -112,6 +112,8 @@ function fit2D(raw, A, ev, height) {
     const P = raw.frames[a], Q = raw.frames[b] || P; if (!P) return null; return [(P.img[m][0] * (1 - w) + Q.img[m][0] * w) * W, (P.img[m][1] * (1 - w) + Q.img[m][1] * w) * H, Math.min(P.img[m][2] ?? 1, Q.img[m][2] ?? 1)] };
   const obsA0 = sf.map(f => map.map(([, m]) => img(f, m))), obsB0 = sf.map(f => map.map(([, m]) => img(f, swap(m))));
   let obsA = obsA0, obsB = obsB0;
+  // --hipw w: how much the tracker's hip points count in the fit (they sit differently from the lab's hip joint centres)
+  const HIPW = arg("--hipw", 4), JW = map.map(([j]) => /hip/.test(L.joints[j]) ? HIPW : 1);
   // --dist d: perspective, camera d body heights from the library origin (POSIT-style: each point's picture position is
   // scaled by (1 + its depth / d) about the picture centre, then the orthographic steps run on that); --r3 picks which way
   // the depth axis points (the sign the orthographic camera can't tell)
@@ -130,7 +132,7 @@ function fit2D(raw, A, ev, height) {
     }
     // camera: rows r1,r2 (3) + offsets: solve u = r1.x + o1, v = r2.x + o2 by least squares, then make rigid
     const N = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], bu = [0,0,0,0], bv = [0,0,0,0];
-    sf.forEach((_, s) => map.forEach((__, u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const x = [...X[s][u], 1], w = o[2];
+    sf.forEach((_, s) => map.forEach((__, u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const x = [...X[s][u], 1], w = o[2] * JW[u];
       for (let a = 0; a < 4; a++) { bu[a] += w * x[a] * o[0]; bv[a] += w * x[a] * o[1]; for (let b = 0; b < 4; b++) N[a][b] += w * x[a] * x[b] } }));
     const p1 = solve(N, bu), p2 = solve(N, bv);
     let r1 = p1.slice(0, 3), r2 = p2.slice(0, 3);
@@ -149,7 +151,7 @@ function fit2D(raw, A, ev, height) {
     sf.forEach((_, s) => map.forEach(([j], u) => { const o = (use[s] ? obsB : obsA)[s][u]; if (!o) return; const i = idx(s, j);
       for (const [r, off, ob] of [[r1, cam.o[0], o[0]], [r2, cam.o[1], o[1]]]) {
         const pm = r[0] * MU[i] + r[1] * MU[i + 1] + r[2] * MU[i + 2] + off, ak = COMP.map(v => r[0] * v[i] + r[1] * v[i + 1] + r[2] * v[i + 2]);
-        let res = ob - pm; const cur = ak.reduce((t, v, k) => t + v * c[k], 0), e = res - cur, hub = 0.04 * H, w = o[2] * (Math.abs(e) < hub ? 1 : hub / Math.abs(e));   // Huber: bad frames count less
+        let res = ob - pm; const cur = ak.reduce((t, v, k) => t + v * c[k], 0), e = res - cur, hub = 0.04 * H, w = o[2] * JW[u] * (Math.abs(e) < hub ? 1 : hub / Math.abs(e));   // Huber: bad frames count less
         for (let a = 0; a < K; a++) { b[a] += w * ak[a] * res; for (let q = a; q < K; q++) Am[a][q] += w * ak[a] * ak[q] } } }));
     const pxPerBody = sc;   // pixels per body height: the prior is in body-height units so it scales with the picture
     for (let a = 0; a < K; a++) { Am[a][a] += LAM * pxPerBody * pxPerBody * 0.0025; for (let q = 0; q < a; q++) Am[a][q] = Am[q][a] }
