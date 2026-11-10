@@ -1527,6 +1527,18 @@ function analyseOnce(raw, opts = {}) {
     if (az) 
     for (let t = 0; t < T; t++) { const m0 = Math.round((fs_ + rel) / 2), w = sstep(t, m0 - r, m0 + r) * (1 - sstep(t, rel - r, rel + r + r)); if (w <= 0) continue;
       for (const j of [14, 16, 18, 20, 22]) P[t][j] = add(P[t][j], mul(u, az * w * (j === 14 ? 0.6 : 1))) } }
+  // from foot strike to release the glove elbow and hand read too far toward the plate (behind/front cameras: 5-8 cm) and,
+  // seen from the throwing-arm side, too far from the camera (side_back: 9-12 cm, the glove arm is hidden behind the
+  // body there); before foot strike there's no such bias. Only the along-camera part is moved (the picture decides the
+  // rest), by 3% of the arm's length per unit of camera-toward-plate and 8% when the camera is on the arm side, elbow
+  // half (`_gloveX` 0.03, `_gloveS` 0.08, `_gloveE` 0.5; 0 = old; 2026-11-10). Glove elbow at FS/arm cocked
+  // 11.1/7.6 -> 10.7/7.2 deg, glove abduction at arm cocked 6.8 -> 6.1 (unusual lab set 7.1 -> 6.5, 6.6 -> 6.3).
+  { const gx = opts._gloveX ?? 0.03, gs = opts._gloveS ?? 0.08, ge = opts._gloveE ?? 0.5, r = Math.max(1, Math.round(0.05 * fs)), cn = Math.hypot(...camDir), u = camDir.map(x => x / cn);
+    if (gx || gs) {
+      const arm = median(P.map(F => Math.hypot(...sub(F[11], F[13])) + Math.hypot(...sub(F[13], F[15])))) / 0.55;
+      const sh = arm * (-gx * u[0] + gs * Math.max(0, -u[2]));
+      for (let t = 0; t < T; t++) { const w = sstep(t, fs_ - r, fs_ + r) * (1 - sstep(t, rel - r, rel + r)); if (w <= 0) continue;
+        for (const j of [13, 15, 17, 19, 21]) P[t][j] = add(P[t][j], mul(u, sh * w * (j === 13 ? ge : 1))) } } }
   if (opts._snap) opts._snap("lock", P, { imgSmooth, liftScale, rot, camDir });
   // ---- how closely the skeleton matches the tracked video (camera view, hip-relative), in metres
   const MJ = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28], errs = [];
