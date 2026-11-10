@@ -78,28 +78,35 @@ function yawAlign(A, B) { let sxx = 0, sxz = 0; for (let i = 0; i < A.length; i+
 
 // D: analyse() output (pose in display handedness); raw: the tracker output it was analysed from.
 // Returns a new pose (same length) or null when the clip can't be fitted (no leg lift in the clip, frames don't line up).
+const LLGAP = 0.53, MINLEAD = 0.45;   // s, typical peak leg lift to foot strike (lab and benchmark median)
 export function bodyFit(raw, D, L, opts = {}) {
   const ph = n => (D.phases.find(p => p.name === n) || {}).frame;
   const ev = { ll: ph("Peak leg lift"), fs: ph("Foot strike"), mer: ph("Arm cocked"), br: ph("Release") };
   const fps = D.fps, A = D.pose, T = A.length;
-  if (!L || !(ev.ll > 0) || ev.fs == null || ev.mer == null || ev.br == null || !(ev.ll < ev.fs && ev.fs < ev.mer && ev.mer < ev.br)) return null;
+  // A clip started at or after peak leg lift reads leg lift at frame 0. The leg lift is then placed a typical lab
+  // leg-lift-to-foot-strike time before foot strike (or at frame 0 if that's later), and library samples that fall
+  // before the first frame simply have no picture to fit: the rest of the delivery decides their shape.
+  // Started well after the leg lift (foot strike under MINLEAD s into the clip), the fit made the front knee and
+  // separation worse on the lab views (cut 1/6 s after leg lift: front knee 7.5/7.5/8.1 -> 8.5/10.5/13.5 deg), so not then.
+  if (L && !(ev.ll > 0) && ev.fs > 0) { if (ev.fs < (opts.minLead ?? MINLEAD) * D.fps) return null; ev.ll = Math.min(0, ev.fs - (opts.llGap ?? LLGAP) * D.fps) }
+  if (!L || !(ev.ll <= ev.fs) || ev.fs == null || ev.mer == null || ev.br == null || !(ev.ll < ev.fs && ev.fs < ev.mer && ev.mer < ev.br)) return null;
   if (!raw || !raw.frames || raw.frames.length !== T || !raw.width || !raw.height) return null;
   const { MU, COMP, NS, NJ, K, USED } = prep(L, opts.k ?? 80), idx = (s, j) => (s * NJ + j) * 3;
   const knots = [ev.ll - L.pre * fps, ev.ll, ev.fs, ev.mer, ev.br, ev.br + L.post * fps], sf = [];
   L.phases.forEach(([, n], p) => { for (let i = 0; i < n; i++) sf.push(knots[p] + (knots[p + 1] - knots[p]) * i / n) });
   const lefty = D.throwHand === "L", map = USED.map(([j, m]) => [j, lefty ? swap(m) : m]);
   const recon = c => { const y = Float64Array.from(MU); for (let k = 0; k < K; k++) { const ck = c[k], v = COMP[k]; if (ck) for (let i = 0; i < y.length; i++) y[i] += ck * v[i] } return y };
-  const lerpPose = (f, j) => { const a = Math.max(0, Math.min(T - 1, Math.floor(f))), b = Math.min(T - 1, a + 1), w = Math.max(0, Math.min(1, f - a)); return [0, 1, 2].map(k => A[a][j][k] * (1 - w) + A[b][j][k] * w) };
+  const lerpPose = (f, j) => { if (f < 0) return null; const a = Math.max(0, Math.min(T - 1, Math.floor(f))), b = Math.min(T - 1, a + 1), w = Math.max(0, Math.min(1, f - a)); return [0, 1, 2].map(k => A[a][j][k] * (1 - w) + A[b][j][k] * w) };
 
   // 1. starting point: the library delivery closest to the app's own 3D skeleton
   let c = new Array(K).fill(0);
   { const obs = sf.map(f => map.map(([, m]) => lerpPose(f, m))), lam = 0.05 * 0.05;
     for (let it = 0; it < 8; it++) {
       const y = recon(c), X = [], Y = [];
-      sf.forEach((_, s) => map.forEach(([j], u) => { X.push([y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]); Y.push(obs[s][u]) }));
+      sf.forEach((_, s) => map.forEach(([j], u) => { if (!obs[s][u]) return; X.push([y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]); Y.push(obs[s][u]) }));
       const Tr = similarity(X, Y, lefty);
       const Am = Array.from({ length: K }, () => new Array(K).fill(0)), b = new Array(K).fill(0);
-      sf.forEach((_, s) => map.forEach(([j], u) => { const p = obs[s][u].map((v, k) => v - Tr.t[k]);
+      sf.forEach((_, s) => map.forEach(([j], u) => { if (!obs[s][u]) return; const p = obs[s][u].map((v, k) => v - Tr.t[k]);
         for (let a = 0; a < 3; a++) { const i = idx(s, j) + a, r = (Tr.R[0][a] * p[0] + Tr.R[1][a] * p[1] + Tr.R[2][a] * p[2]) / Tr.s - MU[i];
           for (let q = 0; q < K; q++) { const vq = COMP[q][i]; b[q] += vq * r; for (let q2 = q; q2 < K; q2++) Am[q][q2] += vq * COMP[q2][i] } } }));
       for (let a = 0; a < K; a++) { Am[a][a] += lam; for (let q = 0; q < a; q++) Am[a][q] = Am[q][a] }
@@ -110,8 +117,11 @@ export function bodyFit(raw, D, L, opts = {}) {
   // 2. the delivery and a scaled-orthographic camera fitted to the tracker's 2D points
   const W = raw.width, H = raw.height, fr = raw.frames;
   const ok = f => f && f.img && f.img.length === 33 && f.img.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
-  const img = (f, m) => { const a = Math.max(0, Math.min(T - 1, Math.floor(f))), b = Math.min(T - 1, a + 1), w = Math.max(0, f - a);
-    const P = ok(fr[a]) ? fr[a] : null, Q = ok(fr[b]) ? fr[b] : P; if (!P) return null;
+  // the tracker's point at a fractional frame, interpolated between the nearest tracked frames on either side (up to 3
+  // frames away): slow-motion clips can have empty frames between tracked ones (Hackimer: 1 in 3)
+  const near = (f, d) => { for (let a = d < 0 ? Math.floor(f) : Math.ceil(f), n = 0; n <= 3 && a >= 0 && a < T; a += d, n++) if (ok(fr[a])) return a; return -1 };
+  const img = (f, m) => { if (f < 0) return null; f = Math.min(f, T - 1); const a0 = near(f, -1), b0 = near(f, 1); if (a0 < 0 && b0 < 0) return null;
+    const a = a0 < 0 ? b0 : a0, b = b0 < 0 ? a : b0, w = b > a ? (f - a) / (b - a) : 0, P = fr[a], Q = fr[b];
     return [(P.img[m][0] * (1 - w) + Q.img[m][0] * w) * W, (P.img[m][1] * (1 - w) + Q.img[m][1] * w) * H, Math.min(P.img[m][2] ?? 1, Q.img[m][2] ?? 1)] };
   const obsA = sf.map(f => map.map(([, m]) => img(f, m))), obsB = sf.map(f => map.map(([, m]) => img(f, swap(m))));
   if (obsA.filter(r => r.some(Boolean)).length < NS * 0.7) return null;
