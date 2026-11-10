@@ -70,20 +70,23 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   keeps 77% vs 75%: the remaining tilt flattening is depth (side-on cameras), not the picture plane.
 - 8:15 tried, no gain (drop): (d) late-started slow motion, wrist speed over an exact fraction of foot strike -> release
   (interpolated, not rounded): `slowmo.mjs --late 20` 227 -> 227 of 240, `--late 30` 229 -> 229. The window rounding isn't it.
-- **9:40 session FINDING (arm slot, next session's best item):** from a camera straight behind (or in front), the plain
-  2D picture angle of shoulder->wrist around release reads the true arm slot far better than the app's 3D arm: unusual set
-  (14 pitchers incl. 2 sidearm, 2 very high slot) behind view: 2D picture slot -1.4 deg bias, 3.4 deg spread, keeps 100% of
-  the pitcher's difference; the app's 3D slot from the same view is 9.0 deg off (sidearm 1562 +15, short-strider 2923 -45).
-  Benchmark behind view: 2D 0.3 bias, 4.8 spread, keeps 99%. 45-degree views (behind_3b/front_3b): 2D keeps 115-118%,
-  bias +3/+9 (usable with a correction); side views: 2D is useless (54-128%, 9-11 spread), as expected (slot is depth there).
-  App 3D slot |err| by view on the unusual set: behind 9.0, behind_3b 10.2, front_3b 8.5, side_open 8.8, side_back 15.0.
-  NEXT: in analyse (where `out.slotArm` is set, pipeline.js ~743) also store the picture slot for the 3 frames to release
-  and how face-on the camera is to the plate line (angle between image x (`rot([1,0,0])`-style) and the throwing
-  direction); in deliveryMeasures blend: weight w = cos^2(angle off face-on) toward the 2D slot. Score with
-  `node tools/test/unusual.mjs <dir> tools/test/bench/bodylib_holdout.json` (slot column, "keeps %" arm slot row) AND
-  `node tools/test/measures.mjs` (benchmark slot 6.4 deg off). Script used: per view, truth slot vs
-  atan2(-dy*H, |dx|*W) of img[12]->img[16] over br-2..br (lab data: download steps in the rebuild section, ~1 min;
-  `python3 tools/test/unusual_make.py landmarks.csv metadata.csv <dir>` makes the set in 14 s).
+- **9:40 SHIPPED (ea2d3f3): arm slot read from the picture when the camera is nearly straight behind/in front.** Finding:
+  from straight behind, the plain 2D shoulder->wrist angle around release reads the true slot within 3-5 deg and keeps
+  100% of the pitcher's difference (unusual set and benchmark), while the 3D arm is ~9 deg off there (sidearm read high).
+  From 45 deg the picture reads 3-9 deg high, from the side it's useless. So `deliveryMeasures` blends toward the picture
+  slot with weight face^12 (face = cos^2 of the camera's angle off the plate line, from D.cameraDir; uses D.img).
+  Benchmark (measures.mjs) slot 6.21 -> 5.81 deg off, r 0.85 -> 0.87; unusual set 10.3 -> 10.2, keeps 80 -> 82%; sidearm
+  from behind 1562 +15 -> +6, 3252 +11 -> +8, 1394 +10 -> +3 (1393 -1 -> +9, worse). Tried weights face^1/2/3 (45-deg views
+  get worse: front_3b 8.5 -> 11.4) and face^6 (same as 12). Maher/Staumont/Hackimer unchanged (side / 54-deg cameras),
+  regress ok, export_check ok, comparecheck slot rows ~same (limit still 9).
+  Still open: 45-degree cameras (behind_3b/front_3b) — picture keeps 115-118% with a +3/+9 bias: a proper geometric
+  read (picture angle corrected for the camera's angle) might help there; side views need the 3D arm.
+- **9:40 FINDING (events on unusual deliveries, worth a session):** `node <scratch>/relchk`-style check (app events vs truth
+  frame, 60 fps): benchmark 60 views: release off >=2 frames on 1, foot strike >=3 on 0. Unusual 70 views: release >=2 on 5
+  (all late, 4 of 5 from behind: 1393 behind +3, 2907 behind_3b +4, 2923 behind +4, 2993 behind +2), foot strike >=3 on 10
+  (2923 behind +10 frames). A late release ruins the slot there (2923 behind reads -14 deg: arm already past release,
+  pointing down; truth 34). Caveat: the tracker noise is borrowed from another pitcher's view lined up by delivery phase,
+  so check whether the donor's noise (not the delivery) causes it before tuning events (remake with another donor).
 - 9:40 tried, no gain (drop, don't repeat): despike with flat Float64Arrays and an index-based median (no iterator):
   samecheck identical, but 5.7-6.3 s vs 5.4-5.9 s before (despike self time 0.77 -> 0.59 s, noise eats it). Analysis
   speed is now 0.23 s per clip in Node; more micro-tuning isn't worth a session: item (a) closed.
