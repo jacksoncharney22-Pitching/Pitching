@@ -17,23 +17,33 @@ const analyse = (raw, o = {}) => analyseRaw(raw, { ...o, ...(ARMLIB ? { armLib: 
 // The skeleton build after tracking runs in a background worker (analysisworker.js) so the page keeps moving (it froze
 // for seconds, longer on phones). Anything wrong with the worker and it simply runs on the page as before;
 // ?analysisworker=0 forces the page.
-let anaW = null, anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "undefined", anaSeq = 0, anaLibs = { arm: false, body: false };
+// Up to 3 workers (one fewer than the device's processor cores): "Over time" and Compare re-read several saved pitches,
+// and on a phone each takes a second or more, so they are read side by side. A single build uses one worker.
+let anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "undefined", anaSeq = 0;
+const anaMax = Math.max(1, Math.min(3, ((typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 2) - 1));
+let anaPool = [];                                       // { w, libs: { arm, body }, busy }
 const anaWait = new Map();
-const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; try { anaW && anaW.terminate() } catch (e) {} anaW = null; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
-function anaAsk(m) {
-  if (!anaW) {
-    anaW = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
-    anaW.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
-    anaW.onerror = e => anaDrop(e.message || "worker failed");
+const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; for (const x of anaPool) try { x.w.terminate() } catch (e) {} anaPool = []; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
+function anaWorker() {
+  let x = anaPool.find(p => !p.busy);
+  if (!x && anaPool.length < anaMax) {
+    const w = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    w.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
+    w.onerror = e => anaDrop(e.message || "worker failed");
+    anaPool.push(x = { w, libs: { arm: false, body: false }, busy: 0 });
   }
-  const libs = {};
-  if (ARMLIB && !anaLibs.arm) { libs.armLib = ARMLIB; anaLibs.arm = true }
-  if (BODYLIB && !anaLibs.body) { libs.bodyLib = BODYLIB; anaLibs.body = true }
+  return x || anaPool.reduce((a, b) => b.busy < a.busy ? b : a);
+}
+function anaAsk(m) {
+  const x = anaWorker(), libs = {};
+  if (ARMLIB && !x.libs.arm) { libs.armLib = ARMLIB; x.libs.arm = true }
+  if (BODYLIB && !x.libs.body) { libs.bodyLib = BODYLIB; x.libs.body = true }
+  x.busy++;
   return new Promise((res, rej) => {
     const id = ++anaSeq; anaWait.set(id, [res, rej]);
-    anaW.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
+    x.w.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
     setTimeout(() => { if (anaWait.has(id)) anaDrop("timed out") }, 180000);
-  });
+  }).finally(() => { x.busy-- });
 }
 // same answer as analyse()/detectSlowFactor() on the page; an error in the worker re-runs it on the page, which then
 // shows the analysis's own message if the clip itself is the problem
@@ -473,13 +483,17 @@ function fmtClock(t) { const m = Math.floor(t / 60), s = t - 60 * m; return `${m
 // models, each { where, detect(picture, ts) -> MediaPipe-style result, reset(), close() }; if the worker breaks mid-run
 // the rest of the run carries on with models on the page.
 let poseWorkerOk = !/[?&](pose|finder)worker=0/.test(location.search) && typeof Worker !== "undefined" && typeof createImageBitmap === "function";
+// n can also be a list of { mode: "VIDEO"|"IMAGE", poses } (Max: a 3-person IMAGE finder beside the VIDEO tracker).
 async function poseModels(q, n = 1, { page = false } = {}) {
-  const pageModel = async () => {
-    let t = await makeTracker(q, { mode: "VIDEO" });
+  const specs = typeof n === "number" ? Array.from({ length: n }, () => ({})) : n.map(s => s || {});
+  n = specs.length;
+  const pageModel = async (k) => {
+    const sp = { mode: specs[k].mode || "VIDEO", poses: specs[k].poses || 1 };
+    let t = await makeTracker(q, sp);
     const drop = () => { try { t.close() } catch (e) {} trackers = trackers.filter(x => x !== t) };
-    return { where: "page", async detect(v, ts) { return t.detectForVideo(v, ts) }, async reset() { drop(); t = await makeTracker(q, { mode: "VIDEO" }) }, close: drop };
+    return { where: "page", async detect(v, ts) { return sp.mode === "IMAGE" ? t.detect(v) : t.detectForVideo(v, ts) }, async reset() { drop(); t = await makeTracker(q, sp) }, close: drop };
   };
-  const onPage = async () => { const out = []; for (let k = 0; k < n; k++) out.push(await pageModel()); return out };
+  const onPage = async () => { const out = []; for (let k = 0; k < n; k++) out.push(await pageModel(k)); return out };
   if (!poseWorkerOk || page) return onPage();
   let w;
   try {
@@ -491,7 +505,7 @@ async function poseModels(q, n = 1, { page = false } = {}) {
       const id = ++seq; wait.set(id, [res, rej]); w.postMessage({ ...m, id }, tr || []);
       setTimeout(() => { if (wait.has(id)) { wait.delete(id); rej(new Error("worker timed out")) } }, m.type === "init" ? 60000 : 20000);
     });
-    for (let k = 0; k < n; k++) { const bytes = (await modelBytes(q)).slice(); await ask({ type: "init", key: k, base: BASE(), bytes }, [bytes.buffer]) }
+    for (let k = 0; k < n; k++) { const bytes = (await modelBytes(q)).slice(); await ask({ type: "init", key: k, base: BASE(), bytes, mode: specs[k].mode, poses: specs[k].poses }, [bytes.buffer]) }
     let broken = false; const live = new Set();
     const fail = e => { if (!broken) { console.warn("pose worker, carrying on with the page:", e); window.__poseFellBack = String(e); broken = true; poseWorkerOk = false; try { w.terminate() } catch (_) {} } };
     return Array.from({ length: n }, (_, k) => {
@@ -503,7 +517,7 @@ async function poseModels(q, n = 1, { page = false } = {}) {
             try { const bm = await createImageBitmap(v); return (await ask({ type: "detect", key: k, bitmap: bm, ts }, [bm])).r }
             catch (e) { fail(e) }
           }
-          if (!fb) { fb = await pageModel(); api.where = "page" }
+          if (!fb) { fb = await pageModel(k); api.where = "page" }
           return fb.detect(v, ts);
         },
         async reset() { if (fb) return fb.reset(); if (broken) return; try { await ask({ type: "reset", key: k }) } catch (e) { fail(e) } },
@@ -673,8 +687,12 @@ async function trackMax(src) {
   const q = "max", say = progress(src.prog);
   step("stModel", "doing", `Downloading the ${MODELS[q].label} tracking model (first time only)`);
   closeTrackers();
+  runModels.forEach(m => m.close()); runModels = [];
+  // MediaPipe's models run in the background worker when the browser allows it (page stays responsive), as for Fast/High;
+  // each pass gets its own set (a fresh worker), closed before the next pass starts, like the trackers on the page were.
+  const models = async specs => { runModels.forEach(m => m.close()); return (runModels = await poseModels(q, specs)) };
   // tracking one person keeps MediaPipe's frame-to-frame stabilising on; a separate multi-person look finds the pitcher
-  const full = await makeTracker(q), finder = await makeTracker(q, { mode: "IMAGE", poses: 3 });
+  const [full, finder] = await models([{ mode: "VIDEO" }, { mode: "IMAGE", poses: 3 }]);
   // the stronger body tracker (sees blurred arms and legs far better); if it can't load, carry on without it
   let rtm = false;
   if (opts.engine !== "standard") {
@@ -705,8 +723,8 @@ async function trackMax(src) {
     boxOf = () => ref ? poseBox(ref, W, H) : null;
     await seekTo(i);
     { const sg = frameSig(v); diffs.push(i ? sigDiff(sg, prevSig) : 1e9); prevSig = sg }
-    const who = pickPitcher(finder.detect(S), null, W, H, ref);         // the pitcher among everyone in view
-    const f = pickPitcher(full.detectForVideo(S, ts(i)), null, W, H, who || ref);
+    const who = pickPitcher(await finder.detect(S), null, W, H, ref);   // the pitcher among everyone in view
+    const f = pickPitcher(await full.detect(S, ts(i)), null, W, H, who || ref);
     if (f) { f.src = "full"; looks[i].push(f) }
     const id = who || f;
     if (id) { first[i] = id; ref = id }
@@ -722,20 +740,19 @@ async function trackMax(src) {
   boxOf = i => boxes[i];
   const cropAt = (i, scale, mirror) => { const [cx, cy, s0] = boxes[i], side = s0 * scale; return { sx: cx - side / 2, sy: cy - side / 2, side, mirror } };
   const CS = 512, cv = document.createElement("canvas"); cv.width = cv.height = CS; const g = cv.getContext("2d", { willReadFrequently: false });
-  const look = (tracker, i, k, crop, video, src) => {
+  const look = async (tracker, i, k, crop, src) => {
     drawCrop(g, S, CS, W, H, crop);
-    const res = video ? tracker.detectForVideo(cv, ts(k)) : tracker.detect(cv);
+    const res = await tracker.detect(cv, ts(k));                        // VIDEO or IMAGE as the model was made
     const f = pickPitcher(res, crop, W, H, near(i)); if (f) { f.src = src; looks[i].push(f) }
   };
   // pass 2 (forward): zoomed in at three sizes, normal and mirrored; two follow the motion, two judge each frame fresh
-  full.close(); finder.close(); trackers = trackers.filter(t => t !== full && t !== finder);
-  const zA = await makeTracker(q), zB = await makeTracker(q), still = rtm ? null : await makeTracker(q, { mode: "IMAGE" });
+  const [zA, zB, still = null] = await models(rtm ? [{}, {}] : [{}, {}, { mode: "IMAGE" }]);
   for (let i = 0; i < N; i++) {
     if (cancelled) throw new Error("cancelled");
     if (dup[i]) { tick("Pass 2 of 3 · zoomed in", i); tick("Pass 2 of 3 · zoomed in", i); tick("Pass 2 of 3 · zoomed in", i); continue }
     await seekTo(i);
-    look(zA, i, i, cropAt(i, 1.4, false), true, "zoom"); tick("Pass 2 of 3 · zoomed in", i);
-    look(zB, i, i, cropAt(i, 1.4, true), true, "zoomMirror"); tick("Pass 2 of 3 · zoomed in", i);
+    await look(zA, i, i, cropAt(i, 1.4, false), "zoom"); tick("Pass 2 of 3 · zoomed in", i);
+    await look(zB, i, i, cropAt(i, 1.4, true), "zoomMirror"); tick("Pass 2 of 3 · zoomed in", i);
     if (rtm) {
       // the stronger tracker, normal and mirrored, on the pitcher's box (its own padding adds room for the arm)
       const [cx, cy, s0] = boxes[i], box = [cx - s0 / 2, cy - s0 / 2, cx + s0 / 2, cy + s0 / 2];
@@ -744,22 +761,22 @@ async function trackMax(src) {
         const ref = near(i); if (!ref || poseDistLook(f, ref, W, H) < 0.6 * poseBox(ref, W, H)[2]) looks[i].push(f);
       }
       tick("Pass 2 of 3 · stronger tracker", i);
-    } else { look(still, i, i, cropAt(i, 1.2, false), false, "stillClose"); look(still, i, i, cropAt(i, 1.75, true), false, "stillWideMirror"); tick("Pass 2 of 3 · zoomed in", i) }
+    } else { await look(still, i, i, cropAt(i, 1.2, false), "stillClose"); await look(still, i, i, cropAt(i, 1.75, true), "stillWideMirror"); tick("Pass 2 of 3 · zoomed in", i) }
   }
   // pass 3 (backward in time): tracking that follows the motion lags a little; running it in reverse lags the other way
-  [zA, zB].forEach(t => t.close()); trackers = trackers.filter(t => t !== zA && t !== zB);
-  const bA = await makeTracker(q), bB = await makeTracker(q);
+  const [bA, bB] = await models([{}, {}]);
   for (let k = 0; k < N; k++) {
     if (cancelled) throw new Error("cancelled");
     const i = N - 1 - k;
     if (dup[i]) { tick("Pass 3 of 3 · backwards", k); tick("Pass 3 of 3 · backwards", k); continue }
     await seekTo(i);
-    look(bA, i, k, cropAt(i, 1.4, false), true, "back"); tick("Pass 3 of 3 · backwards", k);
-    look(bB, i, k, cropAt(i, 1.55, true), true, "backMirror"); tick("Pass 3 of 3 · backwards", k);
+    await look(bA, i, k, cropAt(i, 1.4, false), "back"); tick("Pass 3 of 3 · backwards", k);
+    await look(bB, i, k, cropAt(i, 1.55, true), "backMirror"); tick("Pass 3 of 3 · backwards", k);
   }
+  runModels.forEach(m => m.close()); runModels = [];                    // frees the worker and its models
   say("combining the seven passes", 1);
   await new Promise(r => setTimeout(r, 20));
-  window.__lastLooks = { W, H, fps: sampleFps, looks };
+  window.__lastLooks = { W, H, fps: sampleFps, looks, dup, first: first.map(f => f && f.img) };   // dup/first: for tools/test/maxworker_check.py
   const frames = looks.map((c, i) => dup[i] ? null : fuseSoft(c, W, H, { k: 4, srcW: { stillClose: 0.3, stillWideMirror: 0.3, rtm: 3, rtmMirror: 3 } }));
   if (rtm && opts.armZoom !== false) { try { await armZoom(nc.on ? nc.cv : v, frames, W, H, sampleFps, seekTo, say, () => cancelled) } catch (e) { console.warn("arm close-up skipped", e) } }
   return { frames, N, sampleFps, W, H, start, label: "max accuracy", repeats: nRep, diffs };
@@ -966,7 +983,7 @@ $("cmpGo").onclick = async () => {
       if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
       return { data, label: savedLabel(it) };
     };
-    const [A, B] = [await load(ids[0]), await load(ids[1])];
+    const [A, B] = await Promise.all([load(ids[0]), load(ids[1])]);   // side by side when there are two workers
     $("cmpEyebrow").textContent = "Side by side"; $("cmpTitle").textContent = "Compare two pitches"; renderCompare($("cmpBody"), A, B); show("compare");
   } catch (e) { alert("Those two pitches could not be compared. Try opening each one from Recent first.") }
   go.disabled = false; go.textContent = was;
@@ -976,9 +993,15 @@ $("trendGo").onclick = async () => {
   try {
     await armLibReady();
     const items = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => a.date - b.date), pts = [];
-    for (let i = 0; i < items.length; i++) { const it = items[i]; go.textContent = `Reading ${i + 1} of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
-      let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
-      if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) }
+    // read side by side (several background workers on a multi-core phone or laptop), kept in date order
+    const read = async it => { let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} } return data };
+    const got = new Array(items.length); let next = 0, done = 0;
+    go.textContent = `Reading 0 of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
+    await Promise.all(Array.from({ length: anaOk ? anaMax : 1 }, async () => {
+      while (next < items.length) { const i = next++; got[i] = await read(items[i]); go.textContent = `Reading ${++done} of ${items.length}…` }
+    }));
+    items.forEach((it, i) => { const data = got[i];
+      if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) });
     $("cmpEyebrow").textContent = "Over time"; $("cmpTitle").textContent = "One reading across saved pitches";
     show("compare"); renderTrend($("cmpBody"), pts);   // shown first so the chart can size itself to the screen
   } catch (e) { alert("Those pitches could not be read. Try opening each one from Recent first.") }

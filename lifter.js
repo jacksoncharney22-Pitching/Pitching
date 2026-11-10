@@ -9,6 +9,17 @@ const MP2COCO = [0, 2, 5, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
 const L36 = [4, 5, 6, 11, 12, 13], R36 = [1, 2, 3, 14, 15, 16];
 let session = null, loading = null;
 
+// Without a graphics chip the model runs on the processor (WebAssembly), and on the page that froze it for seconds
+// at a time; onnxruntime's "proxy" runs that same code in a background worker instead (same numbers). It has to be
+// chosen before the first model loads, and isn't used with the graphics chip (WebGPU), which already runs off the page.
+// ?ortproxy=0 turns it off.
+async function wasmProxy() {
+  if (window.__ortInit) return; window.__ortInit = true;
+  try {
+    const gpu = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
+    if (!gpu && !/[?&]ortproxy=0/.test(location.search)) window.ort.env.wasm.proxy = true;
+  } catch (e) {}
+}
 function loadScript(src, name) {
   return new Promise((res, rej) => { if (window[name]) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("couldn't load " + src)); document.head.append(s) });
 }
@@ -20,6 +31,7 @@ export async function loadLifter() {
     if (!window.ort) await loadScript(base + "ort/ort.all.min.js", "ort");
     window.ort.env.wasm.wasmPaths = base + "ort/";
     window.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
+    await wasmProxy();
     let buf = null;
     try { const c = await caches.open("feole-models-v1"); const hit = await c.match(base + "lifter/mag243.onnx"); if (hit) buf = await hit.arrayBuffer() } catch (e) {}
     if (!buf) {
