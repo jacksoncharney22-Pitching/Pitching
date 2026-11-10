@@ -529,6 +529,20 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   Also validated 16:40's summed-direction slot on the unusual set: 6.02 -> 5.72. Other delivery numbers' biases disagree
   between the sets (peak sep +0.4 vs +2.4, hand height +0.01 vs +0.03, stride -0.01 vs +0.02): no constant fix for them.
   Hand-moved leg lift / arm cocked checked too (-6..+6 frames): every card unchanged (Staumont stride 1.45-1.49 with leg lift).
+- 17:40 CLOSED lead "side_back slot +10.5": after today's skeleton fixes the per-camera slot bias is small and disagrees
+  between the sets (benchmark behind/behind_3b/front_3b/side_back/side_open +1.2/-2.8/+2.3/+2.5/-2.6, unusual
+  -0.2/-1.2/+0.9/+0.6/-0.3 after the -2.5 fix). Nothing camera-specific left to fix in the slot.
+- 17:40 FINDING (glove arm by camera, signed/abs deg, benchmark | unusual): glove abduction at foot strike side_back -6.2 | -6.7
+  and behind +5.3 | +3.6 (same on both sets: real camera biases); glove elbow at arm cocked front_3b -11.6 | -4.9 (same sign,
+  size differs); glove elbow at FS from the side_back/side_open on the unusual set -17/-14 (bench -4/+5: disagree).
+  Scratch glove.mjs recipe: analyse + truthD, D.metrics.gloveElbow/gloveAbd at tr.events.fs/mer/br, mean per camera.
+  A skeleton fix (glove arm depth at FS from side_back) is a Monday/Saturday item; don't correct the angle itself.
+- **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
+  e408c99 still running at 18:10: check it first, export_check passed locally on Staumont). Then: (1) Tuesday: a steadier
+  release-time slot (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
+  on Maher; motion capture itself drops ~6 deg/frame): e.g. read the arm's tilt over a few frames around release for both
+  app and truth, or show "slot read at the moved release" in the card note; (2) glove abduction at FS from side_back (-6 on
+  both sets) as a skeleton fix; (3) the remaining Maher fast trim spread (whole-trim statistics, 16:40 lead).
 - 17:40 FINDING (trim spread, follow-up): with the FS fix the first guess is 93 on all 9 Maher fast trims; the remaining
   separation spread 17.9-21.9 comes with the final FS 95 vs 96 on the two shortest trims AND whole-trim statistics (hand FS
   95 -> 96 by itself moves separation only 0.1), i.e. the bone-length/plate/bodyH lead from 16:40, not the flip any more.
@@ -1098,6 +1112,10 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
   and speed up the biggest part without changing the scorecard or regression results.
 - Long and large videos: finder on 60 s 1080p and 4K portrait checked 15:40 (memory flat, honest progress). Long TRIM build
   DONE 16:40 (longtrim.mjs). Still open: a real 20 s trim through Fast TRACKING in the page (time/memory of tracking itself).
+- New (17:40): moving RELEASE by hand moves the slot card 12-24 deg per frame on Maher (the arm swings over the top in 2
+  frames; lab truth drops ~6 deg/frame too): a steadier slot definition or a plain note on the card when release was moved.
+- New (17:40): WebKit (Safari engine) check of the page (load, pick a file, Fast start): this sandbox's Playwright has no
+  WebKit build and must not be reinstalled; needs a session/runner with WebKit (GitHub Actions `playwright install webkit`).
 - Phones and tablets: check the app runs on mobile Safari/Chrome (or fails with a clear message), and that
   Fast mode is usable there.
 
@@ -1129,6 +1147,7 @@ clip, score on the benchmark, and only show Ultra if it beats Max on the lab vie
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10 (17:40): Moving an event by hand keeps the delivery numbers (same events by hand = same numbers; Maher separation no longer 21 -> 16), `handevents.mjs` on GitHub; arm slot 2.5 deg bias removed (4.4 -> 3.9 deg off on 60 lab views, 5.7 -> 5.4 on 70 unusual).
 - 2026-11-10 (8:15): Lab-matched body (trial) tested on 14 unusual lab pitchers (new `unusual_make.py`/`unusual.mjs`): no longer flattens the front knee (8.4 -> 6.1 deg off) or separation toward the average; 2.8x faster; refused when it doesn't line up with the video (`fitguard.mjs`); tick box on the trim screen.
 - 2026-11-10: Recent keeps only the analysed pitch as a small video (default ON; 31 MB test upload -> 1.1 MB), hand-moved events stay lined up on re-opened pitches.
 - 2026-11-10 (1:40): Skeleton build and saved-pitch re-reads run in a background worker (`analysisworker.js`, identical results; build freeze 2.1 s -> 0 on Hackimer); High accuracy's tracker in the pose worker (byte-identical output); website deploy blockage (stuck deployment) found and cleared.
