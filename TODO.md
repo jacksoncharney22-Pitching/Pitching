@@ -248,6 +248,18 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   his video. Pure hint (`_softSpine` 100) agrees better on Maher (-3/-5) and tilts best but behind arm +1.0/+1.6 cm (bench CI
   fails). Tried, no gain: moving elbows/wrists with the shoulder shift (`_shArm`). Baselines (bench, measures, compare limits)
   updated. Unusual set NOT re-scored (needs the lab download): next session could check it.
+  updated. Unusual set (70 views) confirms it: joints 10.3 -> 9.5 cm, arm 13.9 -> 11.1, angles 7.4 -> 6.5, side tilt MER/BR
+  9.6/9.5 -> 5.5/5.2, slot 7.9 -> 6.2 deg, hand height 8.5 -> 7.8 cm.
+- 12:40 SHIPPED: unusual deliveries now guarded on GitHub (`unusual` job in tests.yml: downloads the lab zip, checks its
+  checksum, runs unusual_make.py, `BENCHDIR=<set> BENCHBASE=tools/test/unusual_baseline.json bench.mjs`; checked that the
+  old trunk code fails it). After a real improvement: make the set locally and re-run with `--update`.
+- 12:40 FINDING: the unusual-set lefty side-view artefact (side tilt ~40 deg wrong) is mostly gone after 80aa04d (1718/3132
+  side views now within 2-10 deg), so it was largely the spine sign flip, not only the borrowed noise. Tried making
+  lefties as mirrored righties in unusual_make.py (y flip + righty labels): app still read them as lefties and tilt got
+  worse (-15): lab y is not simply side-to-side for those sessions; dropped, not needed now.
+- 12:40 open: 2653 side_back trunk turn at foot strike now opens ~6 frames early (21 vs truth -20; was -5): the only view
+  that got clearly worse with 80aa04d; Hackimer separation at foot strike -22 -> -31 (shoulders open before hips: odd,
+  needs his video). Both worth a look in an accuracy session.
 - **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
   benchmark slot 5.53 -> 5.81 blocks it); (2) fix unusual_make.py
   lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on

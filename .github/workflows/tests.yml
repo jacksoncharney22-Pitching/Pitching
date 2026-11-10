@@ -50,6 +50,31 @@ jobs:
         run: |
           git worktree add -q "$RUNNER_TEMP/prev" HEAD~1
           node tools/test/perview.mjs "$RUNNER_TEMP/prev" --check
+  unusual:
+    # 14 unusual lab deliveries (sidearm, very high slot, short/long stride, quick leg lift, big side tilt, lefties) made
+    # from the OpenBiomechanics lab data (downloaded here, never stored in the repo) seen through the benchmark's cameras.
+    # Fails if a camera angle gets clearly worse on them than tools/test/unusual_baseline.json.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lab data (checksum checked) and the unusual deliveries
+        run: |
+          pip install -q numpy pandas
+          cd "$RUNNER_TEMP"
+          curl -sSL -o lab.zip https://github.com/drivelineresearch/openbiomechanics/releases/download/dataset-v1/pitching_landmarks.zip
+          echo "efcc078d5d8e77ed1fbf0b9f6a78f750c57a624165f71f30e34142b74db7ec22  lab.zip" | sha256sum -c -
+          python3 -c "import zipfile; zipfile.ZipFile('lab.zip').extractall('lab')"
+          curl -sSL -o lab/metadata.csv https://raw.githubusercontent.com/drivelineresearch/openbiomechanics/main/baseball_pitching/data/metadata.csv
+          cd "$GITHUB_WORKSPACE"
+          python3 tools/test/unusual_make.py "$RUNNER_TEMP/lab/landmarks.csv" "$RUNNER_TEMP/lab/metadata.csv" "$RUNNER_TEMP/unusual"
+      - name: Unusual deliveries no worse vs motion capture
+        run: BENCHDIR="$RUNNER_TEMP/unusual" BENCHBASE=tools/test/unusual_baseline.json node tools/test/bench.mjs
   exports:
     runs-on: ubuntu-latest
     steps:

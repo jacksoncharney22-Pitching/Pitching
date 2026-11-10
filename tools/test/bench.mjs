@@ -20,7 +20,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js";
 import { truthD, armLibFor } from "./truth.mjs";
-const here = dirname(fileURLToPath(import.meta.url)), dir = process.env.BENCHDIR || join(here, "bench"), BASE = join(here, "bench_baseline.json");
+const here = dirname(fileURLToPath(import.meta.url)), dir = process.env.BENCHDIR || join(here, "bench"), BASE = process.env.BENCHBASE || join(here, "bench_baseline.json");   // BENCHBASE: baseline file for another set (e.g. unusual_baseline.json with BENCHDIR)
 const argv = process.argv.slice(2), update = argv.includes("--update"), perView = argv.includes("--views"), noLib = argv.includes("--nolib");
 const only = argv.find(a => !a.startsWith("--")) || "";
 const load = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))).toString("utf8"));
@@ -96,7 +96,7 @@ for (const [k, name] of Object.entries(ANGLES)) console.log(`${name.padEnd(28)} 
 if (perView) { console.log(""); for (const r of rows) console.log(`${r.view.padEnd(18)} joints ${f1(r.joint)} cm  arm ${f1(r.arm)} cm  events ${f0(r.ev.fs)}/${f0(r.ev.mer)}/${f0(r.ev.br)} ms`) }
 
 // ---- baseline
-if (only || noLib || process.env.BENCHDIR) process.exit(0);
+if (only || noLib || (process.env.BENCHDIR && !process.env.BENCHBASE)) process.exit(0);
 const round = o => JSON.parse(JSON.stringify(o, (k, v) => typeof v === "number" ? Math.round(v * 100) / 100 : v));
 if (update) { writeFileSync(BASE, JSON.stringify(round(summary), null, 1) + "\n"); console.log(`\nsaved as the baseline: ${BASE}`); process.exit(0) }
 if (!existsSync(BASE)) { console.log("\nno baseline yet: run with --update to save one"); process.exit(0) }

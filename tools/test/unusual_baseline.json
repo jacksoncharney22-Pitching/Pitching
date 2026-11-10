@@ -1,0 +1,356 @@
+{
+ "behind": {
+  "views": 14,
+  "joint": 8.88,
+  "arm": 9.41,
+  "ang": {
+   "throwElbow": {
+    "fs": 5.19,
+    "mer": 8.38,
+    "br": 6.44
+   },
+   "throwAbd": {
+    "fs": 4.57,
+    "mer": 4.47,
+    "br": 7.12
+   },
+   "throwER": {
+    "fs": 4.73,
+    "mer": 5.69,
+    "br": 18.77
+   },
+   "leadKnee": {
+    "fs": 8.94,
+    "mer": 7.65,
+    "br": 7.06
+   },
+   "pelvisRot": {
+    "fs": 4.79,
+    "mer": 9.15,
+    "br": 9.39
+   },
+   "trunkRot": {
+    "fs": 4.63,
+    "mer": 6.73,
+    "br": 6.79
+   },
+   "separation": {
+    "fs": 4.87,
+    "mer": 8.06,
+    "br": 8.87
+   },
+   "trunkFwd": {
+    "fs": 3.03,
+    "mer": 4.12,
+    "br": 6.66
+   },
+   "trunkLat": {
+    "fs": 1.45,
+    "mer": 1.97,
+    "br": 1.99
+   }
+  },
+  "ev": {
+   "fs": 28.57,
+   "mer": 3.57,
+   "br": 5.95
+  },
+  "angAll": 6.35,
+  "seenAll": 8.9
+ },
+ "behind_3b": {
+  "views": 14,
+  "joint": 9.67,
+  "arm": 11.56,
+  "ang": {
+   "throwElbow": {
+    "fs": 7.53,
+    "mer": 9.93,
+    "br": 8.8
+   },
+   "throwAbd": {
+    "fs": 3.97,
+    "mer": 5.27,
+    "br": 7.1
+   },
+   "throwER": {
+    "fs": 5.92,
+    "mer": 4.82,
+    "br": 27.75
+   },
+   "leadKnee": {
+    "fs": 6.17,
+    "mer": 5.11,
+    "br": 5
+   },
+   "pelvisRot": {
+    "fs": 8.38,
+    "mer": 7.58,
+    "br": 6.9
+   },
+   "trunkRot": {
+    "fs": 5.77,
+    "mer": 10.61,
+    "br": 8.98
+   },
+   "separation": {
+    "fs": 6.25,
+    "mer": 7.99,
+    "br": 8.07
+   },
+   "trunkFwd": {
+    "fs": 3.03,
+    "mer": 3.65,
+    "br": 5.22
+   },
+   "trunkLat": {
+    "fs": 2.5,
+    "mer": 6.37,
+    "br": 6.84
+   }
+  },
+  "ev": {
+   "fs": 28.57,
+   "mer": 3.57,
+   "br": 3.57
+  },
+  "angAll": 7.24,
+  "seenAll": 9.7
+ },
+ "front_3b": {
+  "views": 14,
+  "joint": 10.08,
+  "arm": 12.04,
+  "ang": {
+   "throwElbow": {
+    "fs": 7.24,
+    "mer": 6.95,
+    "br": 4.8
+   },
+   "throwAbd": {
+    "fs": 3.63,
+    "mer": 5.98,
+    "br": 8.02
+   },
+   "throwER": {
+    "fs": 3.29,
+    "mer": 5.2,
+    "br": 9.56
+   },
+   "leadKnee": {
+    "fs": 5.47,
+    "mer": 4.94,
+    "br": 5.56
+   },
+   "pelvisRot": {
+    "fs": 7.51,
+    "mer": 9.02,
+    "br": 9.02
+   },
+   "trunkRot": {
+    "fs": 8.99,
+    "mer": 5.39,
+    "br": 4.87
+   },
+   "separation": {
+    "fs": 7.46,
+    "mer": 8.77,
+    "br": 8.85
+   },
+   "trunkFwd": {
+    "fs": 7.78,
+    "mer": 8.49,
+    "br": 6.54
+   },
+   "trunkLat": {
+    "fs": 5.73,
+    "mer": 4.62,
+    "br": 4
+   }
+  },
+  "ev": {
+   "fs": 34.52,
+   "mer": 3.57,
+   "br": 4.76
+  },
+  "angAll": 6.58,
+  "seenAll": 9.74
+ },
+ "side_back": {
+  "views": 14,
+  "joint": 9.35,
+  "arm": 11.99,
+  "ang": {
+   "throwElbow": {
+    "fs": 6.05,
+    "mer": 6.3,
+    "br": 6.66
+   },
+   "throwAbd": {
+    "fs": 3.35,
+    "mer": 5.62,
+    "br": 6.3
+   },
+   "throwER": {
+    "fs": 7.7,
+    "mer": 5.47,
+    "br": 14.92
+   },
+   "leadKnee": {
+    "fs": 6.26,
+    "mer": 5.85,
+    "br": 4.81
+   },
+   "pelvisRot": {
+    "fs": 4.63,
+    "mer": 4.79,
+    "br": 5.6
+   },
+   "trunkRot": {
+    "fs": 5.3,
+    "mer": 4.97,
+    "br": 8.73
+   },
+   "separation": {
+    "fs": 5.85,
+    "mer": 3.55,
+    "br": 6.8
+   },
+   "trunkFwd": {
+    "fs": 1.7,
+    "mer": 2.04,
+    "br": 2.47
+   },
+   "trunkLat": {
+    "fs": 7.44,
+    "mer": 8.21,
+    "br": 7.05
+   }
+  },
+  "ev": {
+   "fs": 30.95,
+   "mer": 5.95,
+   "br": 5.95
+  },
+  "angAll": 5.87,
+  "seenAll": 9.47
+ },
+ "side_open": {
+  "views": 14,
+  "joint": 9.55,
+  "arm": 10.68,
+  "ang": {
+   "throwElbow": {
+    "fs": 3.23,
+    "mer": 6.97,
+    "br": 6.59
+   },
+   "throwAbd": {
+    "fs": 2.14,
+    "mer": 5.14,
+    "br": 7.76
+   },
+   "throwER": {
+    "fs": 7.39,
+    "mer": 6.12,
+    "br": 14
+   },
+   "leadKnee": {
+    "fs": 6.28,
+    "mer": 6.4,
+    "br": 5.91
+   },
+   "pelvisRot": {
+    "fs": 9.01,
+    "mer": 8.13,
+    "br": 7.36
+   },
+   "trunkRot": {
+    "fs": 7.42,
+    "mer": 8.74,
+    "br": 8.16
+   },
+   "separation": {
+    "fs": 5.76,
+    "mer": 2.81,
+    "br": 3.86
+   },
+   "trunkFwd": {
+    "fs": 1.96,
+    "mer": 4.26,
+    "br": 4.13
+   },
+   "trunkLat": {
+    "fs": 6.38,
+    "mer": 6.32,
+    "br": 6.06
+   }
+  },
+  "ev": {
+   "fs": 29.76,
+   "mer": 8.33,
+   "br": 4.76
+  },
+  "angAll": 6.23,
+  "seenAll": 9.51
+ },
+ "all": {
+  "views": 70,
+  "joint": 9.51,
+  "arm": 11.14,
+  "ang": {
+   "throwElbow": {
+    "fs": 5.85,
+    "mer": 7.71,
+    "br": 6.66
+   },
+   "throwAbd": {
+    "fs": 3.53,
+    "mer": 5.29,
+    "br": 7.26
+   },
+   "throwER": {
+    "fs": 5.81,
+    "mer": 5.46,
+    "br": 17
+   },
+   "leadKnee": {
+    "fs": 6.62,
+    "mer": 5.99,
+    "br": 5.67
+   },
+   "pelvisRot": {
+    "fs": 6.87,
+    "mer": 7.74,
+    "br": 7.66
+   },
+   "trunkRot": {
+    "fs": 6.42,
+    "mer": 7.29,
+    "br": 7.51
+   },
+   "separation": {
+    "fs": 6.04,
+    "mer": 6.24,
+    "br": 7.29
+   },
+   "trunkFwd": {
+    "fs": 3.5,
+    "mer": 4.51,
+    "br": 5
+   },
+   "trunkLat": {
+    "fs": 4.7,
+    "mer": 5.5,
+    "br": 5.19
+   }
+  },
+  "ev": {
+   "fs": 30.48,
+   "mer": 5,
+   "br": 5
+  },
+  "angAll": 6.45,
+  "seenAll": 9.47
+ }
+}
