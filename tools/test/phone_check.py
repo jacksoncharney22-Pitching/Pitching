@@ -3,6 +3,8 @@
 #   python3 tools/test/phone_check.py <fixture.json.gz> <outdir>
 # (server and THREE_JS / ORBIT_JS as in export_check.py). Prints, per screen: sideways scroll in px, things wider than
 # the screen, and buttons under 32 px (too small for a thumb); saves screenshots. Emulated in Chromium, not real Safari.
+# BROWSER=webkit runs it in WebKit (Safari's engine: the closest to an iPhone a test runner gets); STRICT=1 exits 1 on any
+# page error (the "safari" job on GitHub runs both).
 # Audits run BEFORE each full-page screenshot: in headless Chromium a full-page screenshot switches the touch-screen
 # emulation off (pointer: coarse stops matching) until the next reload, which made the phone-size buttons look tiny.
 import sys, os, json, gzip
@@ -24,7 +26,7 @@ AUDIT = """() => {
   out.wide = out.wide.slice(0, 15); out.tiny = [...new Set(out.tiny)].slice(0, 25); return out }"""
 
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    b = getattr(p, os.environ.get("BROWSER", "chromium")).launch(); bad = []
     for dev in ("iPhone 13", "Pixel 7"):
         errs = []; tag = dev.replace(" ", "_")
         ctx = b.new_context(**p.devices[dev]); pg = ctx.new_page()
@@ -47,6 +49,8 @@ with sync_playwright() as p:
         print(dev, "RESULTS", pg.evaluate(AUDIT))
         pg.screenshot(path=f"{OUT}/{tag}_3_results_top.png")
         pg.screenshot(path=f"{OUT}/{tag}_4_results_full.png", full_page=True)
-        print(dev, "page errors:", errs)
+        print(dev, "page errors:", errs); bad += errs
         ctx.close()
     b.close()
+if os.environ.get("STRICT") and bad: print("FAIL: page errors in", os.environ.get("BROWSER", "chromium")); sys.exit(1)
+print("ok")

@@ -118,3 +118,28 @@ jobs:
           python3 tools/test/ortproxy_check.py tools/test/fixtures/maher_fast.json.gz --rtm
           ffmpeg -v error -f lavfi -i testsrc2=size=1920x1080:rate=60 -t 3 -c:v libvpx-vp9 -b:v 4M -an "$RUNNER_TEMP/testsrc.webm"
           python3 tools/test/keepclip_check.py "$RUNNER_TEMP/testsrc.webm"
+  safari:
+    # The page in WebKit (Safari's engine) at iPhone and Android sizes: open, open a saved pitch, no page errors.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install WebKit (test tools only)
+        run: |
+          pip install -q playwright && playwright install --with-deps webkit
+          mkdir -p "$RUNNER_TEMP/t3" && cd "$RUNNER_TEMP/t3" && npm i --silent three@0.128.0
+      - name: Safari engine opens the app and a saved pitch with no page errors
+        env:
+          ORBIT_JS: tools/test/orbit_stub.js
+          BROWSER: webkit
+          STRICT: "1"
+        run: |
+          export THREE_JS="$RUNNER_TEMP/t3/node_modules/three/build/three.min.js"
+          python3 tools/test/serve.py . 8766 &
+          sleep 2
+          python3 tools/test/phone_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/phone"
