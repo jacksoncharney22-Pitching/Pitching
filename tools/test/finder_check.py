@@ -66,6 +66,7 @@ def scan(vid, flag):
 
 vid = os.path.join(OUT, 'finder_mannequin.webm')
 make_clip(FX, vid)
+if '--clip-only' in sys.argv: print(vid); sys.exit(0)             # just the synthetic clip (engine_diag.py uses it)
 w = scan(vid, '')
 seen = sum(x is not None for x in w['stride'])
 print(f"worker: model ran on the {w['where']}, {w['secs']} s, body seen in {seen}/{len(w['stride'])} looks, longest page freeze {w['freeze']} ms, {w['slow']} freezes over 0.3 s, errors {w['errors']}")

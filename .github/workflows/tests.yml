@@ -153,4 +153,8 @@ jobs:
           export THREE_JS="$RUNNER_TEMP/t3/node_modules/three/build/three.min.js"
           python3 tools/test/serve.py . 8766 &
           sleep 2
+          python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder" --clip-only
+          timeout 300 python3 tools/test/engine_diag.py "$RUNNER_TEMP/finder/finder_mannequin.webm" || true
+          ffmpeg -v error -y -i "$RUNNER_TEMP/finder/finder_mannequin.webm" -c:v libx264 -pix_fmt yuv420p "$RUNNER_TEMP/finder/m.mp4"
+          timeout 300 python3 tools/test/engine_diag.py "$RUNNER_TEMP/finder/m.mp4" || true
           timeout 900 python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
