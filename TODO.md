@@ -548,8 +548,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
 - 17:40 (c52a109): the safari job also runs finder_check.py in WebKit as a TRIAL step (continue-on-error). Next session:
   open that run's "safari" log: if the pose model ran in WebKit, drop continue-on-error; if not, that's a real Safari
   finding (what failed: worker, WASM, WebGL, VP9 playback) to fix or to explain on screen.
-- 18:40 session (working on this, 18:50 ET): WebKit finder trial FAILED in CI (pose model fell back to the page, saw the
-  body in 0/45 looks): diagnosing why (video decode / canvas / model in Safari's engine).
+- **18:40 FOUND + FIXED (ed88440): in Safari's engine the pose model fell out of its worker onto the page** (CI WebKit
+  trial: page froze 2.5-9 s, body seen 0/45). `tools/test/engine_diag.py <clip>` (new; step-by-step: video, pixels via canvas
+  and createImageBitmap, WebGL/OffscreenCanvas, model GPU/CPU on canvas/video/bitmap, worker start + one look) showed:
+  (1) Linux WebKit never finishes a SEEK in a WebM (MP4 fine) -> CI WebKit steps now use MP4 (`MP4=1` in finder_check);
+  (2) on the page both GPU and CPU models see the pitcher in WebKit; (3) in the WORKER the GPU model starts but its first
+  look throws "GLctx.activeTexture" (no WebGL context in the worker). Fix: poseworker rebuilds that model on the CPU
+  setting and retries the same picture (`x.cpu`, reply `cpu: true` -> `window.__poseWorkerCpu`); `?gpufail=1` fakes the
+  WebKit error in Chromium: finder_check --gpufail 45/45 seen, in the worker, freeze 0.2-0.6 s (in the regression job).
+  Side finding: on software graphics (headless) the CPU setting is 3-15x faster than GPU (GPU 600-1100 ms/look vs CPU
+  60-85); on real phones GPU should win, so GPU stays first.
+  18:40 (working on this, 18:55 ET): Fast tracking end to end in WebKit (clip_run.py takes BROWSER=webkit) as a CI trial.
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg

@@ -16,7 +16,8 @@ os.makedirs(OUT, exist_ok=True)
 URL = os.environ.get('APP_URL', 'http://127.0.0.1:8766/index.html')
 T3, ORB = os.environ.get('THREE_JS'), os.environ.get('ORBIT_JS')
 with sync_playwright() as pw:
-    b = pw.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+    # BROWSER=webkit: Safari's engine (give it an .mp4: Linux WebKit never finishes a seek in a WebM)
+    b = pw.webkit.launch() if os.environ.get('BROWSER') == 'webkit' else pw.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
     pg = b.new_page(viewport={'width': 1440, 'height': 900}); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)[:300])); pg.on('console', lambda m: errs.append(m.text[:200]) if m.type == 'error' else None)
     if T3: pg.route('**/three.min.js', lambda r: r.fulfill(path=T3, content_type='application/javascript'))
