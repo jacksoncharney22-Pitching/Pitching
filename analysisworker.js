@@ -7,8 +7,8 @@ let P = null;
 const libs = {};
 self.onmessage = async ({ data: m }) => {
   try {
+    if (m.libs) Object.assign(libs, m.libs);                 // before the first await, so the libraries arrive in order
     if (!P) P = await import("./pipeline.js" + stamp);
-    if (m.libs) Object.assign(libs, m.libs);
     let r = null;
     if (m.op === "analyse") {
       const o = { ...m.o };

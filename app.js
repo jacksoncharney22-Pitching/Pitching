@@ -47,10 +47,10 @@ const slowFactorAsync = offPage("slow", raw => detectSlowFactor(raw));
 // opening "Over time" again, or comparing a pitch already compared or opened, no longer re-reads all of them (30 saved
 // pitches took several seconds on a laptop, much longer on a phone). Each caller gets its own copy. Cleared on reload.
 const _reread = new Map();
-const reanalyse = (it, o) => {
+const reanalyse = async (it, o) => {
   const key = `${it.id}|${!!ARMLIB}${!!BODYLIB}|${JSON.stringify(o)}`;
   let d = _reread.get(key);
-  if (!d) { d = analyse(it.raw, o); _reread.set(key, d); if (_reread.size > 30) _reread.delete(_reread.keys().next().value) }
+  if (!d) { d = await analyseAsync(it.raw, o); _reread.set(key, d); if (_reread.size > 30) _reread.delete(_reread.keys().next().value) }
   return structuredClone(d);
 };
 import { toFrame, poseBox, pickPitcher, fuseSoft } from "./fuse.js";
@@ -906,7 +906,7 @@ async function renderHistory() {
         await armLibReady();
         // events the user moved by hand stay where they put them
         const up = it.data && it.data.userPhases, o = { hand: it.hand || "auto", ...(up ? { phases: up } : {}) };
-        try { const d = tagResult(reanalyse(it, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
+        try { const d = tagResult(await reanalyse(it, o), it.data); changed = biggestChange(it.data, d); data = d; updateHistory(it.id, d) } catch (e) { }
       }
       openResults(data, url, { id: it.id, raw: it.raw, changed });
     };
@@ -957,7 +957,7 @@ $("cmpGo").onclick = async () => {
     const load = async id => {
       const it = await tx("readonly", s => s.get(id));
       let data = it.data;
-      if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
+      if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
       return { data, label: savedLabel(it) };
     };
     const [A, B] = [await load(ids[0]), await load(ids[1])];
@@ -971,7 +971,7 @@ $("trendGo").onclick = async () => {
     await armLibReady();
     const items = ((await tx("readonly", s => s.getAll())) || []).sort((a, b) => a.date - b.date), pts = [];
     for (let i = 0; i < items.length; i++) { const it = items[i]; go.textContent = `Reading ${i + 1} of ${items.length}…`; await new Promise(r => setTimeout(r));   // let the button repaint: 30 pitches take a few seconds
-      let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
+      let data = it.data; if (it.raw) { const up = it.data && it.data.userPhases; try { data = tagResult(await reanalyse(it, { hand: it.hand || "auto", ...(up ? { phases: up } : {}) }), it.data) } catch (e) {} }
       if (data && data.metrics && data.phases) pts.push({ data, label: savedLabel(it), day: new Date(it.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) }) }
     $("cmpEyebrow").textContent = "Over time"; $("cmpTitle").textContent = "One reading across saved pitches";
     show("compare"); renderTrend($("cmpBody"), pts);   // shown first so the chart can size itself to the screen
