@@ -282,6 +282,18 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   (`{ page: high }` in trackSimple) until someone runs a High clip both ways and gets identical raw output. Note: `finder_check.py --compare` can differ by one look between runs on
   EITHER path (WebM seek timing), so re-run once before believing a mismatch. Not moved: Max accuracy's MediaPipe
   (`trackMax`, finder.detect/full.detectForVideo) and RTMPose (already async onnxruntime).
+- 1:40 session (Tue): WEBSITE DEPLOY CAUSE FOUND: the "pages build and deployment" failures (runs 164/165) were "in progress
+  deployment, cancel b59b363 first": a cancelled deploy run left a deployment stuck "in progress" that blocked the next
+  ones. Re-running the failed run later succeeded (run 165 attempt 3, 06:42 UTC); everything up to 937ec19 is live. If it
+  happens again: read the deploy job's log (actions jobs -> deploy -> log) and re-run once the stuck one has timed out (~10 min).
+- 1:40 shipped: the skeleton build after tracking runs in a background worker (`analysisworker.js`; falls back to the page,
+  `?analysisworker=0` forces it). Identical results on all 4 saved clips (`tools/test/anaworker_check.py`, now on GitHub).
+  Page freeze during the build: Hackimer 2.1 s -> 0, Maher 0.7 -> 0.1, Staumont 0.4 -> 0. Full Fast run in the app (synthetic
+  clip): built in the worker, no page errors. Moving an event by hand also re-builds off the page (button greyed while it works).
+- 1:40 shipped: Recent/Compare/Over time re-reads go through the worker too (`reanalyse` is async): Over time with 10 saved
+  Maher pitches, longest freeze 0.9 -> 0.1 s, but total 4 -> 5 s on this 2-core sandbox with another browser test running
+  (worth re-timing on a quiet machine; if it's really slower, run the re-reads for Over time on the page in one go and only
+  the single re-opens in the worker).
 - **NEXT SESSION (after 0:40):** (1) check run for b59b363 (and later) passed and the site deployed; (2) High in the
   worker: a 0:40 test was left running (`?highworker=1`, synthetic 2.2 s clip; results not read): redo it, see Tuesday
   list; (3) then the skeleton analysis in a worker (biggest freeze left, ~20 s headless), then Max's MediaPipe.
