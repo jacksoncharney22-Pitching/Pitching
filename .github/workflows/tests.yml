@@ -42,6 +42,8 @@ jobs:
           node-version: "22"
       - name: Accuracy scorecard vs motion capture (fails only if a camera angle gets clearly worse)
         run: node tools/test/bench.mjs
+      - name: Delivery numbers (stride, arm slot, hand height, separation, extension) no worse vs motion capture
+        run: node tools/test/measures.mjs --check
       - name: Compare screen thresholds still match the skeleton
         run: node tools/test/comparecheck.mjs --check
       - name: Per-view check against the previous commit (averages can hide a reading getting much worse on a few views)

@@ -54,6 +54,8 @@ Data flow: video → tracker per frame → `raw` (`{fps, videoFps, width, height
    genuinely better (check the video), re-record with `--update` and say so in the commit.
    For speed-only changes, `node tools/test/samecheck.mjs --save before.json` on the old code and `samecheck.mjs before.json` on the new must say "all results identical" (it also prints the time).
    For skeleton changes also run `node tools/test/perview.mjs <copy of the previous version>`: the averages can hide a reading getting much worse on a few views.
+   `node tools/test/measures.mjs --check` guards the delivery numbers coaches see (stride, slot, hand height, separation,
+   extension) against `measures_baseline.json`; after a real improvement, `--update` and say so in the commit.
    `node tools/test/slowmo.mjs` checks the slow-motion reading on every benchmark pitch at 1×/2×/4×/8× (~4 min).
    Both run on GitHub Actions on every push (`.github/workflows/tests.yml`); a red X on a commit means one failed.
 2. **Full check in the real app:** `python3 tools/test/serve.py . 8766 &` then
