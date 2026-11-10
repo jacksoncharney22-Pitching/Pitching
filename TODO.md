@@ -211,14 +211,23 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   5.86 (same). Idea: take the shoulders' depth DIFFERENCE (left vs right = tilt/turn) from one source and their mean from
   the other, or use MediaPipe only for the vertical part; or w by camera (side_back keeps learned). Score: bench.mjs,
   unusual.mjs (app columns; lefty side views are a test artefact), measures.mjs both sets, perview, regress.
+- **11:40 follow-up 3 (BEST VERSION, nearly shippable; start here):** shoulders' MEAN depth from MediaPipe, their
+  front/back DIFFERENCE from the learned model (in injectLearnedDepth after the map, per frame:
+  `a=f.world[11][2], b=f.world[12][2], dL=(b-a)/2, mM=(old[11]+old[12])/2; f.world[11][2]=mM-dL; f.world[12][2]=mM+dL`).
+  Benchmark: joints -0.5 cm, arm -0.8, angles -0.2 (side_back +0.3/+1.0/+0.3, every other camera better); unusual app
+  joints 10.25 -> 9.71, arm 13.9 -> 11.6, angles 7.40 -> 6.65, slot 7.9 -> 6.3, tilt at release 9.5 -> 5.8, trunk turn and
+  separation slightly better, layback BR 20.7 -> 18.6. regress OK. ONLY BLOCKER: benchmark arm slot 5.53 -> 5.81 (bias
+  +2.5 -> +3.2; measures.mjs --check fails at limit 5.80). (The opposite split, MediaPipe difference + learned mean, gave
+  nothing and worse trunk turn.) Try: does the slot's geometric/picture blend need re-tuning with the new shoulders
+  (`__slotGeo`), or the slot's +3 bias; then perview, slowmo, export_check, and ship.
 - 11:40 FINDING (test data, don't chase as an app bug): unusual-set LEFTIES at side cameras read side tilt ~40 deg wrong
   (1718, 2655, 3132 side_back/side_open -34 to -46), but the app is mirror-consistent (mirrored raw gives identical angles)
   and lefties from behind are fine: `unusual_make.py` pastes a right-handed donor's side-view tracker error onto a lefty seen
   from his OTHER side (a lefty's "side_open" camera sees his back). Fix in unusual_make.py: for a lefty, borrow the noise
   from the donor's opposite side view mirrored (side_open <- donor side_back), or mirror the lefty into a righty first.
   Until then, score side views of the unusual set on righties only.
-- **Next session (after 11:40):** (1) shoulder depth source (follow-up 2 above: big gains on tilt/slot/arm, trunk turn and
-  separation worse: find the split that keeps both); (2) fix unusual_make.py
+- **Next session (after 11:40):** (1) shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
+  benchmark slot 5.53 -> 5.81 blocks it); (2) fix unusual_make.py
   lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on
   ordinary pitchers (today 12.4 cm vs 12.3).
 - (old) **Next session (after 10:40):** (1) DONE 11:40 (see above) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
