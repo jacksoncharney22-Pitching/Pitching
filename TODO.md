@@ -316,6 +316,13 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
   TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
   on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
+- 5:40 shipped (reliability, live, tests + deploy passed, Jackson notified): saving a pitch when the browser's storage is
+  full or never answers. Before: full storage lost the pitch without a word; storage that never opens (seen on some iPhones)
+  left the page on "Building" for good (the save was awaited before the results open). Now: the oldest saved videos make
+  room for the newest (unless even that can't fit it), else it's saved without its video; storage that doesn't answer gives
+  up after 6 s (open) / 45 s (whole save); a note above the results says which. `tools/test/storage_check.py` (on GitHub).
+  Worth knowing: Recent stores the WHOLE uploaded file for the newest 6 pitches (a 4K phone clip can be 300 MB+); storing
+  only the trimmed pitch (re-encode the trim window) would fix the storage pressure itself: new Tuesday item.
 - **4:40 session: the "hang" was Max failing, now fixed on main (7d6c0eb).** The worker run never hung: Max returned to the upload
   screen with "Cannot read properties of undefined (reading '0')" (maxworker_check only watched for the results page, so it
   looked like a hang). Cause: `fuseSoft` (fuse.js) crashed on a frame with exactly one built-in look + one stronger-tracker look
@@ -472,6 +479,9 @@ whole body. Every session works on this before anything else, in order:
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
+- Recent keeps the whole uploaded video for the newest 6 pitches (a 60 s 4K phone clip is 300 MB+, Safari caps a site at
+  ~1 GB on some iPhones): keep only the trimmed pitch window (re-record it with MediaRecorder from the video, or keep the
+  original only when it's small). Check the overlay video export and Recent re-open still work.
 - Max accuracy's MediaPipe calls (`trackMax`: finder.detect IMAGE mode + full.detectForVideo) into the pose worker
   (the worker only does VIDEO mode today: add a mode to init).
 - Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
