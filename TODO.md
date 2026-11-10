@@ -302,6 +302,11 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   ankles after the fix within ~3 cm except side_back -3.7/side_open +3 (a per-camera split may help); the arm metric jumps
   with foot strike timing on some views (3228 behind_3b arm 7.6 -> 10.7 cm when the app's FS moved 33 -> 17 ms: the arm
   steps key off foot strike; worth understanding, it makes every leg change look like an arm change).
+- 13:40 re-checked after the feet fix: `_spOff` 0.06 (arm side views worse) / 0.1 (layback at release 20.6 -> 21.3, the
+  reading perview guards) / `_footZ` -0.25 (same): current 0.08 / -0.2 / knee 0.3 stay.
+- 13:40 wrap-up: shipped fb46678 (shoulders), 4a452ba (feet), 7587f1f (knees); tests green for fb46678 and 4a452ba (run 235),
+  7587f1f accuracy/unusual/regression green, slow-motion and exports were still running at 14:18 (both passed locally):
+  check run 236 first. Today's skeleton total: benchmark joints 9.2 -> 8.1 cm, arm 9.8 -> 8.4, angles 6.5 -> 6.2.
 - **Next session (after 13:40):** (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
   D.cameraDir, per camera, bench + unusual set) on elbows/wrists by phase, and the glove shoulder; (2) why arm error follows
   foot strike timing (3228_1_behind_3b); (3) Tuesday items in the list. Lab data for the unusual set: tests.yml steps.
