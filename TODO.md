@@ -294,6 +294,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   the camera. Benchmark front knee 7.6/6.9/7.1 -> 7.2/6.2/6.8, joints 8.2 -> 8.1, arm 8.5 -> 8.4; unusual knee
   6.1/5.7/5.7 -> 6.1/5.7/5.9. Tried 0 (side_back joints worse), 0.15 (unusual knee worse), 0.7 (worse).
   Checked: the 3228 behind_3b arm jump came from the shin-hint try only; `_footZ` leaves its events and arm unchanged.
+- 13:40 tried, not shipped: glove shoulder + glove arm moved away from the camera after the lift (`_gloveZ` +5% of spine:
+  glove shoulder bias 2.6 -> 1.2 cm; bench joints 8.1 -> 8.0, side tilt 3.4/3.6/4.6 -> 3.1/3.2/4.4 BUT trunk turn at FS
+  8.2 -> 8.4, elbow at arm cocked 8.6 -> 9.0, abduction FS 3.5 -> 4.1). -5% much worse. A version that also turns the
+  shoulder line consistently (or does it before `rot`, in injectLearnedDepth with `_shMean`) might keep the tilt gain.
 - 13:40 still open (accuracy leads): glove shoulder still +2.5-3.6 cm too near the camera (throwing shoulder 0-4);
   ankles after the fix within ~3 cm except side_back -3.7/side_open +3 (a per-camera split may help); the arm metric jumps
   with foot strike timing on some views (3228 behind_3b arm 7.6 -> 10.7 cm when the app's FS moved 33 -> 17 ms: the arm
