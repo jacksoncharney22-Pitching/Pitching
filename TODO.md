@@ -257,9 +257,12 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   side views now within 2-10 deg), so it was largely the spine sign flip, not only the borrowed noise. Tried making
   lefties as mirrored righties in unusual_make.py (y flip + righty labels): app still read them as lefties and tilt got
   worse (-15): lab y is not simply side-to-side for those sessions; dropped, not needed now.
-- 12:40 open: 2653 side_back trunk turn at foot strike now opens ~6 frames early (21 vs truth -20; was -5): the only view
-  that got clearly worse with 80aa04d; Hackimer separation at foot strike -22 -> -31 (shoulders open before hips: odd,
-  needs his video). Both worth a look in an accuracy session.
+- 12:40 FIXED (91dcc83): with the full shoulder share, 2653 side_back trunk turn at foot strike opened early (21 vs truth -20)
+  and Hackimer separation at FS went -22 -> -31. Shoulder mean share now 0.75 (`_shMean`): trunk rot/sep at FS 8.3/6.6
+  (morning 8.2/6.5), 2653 back to -5, Hackimer -20; costs a little of the tilt gain (side tilt MER 5.2 -> 5.5, hand height
+  5.7 -> 6.4 cm). Sweep: 0.75 / 1 / 1.25 tried; 0.5 not tried with the spine fix.
+- Still open (accuracy): before foot strike, side tilt on 2653 side_back reads +2 vs truth -21 in every version (the
+  pitcher leans toward 1B/3B in the stride and the app misses it from that camera); side_back arm slot still +10.5 high.
 - **Next session (after 11:40):** (1) DONE 12:40 shoulder MEAN depth from MediaPipe (follow-up 3 above: better almost everywhere, only
   benchmark slot 5.53 -> 5.81 blocks it); (2) fix unusual_make.py
   lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on
