@@ -1,23 +1,23 @@
 {
  "behind": {
   "views": 14,
-  "joint": 7.83,
-  "arm": 8.3,
+  "joint": 7.82,
+  "arm": 8.15,
   "ang": {
    "throwElbow": {
     "fs": 5.03,
-    "mer": 9.26,
-    "br": 7.05
+    "mer": 9.34,
+    "br": 7.18
    },
    "throwAbd": {
-    "fs": 4.78,
-    "mer": 4.1,
-    "br": 6.05
+    "fs": 4.79,
+    "mer": 3.79,
+    "br": 5.85
    },
    "throwER": {
     "fs": 2.86,
-    "mer": 5.6,
-    "br": 18.25
+    "mer": 5.72,
+    "br": 18.28
    },
    "leadKnee": {
     "fs": 6.28,
@@ -51,32 +51,32 @@
    }
   },
   "ev": {
-   "fs": 28.57,
-   "mer": 5.95,
+   "fs": 27.38,
+   "mer": 4.76,
    "br": 4.76
   },
-  "angAll": 5.86,
-  "seenAll": 8.61
+  "angAll": 5.85,
+  "seenAll": 8.45
  },
  "behind_3b": {
   "views": 14,
-  "joint": 8.84,
-  "arm": 9.92,
+  "joint": 8.83,
+  "arm": 9.54,
   "ang": {
    "throwElbow": {
-    "fs": 7.44,
-    "mer": 9.39,
-    "br": 9.22
+    "fs": 7.36,
+    "mer": 8.89,
+    "br": 9.19
    },
    "throwAbd": {
-    "fs": 5.31,
-    "mer": 5.07,
-    "br": 7.17
+    "fs": 5.34,
+    "mer": 5.09,
+    "br": 7.41
    },
    "throwER": {
-    "fs": 6.77,
-    "mer": 4.54,
-    "br": 26.6
+    "fs": 6.79,
+    "mer": 5,
+    "br": 26.62
    },
    "leadKnee": {
     "fs": 5.38,
@@ -110,32 +110,32 @@
    }
   },
   "ev": {
-   "fs": 29.76,
-   "mer": 4.76,
+   "fs": 28.57,
+   "mer": 3.57,
    "br": 3.57
   },
   "angAll": 7.06,
-  "seenAll": 9.6
+  "seenAll": 9.41
  },
  "front_3b": {
   "views": 14,
-  "joint": 8.72,
-  "arm": 10.1,
+  "joint": 8.73,
+  "arm": 9.99,
   "ang": {
    "throwElbow": {
-    "fs": 6.72,
-    "mer": 6.5,
-    "br": 6.49
+    "fs": 6.66,
+    "mer": 6.8,
+    "br": 6.54
    },
    "throwAbd": {
-    "fs": 4.3,
-    "mer": 5.46,
-    "br": 7.24
+    "fs": 4.28,
+    "mer": 5.84,
+    "br": 7.5
    },
    "throwER": {
-    "fs": 3,
-    "mer": 6.14,
-    "br": 11.66
+    "fs": 3.01,
+    "mer": 5.85,
+    "br": 11.63
    },
    "leadKnee": {
     "fs": 6.18,
@@ -173,28 +173,28 @@
    "mer": 3.57,
    "br": 5.95
   },
-  "angAll": 6.34,
-  "seenAll": 9.73
+  "angAll": 6.36,
+  "seenAll": 9.74
  },
  "side_back": {
   "views": 14,
-  "joint": 8.38,
-  "arm": 10.12,
+  "joint": 8.36,
+  "arm": 9.54,
   "ang": {
    "throwElbow": {
     "fs": 6.39,
-    "mer": 6.13,
-    "br": 5.84
+    "mer": 5.87,
+    "br": 5.75
    },
    "throwAbd": {
-    "fs": 2.81,
-    "mer": 5.24,
-    "br": 5.84
+    "fs": 2.8,
+    "mer": 5.05,
+    "br": 5.93
    },
    "throwER": {
-    "fs": 6.57,
-    "mer": 4.86,
-    "br": 13.61
+    "fs": 6.67,
+    "mer": 4.91,
+    "br": 13.59
    },
    "leadKnee": {
     "fs": 6.8,
@@ -228,32 +228,32 @@
    }
   },
   "ev": {
-   "fs": 29.76,
-   "mer": 5.95,
+   "fs": 28.57,
+   "mer": 7.14,
    "br": 5.95
   },
-  "angAll": 5.48,
-  "seenAll": 9.05
+  "angAll": 5.47,
+  "seenAll": 9.25
  },
  "side_open": {
   "views": 14,
-  "joint": 8.73,
-  "arm": 8.46,
+  "joint": 8.72,
+  "arm": 8.16,
   "ang": {
    "throwElbow": {
-    "fs": 3.37,
-    "mer": 7.25,
-    "br": 6.04
+    "fs": 3.35,
+    "mer": 7.33,
+    "br": 5.73
    },
    "throwAbd": {
-    "fs": 3.1,
-    "mer": 4.5,
-    "br": 6.11
+    "fs": 3.08,
+    "mer": 4.24,
+    "br": 6.14
    },
    "throwER": {
-    "fs": 7.91,
-    "mer": 5.6,
-    "br": 13.94
+    "fs": 7.95,
+    "mer": 5.99,
+    "br": 14.01
    },
    "leadKnee": {
     "fs": 5.99,
@@ -292,27 +292,27 @@
    "br": 5.95
   },
   "angAll": 5.98,
-  "seenAll": 9.76
+  "seenAll": 9.77
  },
  "all": {
   "views": 70,
-  "joint": 8.5,
-  "arm": 9.38,
+  "joint": 8.49,
+  "arm": 9.08,
   "ang": {
    "throwElbow": {
-    "fs": 5.79,
-    "mer": 7.71,
-    "br": 6.93
+    "fs": 5.76,
+    "mer": 7.65,
+    "br": 6.88
    },
    "throwAbd": {
     "fs": 4.06,
-    "mer": 4.88,
-    "br": 6.48
+    "mer": 4.8,
+    "br": 6.57
    },
    "throwER": {
-    "fs": 5.42,
-    "mer": 5.35,
-    "br": 16.81
+    "fs": 5.46,
+    "mer": 5.5,
+    "br": 16.83
    },
    "leadKnee": {
     "fs": 6.13,
@@ -346,11 +346,11 @@
    }
   },
   "ev": {
-   "fs": 30.71,
-   "mer": 5.95,
+   "fs": 30,
+   "mer": 5.71,
    "br": 5.24
   },
-  "angAll": 6.14,
-  "seenAll": 9.35
+  "angAll": 6.15,
+  "seenAll": 9.32
  }
 }

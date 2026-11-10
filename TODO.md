@@ -314,6 +314,11 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   glove arm's bias flips with the camera (behind -7/-8, front_3b +9/+8, side_back -9/-12): that's a body-frame error (glove
   arm too far toward the plate / not tucked), not depth. Script: jbias.mjs restricted to t in [fs, br] (scratch; recipe:
   hip-centred app-minus-truth position dotted with unit D.cameraDir, mean per camera).
+- **13:40 SHIPPED (late, see git log): throwing elbow/hand moved 3 cm away from the camera from mid-stride to release**
+  (`_armZ` -0.03, elbow 60%, 50 ms fades; lead above). Bench arm 8.4 -> 8.3 cm, elbow at arm cocked 8.6 -> 8.3, at release
+  6.1 -> 6.0, slot 4.97 -> 4.71, extension 0.118 -> 0.115; unusual arm -0.3 cm. Starting the shift AT foot strike made the
+  elbow at FS worse (8.1 -> 8.3/8.9 at -0.03/-0.05); -0.05 mid: layback at arm cocked worse. perview, regress, slowmo
+  240/240, comparecheck, fitguard, export_check ok.
 - **Next session (after 13:40):** (1) the per-joint camera-axis bias check (recipe above: hip-centred error dotted with
   D.cameraDir, per camera, bench + unusual set) on elbows/wrists by phase, and the glove shoulder; (2) why arm error follows
   foot strike timing (3228_1_behind_3b); (3) Tuesday items in the list. Lab data for the unusual set: tests.yml steps.

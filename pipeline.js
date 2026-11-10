@@ -1520,6 +1520,13 @@ function analyseOnce(raw, opts = {}) {
   }
 
   if (opts._snap) opts._snap("guard", P, { imgSmooth, liftScale, rot, camDir });
+  // from the middle of the stride to release, the throwing elbow and hand sit 1-6 cm too near the camera on every camera
+  // angle (benchmark, hip-centred, along the camera axis): moved back by 3 cm (elbow 60% of that), faded in and out over
+  // 50 ms (`_armZ` -0.03, 0 = old; 2026-11-10). Arm 8.4 -> 8.3 cm, elbow at arm cocked 8.6 -> 8.3, slot 5.0 -> 4.7.
+  { const az = opts._armZ ?? -0.03, r = Math.max(1, Math.round(0.05 * fs)), cn = Math.hypot(...camDir), u = camDir.map(x => x / cn);
+    if (az) 
+    for (let t = 0; t < T; t++) { const m0 = Math.round((fs_ + rel) / 2), w = sstep(t, m0 - r, m0 + r) * (1 - sstep(t, rel - r, rel + r + r)); if (w <= 0) continue;
+      for (const j of [14, 16, 18, 20, 22]) P[t][j] = add(P[t][j], mul(u, az * w * (j === 14 ? 0.6 : 1))) } }
   if (opts._snap) opts._snap("lock", P, { imgSmooth, liftScale, rot, camDir });
   // ---- how closely the skeleton matches the tracked video (camera view, hip-relative), in metres
   const MJ = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28], errs = [];
