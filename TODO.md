@@ -168,8 +168,9 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   reaches toward the plate (away from a behind camera) and nothing later fixes it. Try: at release with a behind camera,
   take the forearm/upper-arm depth (along the camera axis) from the matched lab throws (tmpl.u/f) instead of the lift,
   or scale the throwing arm's depth around release. NOTE: `_tmplAll: 1` (lab arm at full weight) changes NOTHING at the
-  release frame, so the lab-arm weight tmpl.wt is ~0 there: check the match window's end (`_mPost`, eased out over 50 ms
-  at the window's ends) — extending it past release is probably the first thing to try; score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
+  release frame. The match windows DO cover release (0.10 s / 0.22 s after it, line ~406/1414), so check what tmpl.wt
+  actually is at release (add wt to `_dbgMatch`), and whether a later step (combining the two matches, guard, the 20 Hz
+  arm smoothing) replaces the arm there; score extension (measures.mjs, BENCHDIR unusual too), slot, bench;
   (2) Max: pass-3 skip idea needs a real clip (Waiting on Jackson's clips); otherwise Tuesday items: long/4K videos
   (make a synthetic 60 s 4K clip with ffmpeg, check memory and honest progress in headless), phones/tablets check;
   (3) slot side_back (+10.9 on benchmark only); (4) side tilt/pelvis flattening with the fit (needs an idea).
