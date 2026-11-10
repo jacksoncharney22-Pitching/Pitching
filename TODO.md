@@ -123,7 +123,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   from horizontal cameraDir, sign from the app's own projection, in-picture length kept).
 - 9:40 wrap-up (10:22): tests for 6c6e973 passed (accuracy, per-view, compare, regression, slow-motion); the exports job and
   website deploy 215 were still running: check them first (export_check passed locally on Maher max and Staumont).
-- **Next session (after 9:40):** (1) release 2-4 frames late from behind on unusual deliveries (see finding above;
+- **Next session (after 9:40):** (1) (10:40 session working on this, 10:45 ET) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
   background FIRST, then time passes 2/3/arm zoom; (3) slot: side_back reads 10.9 deg high on all 12 benchmark pitchers; full-weight geometric slot if behind_3b can be fixed;
   (4) side tilt/pelvis flattening with the fit (needs an idea).
