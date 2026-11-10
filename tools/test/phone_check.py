@@ -3,6 +3,8 @@
 #   python3 tools/test/phone_check.py <fixture.json.gz> <outdir>
 # (server and THREE_JS / ORBIT_JS as in export_check.py). Prints, per screen: sideways scroll in px, things wider than
 # the screen, and buttons under 32 px (too small for a thumb); saves screenshots. Emulated in Chromium, not real Safari.
+# Audits run BEFORE each full-page screenshot: in headless Chromium a full-page screenshot switches the touch-screen
+# emulation off (pointer: coarse stops matching) until the next reload, which made the phone-size buttons look tiny.
 import sys, os, json, gzip
 from playwright.sync_api import sync_playwright
 raw = json.load(gzip.open(sys.argv[1])); OUT = sys.argv[2]; os.makedirs(OUT, exist_ok=True)
@@ -32,19 +34,19 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
         pg.on("console", lambda m: m.type == "error" and errs.append("console: " + m.text[:200]))
         pg.goto(URL); pg.wait_for_timeout(1500)
-        pg.screenshot(path=f"{OUT}/{tag}_1_home.png", full_page=True)
         print(dev, "HOME", pg.evaluate(AUDIT))
+        pg.screenshot(path=f"{OUT}/{tag}_1_home.png", full_page=True)
         pg.evaluate("""raw => new Promise((res, rej) => { const r = indexedDB.open('charney-pitching', 1); r.onupgradeneeded = () => r.result.createObjectStore('analyses', { keyPath: 'id', autoIncrement: true });
           r.onsuccess = () => { const t = r.result.transaction('analyses', 'readwrite'); t.objectStore('analyses').add({ date: Date.now(), name: 'Bullpen pitch', hand: 'auto', frames: raw.frames.length, fps: raw.fps, data: { name: 'Bullpen pitch' }, blob: null, raw }); t.oncomplete = res; t.onerror = () => rej(t.error) } })""", raw)
         pg.reload(); pg.wait_for_selector(".rec-open", state="attached"); pg.wait_for_timeout(800)
         pg.locator("#recentWrap > summary").tap(); pg.wait_for_timeout(500)
-        pg.screenshot(path=f"{OUT}/{tag}_2_recent.png", full_page=True)
         print(dev, "RECENT", pg.evaluate(AUDIT))
+        pg.screenshot(path=f"{OUT}/{tag}_2_recent.png")   # not full_page: that drops the touch-screen emulation until a reload
         pg.locator(".rec-open", has_text="Bullpen").first.tap()
         pg.wait_for_selector("#ptable tbody tr", state="attached", timeout=90000); pg.wait_for_timeout(2500)
+        print(dev, "RESULTS", pg.evaluate(AUDIT))
         pg.screenshot(path=f"{OUT}/{tag}_3_results_top.png")
         pg.screenshot(path=f"{OUT}/{tag}_4_results_full.png", full_page=True)
-        print(dev, "RESULTS", pg.evaluate(AUDIT))
         print(dev, "page errors:", errs)
         ctx.close()
     b.close()
