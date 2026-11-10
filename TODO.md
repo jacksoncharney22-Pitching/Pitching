@@ -104,9 +104,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   session. Next: time passes 2/3/arm zoom separately (`maxworker_check.py ... --only worker`, run in the background at
   session start, ~30 min), and check whether pass 1 runs RTMPose twice per frame (plain + mirrored) and whether the
   mirrored look could be skipped where the plain one is confident.
+- 9:40 tried, promising but NOT shipped (one camera worse): "geometric" slot: turn the app's 3D shoulder->wrist so its
+  picture direction matches the tracker's 2D one, keep its depth (along the camera axis), then read the slot (every view,
+  replaces the face^12 blend). Benchmark (unusual.mjs on tools/test/bench) 5.8 -> 5.6 deg, keeps 94 -> 98%; unusual set
+  10.2 -> 9.7, keeps 82 -> 91%; side_open 4.3 -> 3.1 / 8.8 -> 8.4, front_3b 5.1 -> 4.4 / 8.7 -> 8.2, side_back 15.0 -> 12.1
+  (unusual) BUT behind_3b worse on both sets (4.1 -> 4.8, 10.1 -> 12.1). Suspect: camera looking down (benchmark cameras
+  tilt 8 deg) so picture "up" isn't world up; try using the camera's tilt (opts._camTilt / camtilt.mjs) or weighting by
+  how much the picture shows of the slot plane. Code was a 7-line block in deliveryMeasures after the blend (ex = [ez2,0,-ez0]
+  from horizontal cameraDir, sign from the app's own projection, in-picture length kept).
 - **Next session (after 9:40):** (1) release 2-4 frames late from behind on unusual deliveries (see finding above;
   lab data + `unusual_make.py` take ~1 min to set up); (2) (b) Max profile: start `maxworker_check.py --only worker` in the
-  background FIRST, then time passes 2/3/arm zoom; (3) slot from 45-degree cameras (geometric picture correction);
+  background FIRST, then time passes 2/3/arm zoom; (3) slot: the geometric version above (fix behind_3b, then ship);
   (4) side tilt/pelvis flattening with the fit (needs an idea).
 - 9:40 session: deploy checked: run 207 (70141cc, carries the tick box and results line) succeeded; 205/206 were cancelled by newer pushes. Done.
 - (old) FIRST next session: website deploy run 205 (for 7f0b899, carries the tick box e951330 and results line 4cde360) was stuck in "Deploy to GitHub Pages" 9+ min at 9:10 ET (tests for every code commit passed). If it failed/cancelled, re-run it (actions rerun) once nothing is in progress, then confirm the tick box is live.
