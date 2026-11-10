@@ -323,6 +323,22 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   up after 6 s (open) / 45 s (whole save); a note above the results says which. `tools/test/storage_check.py` (on GitHub).
   Worth knowing: Recent stores the WHOLE uploaded file for the newest 6 pitches (a 4K phone clip can be 300 MB+); storing
   only the trimmed pitch (re-encode the trim window) would fix the storage pressure itself: new Tuesday item.
+- 5:40 Max worker identity check DONE: same synthetic 30-frame clip, run one at a time: old main (no worker) raw hash
+  189d65882e42; wip-max-worker page side (`?poseworker=0&ortproxy=0`) 189d65882e42 (looks 3de9d1b584ac); worker side
+  (4:40 run, with the proxy) 189d65882e42 (looks 3de9d1b584ac). All identical: the earlier "pass 2 zoom differs" came from
+  running both sides at once (and the fuse crash). Page freezes: old way longest 24.5-32 s (117-119 over 0.3 s); worker+proxy
+  0.63 s. Shipping 5:40 (branch `shipmax`, rebased on main): (a) Max's MediaPipe in the pose worker ON; (b) onnxruntime proxy
+  for RTMPose/lifter only as a trial (`?ortproxy=1`) because if its worker fails to start on a phone the stronger tracker
+  and learned 3D would quietly drop out: needs a real iPhone/Android check before default; (c) parallel re-read pool NOT
+  shipped (stays on `wip-max-worker`, untimed: `tools/test/trend_time.py`).
+  SHIPPED 5:40 (fc5f299): (a) live; worker run on the shipped code: raw 189d65882e42 / looks 3de9d1b584ac (identical), longest
+  freeze 24.5-32 -> 17.2 s, freezes over 0.3 s 117-119 -> 53. The 17 s left is RTMPose on the page: (b) removes it (0.6 s).
+- **NEXT SESSION (after 5:40), Tuesday speed and reliability:** (0) check tests/deploy for fc5f299 and later; (1) make the
+  onnxruntime proxy safe to turn on by default: if the proxy's worker fails to start, fall back (e.g. load a second
+  copy of ort without proxy, or detect support up front) and say so in `window.__ortProxy`; test by blocking the proxy
+  worker's script in Playwright; then default ON (freeze 17 -> 0.6 s); (2) time the parallel re-read pool (c) with
+  `tools/test/trend_time.py` on a quiet sandbox (nothing else running), ship if faster; (3) keep only the trimmed pitch
+  video in Recent (new Tuesday item).
 - **4:40 session: the "hang" was Max failing, now fixed on main (7d6c0eb).** The worker run never hung: Max returned to the upload
   screen with "Cannot read properties of undefined (reading '0')" (maxworker_check only watched for the results page, so it
   looked like a hang). Cause: `fuseSoft` (fuse.js) crashed on a frame with exactly one built-in look + one stronger-tracker look
