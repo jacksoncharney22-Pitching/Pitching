@@ -1652,7 +1652,7 @@ export function deliveryMeasures(D, heightM, back_ = Math.round(D.fps * 2 / 60))
   const LA = D.strideFoot && D.strideFoot.frame === fs ? D.strideFoot.p : P[fs][lead], dx = LA[0] - stance[0], dz = LA[2] - stance[2],
     // the skeleton reads the stride ~4% short of motion capture (60 benchmark views: 1.45 vs 1.53 m; 70 unusual deliveries
     // 1.49 vs 1.53), so it's scaled up by that: error 4.9 -> 3.3% of height (benchmark), 5.3 -> 4.8% (unusual)
-    strideM = Math.hypot(dx, dz) * (D.truth ? 1 : 1.04);
+    strideM = Math.hypot(dx, dz) * (D.truth || D.bodyFit ? 1 : 1.04);   // the lab-matched body (trial) reads it differently: left as is
   const ground = Math.min(P[fs][lead][1], stance[1]);
   const s = P[br][sh], w = P[br][wr], SA = t => (D.slotArm && D.slotArm[t]) || [P[t][sh], P[t][wr]], SL = t => { const [a, b] = SA(t); return Math.atan2(b[1] - a[1], Math.abs(b[2] - a[2])) * 180 / Math.PI }, slot3 = (() => { let a = 0, c = 0; for (let t = Math.max(0, br - back_); t <= br; t++) { a += SL(t); c++ } return a / c })();
   // From a camera straight behind or in front, the slot is right there in the picture (the plain shoulder-to-wrist angle
