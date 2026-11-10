@@ -300,7 +300,22 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Freeze reduction for High not measured separately (Fast's was 223 -> 2 freezes over 0.3 s). `window.__poseFellBack` is set
   if the worker fails mid-run (for tests). Tip: a full untrimmed High run takes 25+ min here; trim to ~1.3 s around the pitch.
 - 1:40 shipped: the "Rebuilding the 3D skeleton" step counts seconds while it works (now that the page can update during it).
-- 2:40 session (2:40 session working on this, 2:41 ET): (1) Max accuracy's MediaPipe into the pose worker.
+- 2:40 session: Max accuracy in the background, NOT LIVE, on branch `wip-max-worker` (e26ff4f). Three changes there:
+  (a) Max's MediaPipe models (pass 1 VIDEO tracker + 3-person IMAGE finder, zoomed/backward VIDEO passes, still looks)
+  go through `poseModels` (worker gets `mode`/`poses` at init; a fresh worker per pass); (b) onnxruntime's wasm `proxy`
+  (RTMPose and the lifter run in ort's own worker) when there's no WebGPU adapter, `?ortproxy=0` turns it off;
+  (c) analysis worker pool (up to 3, cores-1) so Over time/Compare re-read pitches side by side (not timed yet:
+  `tools/test/trend_time.py <fixture> 10 [-|?analysisworker=0] [cores]`, new).
+  New `tools/test/maxworker_check.py` (synthetic figure, 30 frames + 12 pad, Max both ways, `--only worker|page|compare`
+  for two parallel shells, ~17 min in parallel). Result with (a)+(b) vs old way (`?poseworker=0&ortproxy=0`): page
+  freezes over 0.3 s 119 -> 1, longest 32.6 s -> 0.28 s (that's the win). BUT tracker output not identical: pass 1
+  ('full') identical, pass 2 'zoom' differs from frame 0 (up to 0.12-0.37 of the picture), so the crop boxes differ,
+  i.e. the IMAGE finder (`first[]`) or `dup[]` differed. An earlier run with (a) only, no pad, sequential: pass 1 AND
+  2 identical, pass 3 differed only because the clip's LAST frame read as a repeat in one run (seek at the very end;
+  fixed by the pad). So suspect: (b) the proxy, or contention from running both at once. The branch now saves `dup` and
+  `first` in `window.__lastLooks` (maxworker_check writes them to looks_max_*.json). NEXT: run worker vs page ONE AT A
+  TIME on the branch, compare `first`/`dup`; if identical, the parallel run was the cause; then run with `?ortproxy=0`
+  on the worker side to split (a) from (b). Ship (a) and (b) separately only when identical. Then time (c).
 - **NEXT SESSION (after 1:40), Tuesday speed and reliability:** (0) confirm test run 148 (0ed4df1, High in the worker) passed; its website deploy already succeeded. (1) Max accuracy's MediaPipe calls into the pose worker
   (`trackMax`: finder IMAGE mode + full VIDEO mode; the worker only does VIDEO: add a mode to init) and check byte-identical
   raw on a trimmed synthetic clip (Max is slow: trim hard); (2) re-time Over time (10 pitches) worker vs `?analysisworker=0`
