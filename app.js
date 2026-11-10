@@ -542,7 +542,7 @@ async function poseModels(q, n = 1, { page = false } = {}) {
   if (!poseWorkerOk || page) return onPage();
   let w;
   try {
-    w = new Worker(new URL("poseworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    w = new Worker(new URL("poseworker.js" + new URL(import.meta.url).search + (/[?&]gpufail=1/.test(location.search) ? "&gpufail=1" : ""), import.meta.url), { type: "module" });
     let seq = 0; const wait = new Map();
     w.onmessage = ({ data }) => { const f = wait.get(data.id); if (f) { wait.delete(data.id); data.ok ? f[0](data) : f[1](new Error(data.err)) } };
     w.onerror = e => { for (const f of wait.values()) f[1](new Error(e.message || "worker failed")); wait.clear() };
@@ -559,7 +559,7 @@ async function poseModels(q, n = 1, { page = false } = {}) {
         where: "worker",
         async detect(v, ts) {
           if (!fb && !broken) {
-            try { const bm = await createImageBitmap(v); return (await ask({ type: "detect", key: k, bitmap: bm, ts }, [bm])).r }
+            try { const bm = await createImageBitmap(v), a = await ask({ type: "detect", key: k, bitmap: bm, ts }, [bm]); if (a.cpu) window.__poseWorkerCpu = true; return a.r }
             catch (e) { fail(e) }
           }
           if (!fb) { fb = await pageModel(k); api.where = "page" }

@@ -24,7 +24,16 @@ async function make(key) {
     baseOptions: { modelAssetBuffer: m.bytes.slice(), delegate },
     runningMode: m.mode, numPoses: m.poses, minPoseDetectionConfidence: 0.3, minPosePresenceConfidence: 0.3, minTrackingConfidence: 0.3,
   });
-  try { m.tr = await mk("GPU") } catch (e) { m.tr = await mk("CPU") }
+  if (m.cpu) { m.tr = await mk("CPU"); return }
+  try { m.tr = await mk("GPU") } catch (e) { m.cpu = true; m.tr = await mk("CPU") }
+}
+// Safari's engine (seen in WebKit 2026-11-10) can START the graphics-chip model in a worker but not run it ("GLctx is
+// undefined" at the first picture): then that model is rebuilt on the processor setting and the same picture is tried
+// again, so the model stays off the page (the page would freeze at every look) instead of the whole run falling back.
+const fakeGpuFail = /[?&]gpufail=1/.test(stamp);          // tests: act like that engine (finder_check.py --gpufail)
+function run(x, m) {
+  if (fakeGpuFail && !x.cpu) throw new Error("undefined is not an object (evaluating 'GLctx.activeTexture') [test]");
+  return x.mode === "IMAGE" ? x.tr.detect(m.bitmap) : x.tr.detectForVideo(m.bitmap, m.ts);
 }
 
 self.onmessage = async ({ data: m }) => {
@@ -40,9 +49,12 @@ self.onmessage = async ({ data: m }) => {
     } else if (m.type === "reset") {                     // a camera cut: start the model's tracking afresh
       await make(m.key); self.postMessage({ id: m.id, ok: true });
     } else if (m.type === "detect") {
-      const x = models.get(m.key), r = x.mode === "IMAGE" ? x.tr.detect(m.bitmap) : x.tr.detectForVideo(m.bitmap, m.ts); m.bitmap.close();
+      const x = models.get(m.key); let r;
+      try { r = run(x, m) }
+      catch (e) { if (x.cpu) throw e; x.cpu = true; self.__gpuFailed = String(e && e.message || e); await make(m.key); r = run(x, m) }
+      m.bitmap.close();
       const plain = a => a ? a.map(p => p.map(q => ({ x: q.x, y: q.y, z: q.z, visibility: q.visibility }))) : [];
-      self.postMessage({ id: m.id, ok: true, r: { landmarks: plain(r.landmarks), worldLandmarks: plain(r.worldLandmarks) } });
+      self.postMessage({ id: m.id, ok: true, cpu: !!x.cpu, r: { landmarks: plain(r.landmarks), worldLandmarks: plain(r.worldLandmarks) } });
     } else if (m.type === "close") {
       for (const x of models.values()) if (x.tr) { try { x.tr.close() } catch (e) {} }
       models.clear(); self.postMessage({ id: m.id, ok: true }); self.close();
