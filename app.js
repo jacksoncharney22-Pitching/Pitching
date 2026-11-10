@@ -229,7 +229,7 @@ function badVideo(a, msg) {
   if (!a) return;
   a.bad = msg;
   if (a !== current) return;
-  $("prepErr").hidden = false; $("prepErr").textContent = msg; $("analyze").disabled = true; errInView();
+  $("prepErr").hidden = false; $("prepErr").textContent = msg; $("analyze").disabled = true; $("selInfo").innerHTML = ""; errInView();
   scan = null; showPitches();                                              // no pitch finder on a file with no picture
 }
 function renderAngles() {
