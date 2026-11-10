@@ -205,6 +205,19 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 21:40 finding: on clips started 1/6 s after leg lift the fit is now a small win (joints 10.4 -> 9.2 cm, trunk/separation/tilts
   better) except front knee at release 7.2 -> 8.5°. The `MINLEAD` 0.45 s gate barely separates cases (app's own foot strike
   decides it); kept so Hackimer (0.456 s) is fitted.
+- 22:40 (body fit item 3, closed, no gain): `pelvisMix` by camera. New `tools/test/pelvismix.mjs` (runs the 60 views at
+  mix 0 and 1 and saves signed pelvis/trunk/separation errors + camera direction; any mix in between is a straight line,
+  checked: interpolated 0.4 = bench 0.4 exactly). Best mix per camera is 0.4-0.6 everywhere (behind 0.4-0.6, behind_3b 0.4,
+  front_3b 0.4-0.6, side_back 0.4-0.6, side_open 0.4 at FS, 0.8 late but separation worse); per-camera or per-event mixes
+  gain at most 0.1-0.3 deg. The 40/60 average beats either reading because their errors differ, not because of a camera
+  bias. Kept 0.4 for all. Don't retry.
+- 22:40 tried, dropped (late-started slow motion): on slowed clips from behind the skeleton's peak hand speed reads
+  1.5-2x too fast in real time (2653 behind: 13.5 at 1x, 25 at 2x, 27 at 4x body heights/s; front_3b/side views
+  steady 13-16), AND foot strike to release shrinks a frame or two (9 -> 7 real frames); 2653's own foot strike to release
+  is only 0.15 s (constant assumes 0.2). Extra smoothing of the wrist path scaled to foot strike->release (sigma (R-FS)/6):
+  evens 2653 (8 vs 11.6) but makes 3035 go the other way (8.2 -> 6.0). So no single fix of the clue; the 22 misreads
+  of 480 stay (report only). Next idea if anyone retries: don't use hand speed when the camera is behind (cameraDir x <
+  -0.5) on the FIRST pass, measure 1x losses with `slowmo.mjs --late 20/30` (14:40 numbers) before shipping.
 - **NEXT SESSION (after 21:40):** body fit items (3) `pelvisMix` by camera, (4) visible trial switch; Hackimer with the fit
   needs his video (separation at foot strike 88°, a bit above the lab's 38-73). Tuesday theme from 8:15: profile Max, phones.
   Late-started slow motion still 13/11 of 240 wrong (`slowmo.mjs --late 20/30`): 12 of the 22 are behind/behind_3b cameras,
