@@ -510,6 +510,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   frames (all-or-nothing per contiguous stretch, extended to where the flipped reading stops being better), or fade the
   window edges/limit over ~50 ms; then trimspread.mjs (goal Maher fast sep spread < 2), hand-FS sweep 88-97 smooth, bench
   separation/trunk at FS, perview, unusual job.
+- 16:40 quick try: `_shPost` 0.2 (window to 0.2 s after FS) removes the collapse (hand FS 88..97 -> peak sep 27.7/27.3/20.3/19.7/
+  15.9/14.5; the falling trend is partly real: later FS = later start of the peak search) but bench "behind" arm 7.8 -> 8.2 cm
+  (CI's "clearly worse"); 0.3 same pattern. `_sepNear` 0 vs 15 makes no difference on Maher. So try the per-stretch decision
+  idea rather than a longer window.
 - **Next session (after 16:40):** (1) the FS-keyed trunk jump above (concrete, measurable with trimspread.mjs: goal Maher
   fast sep spread < 2 deg without bench/perview loss); (2) Tuesday list: real 20 s trim through Fast tracking in the page;
   (3) unusual-set `measures.mjs` with the new slot (lab data via tests.yml steps). All 16:40 work is live; tests green for
