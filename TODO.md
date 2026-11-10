@@ -9,6 +9,7 @@ Measure before and after every change. The accuracy benchmark (`tools/test/bench
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
 ## Today (2026-11-10, Tuesday: speed and reliability; Monday notes below)
+- Code chat 8:05: (Code chat working on this, 8:05 ET) phone check: open the app as an iPhone/Android in headless Chromium, upload a clip, Fast to results, Recent, PDF; list what breaks or is cramped at phone width, fix what is clear.
 Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40); each picks up here and leaves this section up to date.
 - **Big project: the throwing elbow reads ~7° too straight from late stride through max layback** (signed error -7.4° at foot
   strike, -6.0° at max layback, -2.6° at release; 2D matches the truth within 1°, so it happens in the 3D arm lock `lockArms`). Steps:
