@@ -32,6 +32,10 @@ const DAMAGE = {
   "every 3rd frame doubled": r => { r.frames = r.frames.flatMap((f, i) => i % 3 ? [f] : [f, clone(f)]) },   // phones' variable frame rate
   "someone else for 5 frames": r => { const n = r.frames.length, k = Math.floor(n / 2); for (let i = k; i < k + 5 && i < n; i++) if (r.frames[i]) for (const p of r.frames[i].img) { p[0] = 1 - p[0] * 0.5; p[1] = p[1] * 0.6 } },
   "points off the picture": r => { for (const f of r.frames) if (f && rnd() < 0.2) for (const p of f.img) { p[0] = p[0] * 3 - 1; p[1] = p[1] * 3 - 1 } },
+  "height typed as 0": r => { r.heightIn = 0 },
+  "height typed as 700 in": r => { r.heightIn = 700 },
+  "height typed as text": r => { r.heightIn = "6'2" },
+  "fps missing": r => { delete r.fps; delete r.videoFps },
   "glove hand twice as fast": r => { for (const f of r.frames) if (f && rnd() < 0.5) { const a = f.img[15], b = f.img[16]; f.img[15] = b.slice(); f.img[16] = a.slice() } },
 };
 const files = readdirSync(fx).filter(f => /\.json(\.gz)?$/.test(f));

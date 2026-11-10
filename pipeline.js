@@ -697,7 +697,10 @@ export function computeMetrics(P) {
 // How much a clip is slowed down, read from the motion itself: a delivery takes about 0.8 s from peak leg lift to
 // release, and about 0.2 s from foot strike to release (as this software marks them), whatever the pitcher.
 // Returns the nearest common slow-motion factor (1, 2, 4, 8 or 16).
+// a record with no usable frame rate (an old or hand-made file) is read as 30 fps, the usual phone rate, instead of crashing
+const withFps = raw => raw && !(raw.fps > 0) ? { ...raw, fps: raw.videoFps > 0 ? raw.videoFps : 30, videoFps: raw.videoFps > 0 ? raw.videoFps : 30 } : raw;
 export function detectSlowFactor(raw) {
+  raw = withFps(raw);
   const vf = raw.videoFps || raw.fps;
   // look for release just after foot strike first, then further out. Searching the whole rest of the clip at once
   // can land on the follow-through (the arm swinging back up as he fields his position, or a camera zoom) and make
@@ -747,6 +750,7 @@ function finalMetrics(P, fs_, rel) {
 // The whole body fitted to real lab deliveries (bodyfit.js) when a library is given and the option is on: legs, hips and
 // trunk from the fit, arms as the app read them. Off unless opts.bodyLib && opts.bodyFit.
 export function analyse(raw, opts = {}) {
+  raw = withFps(raw);
   const out = analyseCore(raw, opts);
   if (!opts.bodyLib || !opts.bodyFit) return out;
   let F = null; try { F = bodyFit(raw, out, opts.bodyLib, opts.bodyFitOpts || {}) } catch (e) { F = null }
