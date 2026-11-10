@@ -185,6 +185,7 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   and arm slot back to 6.2°, but abduction 4.1/3.8/4.9 -> 5.5/7.5/6.6, layback worse. Arm slot with the fit 7.6° (app 6.2).
   Jackson notified (trial link = site address + `?bodyfit=1`). export_check passes with and without `?bodyfit=1`
   (cloud: `npm pack three@0.128.0`, THREE_JS=package/build/three.min.js, ORBIT_JS=tools/test/orbit_stub.js).
+- 21:27: tests pass on 5759ccb; its website deploy failed once (no log, like the 18:11 UTC ones) and was re-run, still running at wrap-up. NEXT SESSION FIRST: check the latest "pages build and deployment" run succeeded; if not, re-run it (actions rerun) and tell Jackson if it keeps failing.
 - **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer isn't fitted because his clip starts at the leg lift
   (leg lift read at frame 0; the fit needs 0.25 s before it). Idea: let the fit start at the first frame when the clip
   starts late (drop the samples before it from the 2D fit; the library still spans them) and check on the lab views cut
