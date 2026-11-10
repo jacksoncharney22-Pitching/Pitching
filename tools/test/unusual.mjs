@@ -40,7 +40,7 @@ const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz")).map(f => 
 const rows = [];
 for (const v of views) {
   const raw = load(v + ".raw.json.gz"), tr = load(v + ".truth.json.gz"), TD = truthD(tr), base = { ...raw, heightIn: tr.height / 0.0254 };
-  const A = analyse(base, { armLib: armLibFor(tr.sp) }), B = analyse(base, { armLib: armLibFor(tr.sp), bodyLib: LIB, bodyFit: true, bodyFitOpts: process.env.FITOPTS ? JSON.parse(process.env.FITOPTS) : {} });
+  const AO = process.env.APPOPTS ? JSON.parse(process.env.APPOPTS) : {}, A = analyse(base, { armLib: armLibFor(tr.sp), ...AO }), B = analyse(base, { armLib: armLibFor(tr.sp), ...AO, bodyLib: LIB, bodyFit: true, bodyFitOpts: process.env.FITOPTS ? JSON.parse(process.env.FITOPTS) : {} });
   const r = { v, sp: tr.sp, cam: v.slice(tr.sp.length + 1), hand: tr.hand, app: score(A, tr, TD), fit: score(B, tr, TD) };
   rows.push(r);
   if (perView) console.log(`${v.padEnd(20)} ${r.hand} hand read ${r.app.hand}/${r.fit.hand}  joints ${r.app.joint.toFixed(1)} -> ${r.fit.joint.toFixed(1)} cm  arm ${r.app.arm.toFixed(1)} -> ${r.fit.arm.toFixed(1)}  slot ${r.app.slot.toFixed(1)} -> ${r.fit.slot.toFixed(1)}  stride ${r.app.stride.toFixed(1)} -> ${r.fit.stride.toFixed(1)}  tilt BR ${r.app.tilt?.toFixed(1)} -> ${r.fit.tilt?.toFixed(1)}`);
@@ -64,7 +64,10 @@ console.log(`         hand read wrong: app ${rows.filter(r => r.app.hand !== r.h
 { const slope = (w, key) => { const R = rows.filter(r => r[w].sgn[key] != null && r.app.tv[key] != null), x = R.map(r => r.app.tv[key]), yv = R.map(r => r.app.tv[key] + r[w].sgn[key]);
     const mx = mean(x), my = mean(yv); let sxy = 0, sxx = 0; x.forEach((v, i) => { sxy += (v - mx) * (yv[i] - my); sxx += (v - mx) ** 2 }); return 100 * sxy / sxx };
   console.log("\nkeeps % of the pitcher's own difference   app FS/MER/BR      fit FS/MER/BR");
-  for (const k of ANG) console.log(`${k.padEnd(14)} ${["fs", "mer", "br"].map(e => slope("app", k + "|" + e).toFixed(0).padStart(5)).join(" ")}    ${["fs", "mer", "br"].map(e => slope("fit", k + "|" + e).toFixed(0).padStart(5)).join(" ")}`) }
+  for (const k of ANG) console.log(`${k.padEnd(14)} ${["fs", "mer", "br"].map(e => slope("app", k + "|" + e).toFixed(0).padStart(5)).join(" ")}    ${["fs", "mer", "br"].map(e => slope("fit", k + "|" + e).toFixed(0).padStart(5)).join(" ")}`) 
+  const sl = (w, key, tkey) => { const x = rows.map(r => r.app[tkey]), yv = rows.map(r => r.app[tkey] + r[w][key]), mx = mean(x), my = mean(yv); let sxy = 0, sxx = 0; x.forEach((v, i) => { sxy += (v - mx) * (yv[i] - my); sxx += (v - mx) ** 2 }); return (100 * sxy / sxx).toFixed(0) };
+  console.log(`arm slot       ${sl("app", "slot", "slotT").padStart(5)}                ${sl("fit", "slot", "slotT").padStart(5)}`);
+  console.log(`stride         ${sl("app", "stride", "strideT").padStart(5)}                ${sl("fit", "stride", "strideT").padStart(5)}`) }
 // the angle table (absolute, averaged over views) for the readings that matter most
 console.log("\nangle error (°)          app FS/MER/BR          fit FS/MER/BR");
 for (const k of ANG) console.log(`${k.padEnd(14)} ${["fs", "mer", "br"].map(e => mean(rows.map(r => Math.abs(r.app.sgn[k + "|" + e])))).map(x => x.toFixed(1).padStart(5)).join(" ")}      ${["fs", "mer", "br"].map(e => mean(rows.map(r => Math.abs(r.fit.sgn[k + "|" + e])))).map(x => x.toFixed(1).padStart(5)).join(" ")}`);

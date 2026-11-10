@@ -8,6 +8,7 @@
 // place in the trunk's own axes and hang on the fitted shoulders, so elbow, layback and abduction read as before.
 // Same maths as tools/test/bodyproj.mjs fit2D (alternating least squares, scaled-orthographic camera, per-sample
 // whole-body left/right relabelling, Huber on bad points, hips count 4x, prior 0.6).
+// Speed: ~0.14 s per clip in Node (was ~0.4 s before the shape-by-shape layout, 2026-11-10; same numbers).
 
 const MP_R = { rear_ankle_jc: 28, rear_knee_jc: 26, rear_hip: 24, lead_ankle_jc: 27, lead_knee_jc: 25, lead_hip: 23,
   shoulder_jc: 12, elbow_jc: 14, wrist_jc: 16, glove_shoulder_jc: 11, glove_elbow_jc: 13, glove_wrist_jc: 15 };
@@ -27,7 +28,10 @@ function prep(L, Kuse) {
   const K = Math.min(Kuse, L.k), COMP = [];
   for (let k = 0; k < K; k++) { const v = new Float64Array(D), s = L.sd[k] / 32767; for (let i = 0; i < D; i++) v[i] = CI[k * D + i] * s; COMP.push(v) }
   const USED = L.joints.map((n, j) => [j, MP_R[n]]).filter(([, m]) => m != null);
-  Object.defineProperty(L, "_prep", { value: { Kuse, MU, COMP, NS, NJ, D, K, USED }, enumerable: false, configurable: true, writable: true });
+  // the same numbers laid out shape-by-shape for each coordinate (CT[i * K + k] = COMP[k][i]): the fit's inner loops run
+  // over k for a fixed coordinate, and reading them side by side is several times faster than hopping between arrays
+  const CT = new Float64Array(D * K); for (let k = 0; k < K; k++) { const v = COMP[k]; for (let i = 0; i < D; i++) CT[i * K + k] = v[i] }
+  Object.defineProperty(L, "_prep", { value: { Kuse, MU, COMP, CT, NS, NJ, D, K, USED }, enumerable: false, configurable: true, writable: true });
   return L._prep;
 }
 
@@ -91,7 +95,7 @@ export function bodyFit(raw, D, L, opts = {}) {
   if (L && !(ev.ll > 0) && ev.fs > 0) { if (ev.fs < (opts.minLead ?? MINLEAD) * D.fps) return null; ev.ll = Math.min(0, ev.fs - (opts.llGap ?? LLGAP) * D.fps) }
   if (!L || !(ev.ll <= ev.fs) || ev.fs == null || ev.mer == null || ev.br == null || !(ev.ll < ev.fs && ev.fs < ev.mer && ev.mer < ev.br)) return null;
   if (!raw || !raw.frames || raw.frames.length !== T || !raw.width || !raw.height) return null;
-  const { MU, COMP, NS, NJ, K, USED } = prep(L, opts.k ?? 80), idx = (s, j) => (s * NJ + j) * 3;
+  const { MU, COMP, CT, NS, NJ, K, USED } = prep(L, opts.k ?? 80), idx = (s, j) => (s * NJ + j) * 3;
   const knots = [ev.ll - L.pre * fps, ev.ll, ev.fs, ev.mer, ev.br, ev.br + L.post * fps], sf = [];
   L.phases.forEach(([, n], p) => { for (let i = 0; i < n; i++) sf.push(knots[p] + (knots[p + 1] - knots[p]) * i / n) });
   const lefty = D.throwHand === "L", map = USED.map(([j, m]) => [j, lefty ? swap(m) : m]);
@@ -101,14 +105,19 @@ export function bodyFit(raw, D, L, opts = {}) {
   // 1. starting point: the library delivery closest to the app's own 3D skeleton
   let c = new Array(K).fill(0);
   { const obs = sf.map(f => map.map(([, m]) => lerpPose(f, m))), lam = 0.05 * 0.05;
+    // the normal matrix only depends on which points are there, not on the turn: built once, copied per pass
+    const A0 = Array.from({ length: K }, () => new Float64Array(K));
+    sf.forEach((_, s) => map.forEach(([j], u) => { if (!obs[s][u]) return;
+      for (let a = 0; a < 3; a++) { const o = (idx(s, j) + a) * K;
+        for (let q = 0; q < K; q++) { const vq = CT[o + q], row = A0[q]; for (let q2 = q; q2 < K; q2++) row[q2] += vq * CT[o + q2] } } }));
     for (let it = 0; it < 8; it++) {
       const y = recon(c), X = [], Y = [];
       sf.forEach((_, s) => map.forEach(([j], u) => { if (!obs[s][u]) return; X.push([y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]); Y.push(obs[s][u]) }));
       const Tr = similarity(X, Y, lefty);
-      const Am = Array.from({ length: K }, () => new Array(K).fill(0)), b = new Array(K).fill(0);
+      const Am = A0.map(r => Array.from(r)), b = new Array(K).fill(0);
       sf.forEach((_, s) => map.forEach(([j], u) => { if (!obs[s][u]) return; const p = obs[s][u].map((v, k) => v - Tr.t[k]);
-        for (let a = 0; a < 3; a++) { const i = idx(s, j) + a, r = (Tr.R[0][a] * p[0] + Tr.R[1][a] * p[1] + Tr.R[2][a] * p[2]) / Tr.s - MU[i];
-          for (let q = 0; q < K; q++) { const vq = COMP[q][i]; b[q] += vq * r; for (let q2 = q; q2 < K; q2++) Am[q][q2] += vq * COMP[q2][i] } } }));
+        for (let a = 0; a < 3; a++) { const i = idx(s, j) + a, r = (Tr.R[0][a] * p[0] + Tr.R[1][a] * p[1] + Tr.R[2][a] * p[2]) / Tr.s - MU[i], o = i * K;
+          for (let q = 0; q < K; q++) b[q] += CT[o + q] * r } }));
       for (let a = 0; a < K; a++) { Am[a][a] += lam; for (let q = 0; q < a; q++) Am[a][q] = Am[q][a] }
       c = solve(Am, b);
     }
@@ -143,13 +152,14 @@ export function bodyFit(raw, D, L, opts = {}) {
     const proj = x => [r1[0] * x[0] + r1[1] * x[1] + r1[2] * x[2] + o[0], r2[0] * x[0] + r2[1] * x[1] + r2[2] * x[2] + o[1]];
     cam = { r1, r2, o, sc, proj };
     use = sf.map((_, s) => { const e = O => map.reduce((t, __, u) => { const q = O[s][u]; if (!q) return t; const p = proj(X[s][u]); return t + q[2] * Math.min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2, (0.08 * H) ** 2) }, 0); return e(obsB) < 0.7 * e(obsA) ? 1 : 0 });
-    const Am = Array.from({ length: K }, () => new Array(K).fill(0)), b = new Array(K).fill(0), ak = new Float64Array(K), hub = 0.04 * H;
-    sf.forEach((_, s) => map.forEach(([j], u) => { const q = (use[s] ? obsB : obsA)[s][u]; if (!q) return; const i = idx(s, j);
+    const Af = Array.from({ length: K }, () => new Float64Array(K)), b = new Array(K).fill(0), ak = new Float64Array(K), hub = 0.04 * H;
+    sf.forEach((_, s) => map.forEach(([j], u) => { const q = (use[s] ? obsB : obsA)[s][u]; if (!q) return; const i = idx(s, j), o0 = i * K, o1 = o0 + K, o2 = o1 + K;
       for (const [r, off, ob] of [[r1, o[0], q[0]], [r2, o[1], q[1]]]) {
         const pm = r[0] * MU[i] + r[1] * MU[i + 1] + r[2] * MU[i + 2] + off; let cur = 0;
-        for (let k = 0; k < K; k++) { const v = COMP[k]; ak[k] = r[0] * v[i] + r[1] * v[i + 1] + r[2] * v[i + 2]; cur += ak[k] * c[k] }
+        for (let k = 0; k < K; k++) { ak[k] = r[0] * CT[o0 + k] + r[1] * CT[o1 + k] + r[2] * CT[o2 + k]; cur += ak[k] * c[k] }
         const res = ob - pm, e = res - cur, w = q[2] * JW[u] * (Math.abs(e) < hub ? 1 : hub / Math.abs(e));
-        for (let a = 0; a < K; a++) { const wa = w * ak[a]; if (!wa) continue; b[a] += wa * res; for (let q2 = a; q2 < K; q2++) Am[a][q2] += wa * ak[q2] } } }));
+        for (let a = 0; a < K; a++) { const wa = w * ak[a]; if (!wa) continue; b[a] += wa * res; const row = Af[a]; for (let q2 = a; q2 < K; q2++) row[q2] += wa * ak[q2] } } }));
+    const Am = Af.map(r => Array.from(r));
     for (let a = 0; a < K; a++) { Am[a][a] += LAM * sc * sc * 0.0025; for (let q = 0; q < a; q++) Am[a][q] = Am[q][a] }
     c = solve(Am, b);
     if (c.some(v => !Number.isFinite(v))) return null;
