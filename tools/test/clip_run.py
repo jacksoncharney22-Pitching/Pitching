@@ -51,5 +51,6 @@ with sync_playwright() as pw:
         M.resize((w * 3 // 2, h * 2)).save(os.path.join(OUT, 'strip.png'))
     print('phases', pg.evaluate("[...document.querySelectorAll('#phases button')].map(b=>b.textContent).join(' | ')"))
     print('net', pg.evaluate('JSON.stringify(window.__net)'))
+    print('skeleton built on the', pg.evaluate('window.__anaWhere || "(not recorded)"'))
     print('meta', pg.evaluate("document.getElementById('resMeta').textContent"))
     print('errors', errs[:5]); b.close()

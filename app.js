@@ -14,6 +14,35 @@ let BODYLIB = null;
 const bodyLibLoad = BODYFIT ? fetch("bodylib.json?v=1").then(r => r.ok ? r.json() : null).then(j => { BODYLIB = j }).catch(() => {}) : Promise.resolve();
 const armLibReady = () => Promise.race([Promise.all([armLibLoad, bodyLibLoad]), new Promise(r => setTimeout(r, 20000))]);
 const analyse = (raw, o = {}) => analyseRaw(raw, { ...o, ...(ARMLIB ? { armLib: ARMLIB } : {}), ...(BODYLIB ? { bodyLib: BODYLIB, bodyFit: true } : {}) });
+// The skeleton build after tracking runs in a background worker (analysisworker.js) so the page keeps moving (it froze
+// for seconds, longer on phones). Anything wrong with the worker and it simply runs on the page as before;
+// ?analysisworker=0 forces the page.
+let anaW = null, anaOk = !/[?&]analysisworker=0/.test(location.search) && typeof Worker !== "undefined", anaSeq = 0, anaLibs = { arm: false, body: false };
+const anaWait = new Map();
+const anaDrop = why => { console.warn("analysis worker, carrying on with the page:", why); anaOk = false; try { anaW && anaW.terminate() } catch (e) {} anaW = null; for (const f of anaWait.values()) f[1](new Error(why)); anaWait.clear() };
+function anaAsk(m) {
+  if (!anaW) {
+    anaW = new Worker(new URL("analysisworker.js" + new URL(import.meta.url).search, import.meta.url), { type: "module" });
+    anaW.onmessage = ({ data }) => { const f = anaWait.get(data.id); if (f) { anaWait.delete(data.id); data.ok ? f[0](data.r) : f[1](new Error(data.err)) } };
+    anaW.onerror = e => anaDrop(e.message || "worker failed");
+  }
+  const libs = {};
+  if (ARMLIB && !anaLibs.arm) { libs.armLib = ARMLIB; anaLibs.arm = true }
+  if (BODYLIB && !anaLibs.body) { libs.bodyLib = BODYLIB; anaLibs.body = true }
+  return new Promise((res, rej) => {
+    const id = ++anaSeq; anaWait.set(id, [res, rej]);
+    anaW.postMessage({ ...m, id, ...(Object.keys(libs).length ? { libs } : {}), useArm: !!ARMLIB, useBody: !!BODYLIB });
+    setTimeout(() => { if (anaWait.has(id)) anaDrop("timed out") }, 180000);
+  });
+}
+// same answer as analyse()/detectSlowFactor() on the page; an error in the worker re-runs it on the page, which then
+// shows the analysis's own message if the clip itself is the problem
+const offPage = (op, pageFn) => async (raw, o = {}) => {
+  if (anaOk) { try { const r = await anaAsk({ op, raw, o }); window.__anaWhere = "worker"; return r } catch (e) { if (anaOk) console.warn("analysis worker:", e) } }
+  window.__anaWhere = "page"; return pageFn(raw, o);
+};
+const analyseAsync = offPage("analyse", analyse);
+const slowFactorAsync = offPage("slow", raw => detectSlowFactor(raw));
 // A saved pitch re-read from its tracking gives the same result every time during one visit, so it's kept in memory:
 // opening "Over time" again, or comparing a pitch already compared or opened, no longer re-reads all of them (30 saved
 // pitches took several seconds on a laptop, much longer on a phone). Each caller gets its own copy. Cleared on reload.
@@ -61,8 +90,8 @@ $("handSel").onchange = e => { opts.hand = e.target.value };
 $("slowSel").onchange = e => { opts.slow = e.target.value === "auto" ? "auto" : Number(e.target.value); if ($("trimStart").max) updateTrim() };
 // how much the clip is slowed: detected from the motion (a delivery's timing is nearly the same for every pitcher).
 // A manual choice is kept unless the motion clearly says otherwise (then the detected speed is used, and the results say so).
-function resolveSlow(raw) {
-  const det = detectSlowFactor(raw);
+async function resolveSlow(raw) {
+  const det = await slowFactorAsync(raw);
   if (opts.slow === "auto") return { factor: det.factor, note: det.factor > 1 ? `${det.factor}× slow motion detected` : "" };
   const chosen = opts.slow || 1;
   if (det.basis === "leg lift to release" && Math.abs(Math.log2(det.factor) - Math.log2(chosen)) >= 1)
@@ -254,14 +283,14 @@ async function run() {
       step("stBuild", "doing", "Rebuilding the 3D skeleton");
       await new Promise(r => setTimeout(r, 30));
       const raw = { fps: m.sampleFps, videoFps: m.sampleFps, width: m.W, height: m.H, start: m.start, frames: m.frames, heightIn: opts.heightIn || null };
-      const sl = resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
+      const sl = await resolveSlow(raw); raw.fps = m.sampleFps * sl.factor; raw.slowNote = sl.note;
       // learned 3D motion model: how far each joint is toward/away from the camera, from how real bodies move
       try { step("stBuild", "doing", "Learned 3D motion model: reading the whole motion");
         raw.l3 = await learnDepth(raw, f => step("stBuild", "doing", `Learned 3D motion model ${Math.round(100 * f)}%`)) }
       catch (e) { console.warn("learned 3D model unavailable", e); raw.l3 = null }
       step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
       lastRaw = raw; window.__lastRaw = raw;
-      const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+      const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
       data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
       if (q === "max" && window.__engine && window.__engine !== "MediaPipe") data.quality += " · stronger tracker";
       if (data.learned) data.quality += " · learned 3D";
@@ -290,9 +319,9 @@ async function run() {
     await new Promise(r => setTimeout(r, 30));
     const raw = combineViews(views, { hints });
     raw.fps = views[0].fps; raw.videoFps = views[0].fps; raw.start = S; raw.heightIn = opts.heightIn || null;
-    { const sl = resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
+    { const sl = await resolveSlow(raw); raw.fps = views[0].fps * sl.factor; raw.slowNote = sl.note }
     lastRaw = raw; window.__lastRaw = raw;
-    const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+    const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
     data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = { max: "max accuracy", high: "high", fast: "fast" }[q];
     data.cameras = raw.cameras; data.agreeCm = raw.agreeCm;
     data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
@@ -333,9 +362,9 @@ async function runUltraPitch(S, E) {
   step("stTrack", "done", `${res.frames} frames at ${Math.round(res.fps)} fps`);
   step("stBuild", "doing", "Rebuilding the 3D skeleton"); await new Promise(r => setTimeout(r, 30));
   const raw = ultraToRaw(res); raw.heightIn = opts.heightIn || null;
-  const sl = resolveSlow(raw); raw.fps = res.fps * sl.factor; raw.slowNote = sl.note;
+  const sl = await resolveSlow(raw); raw.fps = res.fps * sl.factor; raw.slowNote = sl.note;
   lastRaw = raw; window.__lastRaw = raw;
-  const data = analyse(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
+  const data = await analyseAsync(raw, { hand: opts.hand }); data.slowNote = raw.slowNote || "";
   data.name = $("pitchName").value.trim() || current.name; stampPitcher(data); data.quality = "ultra · cloud 3D body model"; data.source = "ultra";
   data.level = opts.level; data.heightIn = opts.heightIn; data.weightLb = opts.weightLb; data.velo = opts.velo;
   bar(1); step("stBuild", "done", "Done"); releaseWake();
@@ -755,8 +784,10 @@ function openResults(data, url, meta = {}) {
   $("resMeta").textContent = `${data.pitcher ? data.pitcher + " · " : ""}${data.throwHand === "L" ? "Left" : "Right"}-handed · ${data.frames} frames · ${Math.round(data.videoFps || data.fps)} fps${data.fps !== (data.videoFps || data.fps) ? ` (${Math.round(data.fps / data.videoFps)}× slow motion)` : ""}${data.slowNote && /chose/.test(data.slowNote) ? ` · ${data.slowNote}` : ""} · ${dur.toFixed(2)} s${data.quality ? ` · ${data.quality}` : ""}${data.source === "opencap" || data.source === "ultra" ? "" : data.cameras ? ` · 3D measured from ${data.cameras.length} angles (${data.cameras.map(c => c.label).join(", ")}), cameras agree within ${data.agreeCm} cm` : data.match ? ` · skeleton within ${data.match.medianCm} cm of the video` : ""}`;
   renderDeliveryStrip(data);
   show("results");
-  const onPhases = meta.raw ? (phases, frame) => {
-    const d2 = tagResult(analyse(meta.raw, { hand: data.throwHand, phases }), data); d2.userPhases = phases;   // kept for re-opening
+  const onPhases = meta.raw ? async (phases, frame) => {
+    const btn = $("phaseSet"); if (btn) { if (btn.disabled) return; btn.disabled = true }   // re-built off the page: one at a time
+    let d2; try { d2 = tagResult(await analyseAsync(meta.raw, { hand: data.throwHand, phases }), data) } finally { if (btn) btn.disabled = false }
+    d2.userPhases = phases;   // kept for re-opening
     if (meta.id != null) updateHistory(meta.id, d2);
     openResults(d2, url, { ...meta, changed: null, startFrame: frame });
   } : null;
