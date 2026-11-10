@@ -264,6 +264,8 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   drag the trim and press Build skeleton (which already skipped waiting once you trim yourself). Checked on a 60 s 4K clip
   at 1280 and 390 wide, no page errors. Also checked: a junk/unplayable file gets the plain "can't play" message; this
   sandbox's headless Chromium DOES play H.264 now (CLAUDE.md said it didn't).
+- 23:40 built `tools/test/samecheck.mjs` (save full results on old code, check bit-identical on new; prints time). This
+  session's speed work in total, same 24 clips: 9.5 -> 5.5 s (42% faster), all results identical.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
