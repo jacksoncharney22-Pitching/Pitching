@@ -221,6 +221,15 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
 - 22:40 tried, no gain (body fit): smoothing the fit's offset 6 passes instead of 3 (`glitch.mjs` now takes FITOPTS):
   jumps 1.7 same, shake 0.92 -> 0.91, separation BR 4.7 -> 4.4, trunk 6.6/6.0 -> 6.5/5.9, but front knee FS 5.3 -> 5.5,
   pelvis 5.9/5.6 -> 6.0/5.7. A wash, kept 3.
+- 22:40 shipped (speed, Tuesday theme started early): the analysis after tracking (speed reading + skeleton) is faster with
+  bit-identical results (pose, events, angles checked on 4 saved clips + 24 benchmark views; regress passes): Hackimer
+  (480 fps slow motion) 4.2 -> 2.4 s, Maher 0.88 -> 0.58 s, Staumont 0.35 -> 0.25 s (Node, this sandbox; phones ~3-5x
+  slower). Medians picked by quickselect instead of copy+sort (the glitch filter took thousands per joint), glitch filter
+  without throwaway arrays, arm matching samples into reused arrays. What's left (`node --cpu-prof`): the lab-throw arm
+  match scoring loop (~50% of a normal clip's analysis: every lab throw x 5 speeds x 25 shifts x 30 frames, run twice);
+  an exact speed-up would need a lower bound to skip hopeless throws early.
+- 22:40 tried, no gain: hand-speed clue weight from behind on late-started slow motion (`slowmo --late 20`): 0 -> 223,
+  0.2 -> 227, 0.4 (now) 227, 0.6 -> 226 of 240.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
