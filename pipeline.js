@@ -198,9 +198,14 @@ function detectThrowingHand(frames, W, H) {
   // 1. the leg that lifts highest at leg lift is the glove-side leg (true for every pitcher, seen from any angle)
   const ok = frames.filter(Boolean);
   const height = median(ok.map(F => { const ys = F.img.map(p => p[1] * H); return Math.max(...ys) - Math.min(...ys) })) || H / 2;
-  const lift = k => { const v = ok.map(F => ((F.img[23][1] + F.img[24][1]) / 2 - F.img[k][1]) * H / height); v.sort((a, b) => a - b); return v[Math.floor(v.length * 0.97)] };
-  const dL = lift(25) - lift(26);                       // left knee higher -> left is the glove side -> right-handed
-  if (Math.abs(dL) > 0.08) return dL > 0 ? "R" : "L";
+  const ser = k => ok.map(F => ((F.img[23][1] + F.img[24][1]) / 2 - F.img[k][1]) * H / height);
+  const lift = v => [...v].sort((a, b) => a - b)[Math.floor(v.length * 0.97)], sL = ser(25), sR = ser(26);
+  const dL = lift(sL) - lift(sR);                       // left knee higher -> left is the glove side -> right-handed
+  // ...but only if that knee is highest in the first 70% of the clip: a clip started after the leg lift has its
+  // highest knee in the finish, where the THROWING-side leg comes through (60 lab views cut 1/10-1/6 s after leg lift:
+  // 8 of them read the wrong hand, which put foot strike and release in the follow-through, 0.3 s late)
+  const peakAt = v => v.indexOf(Math.max(...v)) / v.length;
+  if (Math.abs(dL) > 0.08 && peakAt(dL > 0 ? sL : sR) < 0.7) return dL > 0 ? "R" : "L";
   // 2. otherwise the throwing hand moves faster than the glove hand (a high percentile, so one blurry frame can't decide it)
   const sp = w => {
     const v = [];

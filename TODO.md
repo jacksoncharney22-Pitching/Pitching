@@ -186,6 +186,20 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   Jackson notified (trial link = site address + `?bodyfit=1`). export_check passes with and without `?bodyfit=1`
   (cloud: `npm pack three@0.128.0`, THREE_JS=package/build/three.min.js, ORBIT_JS=tools/test/orbit_stub.js).
 - 21:27: tests pass on 5759ccb; its website deploy failed once (no log, like the 18:11 UTC ones) and was re-run, still running at wrap-up. NEXT SESSION FIRST: check the latest "pages build and deployment" run succeeded; if not, re-run it (actions rerun) and tell Jackson if it keeps failing.
+- 21:40 shipped (trial, `?bodyfit=1`): the body fit now runs on clips that start AT the leg lift (leg lift then placed 0.53 s
+  before foot strike, `LLGAP`; library samples before frame 0 have no picture) and on slow motion with empty frames
+  between tracked ones (Hackimer: 1 frame in 3 empty; bridged up to 3 frames). New `tools/test/latefit.mjs [--late n]`
+  (60 lab views cut at the app's leg lift + n frames, app vs fit). Cut at leg lift: joints 10.2 -> 8.0 cm, front knee
+  8.1/7.5/7.3 -> 5.1/4.9/6.0, trunk 8.3/6.4/7.5 -> 6.3/5.4/5.8, separation 6.5/4.5/6.0 -> 4.4/3.7/4.7 (before: not fitted).
+  Full lab clips identical. Hackimer with the fit: separation at foot strike -17 -> 88° (lab 38-73), front knee at arm
+  cocked 74 -> 23°: needs his video before anyone trusts it. Not fitted when foot strike is < 0.45 s into the clip (`MINLEAD`).
+- 21:40 shipped (everyone): THROWING HAND on clips started just after the leg lift. The leg that lifts highest decided
+  the hand, but on a late-started clip the highest knee is the throwing-side leg in the finish: 8 of 60 lab views cut
+  1/10-1/6 s after leg lift read the wrong hand, and foot strike/release landed in the follow-through (~0.3 s late).
+  Now the knee rule counts only if that knee peaks in the first 70% of the clip, else the hand-speed rule decides.
+  Late by 1/10 s: event timing 33/25/24 -> 14/6/6 ms; by 1/6 s: 44/38/38 -> 14/5/5 ms, joints 18.8 -> 10.4 cm, pelvis
+  17.6/22.3/19.8 -> 6.4/6.4/5.5 deg (= full-clip accuracy). Slow-motion reading of late-started clips (`slowmo.mjs --late`):
+  1/3 s before foot strike 205 -> 227 of 240 right, 1/2 s 223 -> 229. Full clips, bench and regress unchanged.
 - **NEXT SESSION (after 20:40), body fit, in order:** (1) Hackimer isn't fitted because his clip starts at the leg lift
   (leg lift read at frame 0; the fit needs 0.25 s before it). Idea: let the fit start at the first frame when the clip
   starts late (drop the samples before it from the 2D fit; the library still spans them) and check on the lab views cut
