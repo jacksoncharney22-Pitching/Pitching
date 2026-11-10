@@ -266,6 +266,13 @@ Sessions: 8:15 ET plan, then every hour at :40 round the clock (summary at 21:40
   sandbox's headless Chromium DOES play H.264 now (CLAUDE.md said it didn't).
 - 23:40 built `tools/test/samecheck.mjs` (save full results on old code, check bit-identical on new; prints time). This
   session's speed work in total, same 24 clips: 9.5 -> 5.5 s (42% faster), all results identical.
+- **NEXT SESSION (after 23:40), Tuesday speed and reliability:** analysis after tracking is now 42% faster with identical
+  results (see 23:40 lines); what's left in Node per clip is GC/small-array churn and the arm-match scoring (an exact bound
+  can't cut it further; an approximate coarse-to-fine search would need the bench). Bigger wins now are in the browser:
+  (1) the pitch finder and tracker run MediaPipe on the page's main thread, freezing it ~1 s per step in headless (GPU
+  readback): try a Web Worker / OffscreenCanvas for the finder, check on a real phone; (2) profile Max accuracy on a real
+  clip (needs a pitching video: none in the cloud); (3) phones: emulate iPhone/Android widths through a full Fast run once
+  a real clip is available. Use `tools/test/samecheck.mjs` for any speed-only change.
 - **NEXT SESSION (after 22:40):** body fit items (3) and smoothing are closed; what's left needs Jackson's eye: (4) a visible
   trial switch and (5) default ON after he has looked at Maher/Staumont with `?bodyfit=1` (Jackson notified at 20:40,
   no answer yet). Without that: Tuesday theme starts at 8:15: profile Max accuracy (headless, `clip_run.py max`), phones,
@@ -380,6 +387,8 @@ whole body. Every session works on this before anything else, in order:
   1/30 s): improve the arm while it is behind the body at landing.
 
 ## Tuesday: speed and reliability
+- Pitch finder off the main thread (Web Worker): the page freezes briefly at each finder step on slow GPUs (found 2026-11-10).
+- Analysis memory/GC: the skeleton maths makes millions of tiny arrays (GC is the top item in a Node profile); typed arrays in the hottest loops (despike, lift, oePass) would cut it. Check with samecheck.mjs.
 - Max accuracy takes several minutes: profile where the time goes (tracker, arm-zoom, net cleaning, learned 3D)
   and speed up the biggest part without changing the scorecard or regression results.
 - Long and large videos (phone 4K, 60 s clips): make sure they don't run out of memory or freeze the tab; show
