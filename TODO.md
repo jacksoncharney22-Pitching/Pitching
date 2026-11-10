@@ -501,6 +501,15 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   runs only when foot strike is automatic (`userFS` turns off the contact-gap rule at ~line 1615; `contactFix`, `_merSnap`)
   changes the trunk 5-7 deg after foot strike, and switches with the trim. Coach-visible too: moving foot strike by hand
   to the SAME frame changes the separation card ~5 deg. Start there.
+- 16:40 follow-up 2 (CAUSE FOUND, start here): hand-set foot strike on full Maher fast at 88/90/91/92/93/95 gives peak
+  separation 3.8/26.4/22.7/23.0/21.5/16.3 (trunk at frame 98: +11.9/-21.9/.../-17/-9.8). The automatic run equals hand-set
+  93 (21.2): the shoulder check runs on the EARLY foot strike guess (line ~1434, before contactF refines it to 95). The
+  step is the "shoulders the right way round" flip (pipeline.js ~1428-1460): frames in [fs - 0.3 s, fs + 0.12 s
+  (`_shPost`)] are flipped one by one with hard window edges and a hard +15 limit switch at fs - 0.12 s (`_sepNear`), so a
+  1-frame FS change flips or un-flips several frames of shoulders after foot strike. Ideas: decide the flip ONCE per run of
+  frames (all-or-nothing per contiguous stretch, extended to where the flipped reading stops being better), or fade the
+  window edges/limit over ~50 ms; then trimspread.mjs (goal Maher fast sep spread < 2), hand-FS sweep 88-97 smooth, bench
+  separation/trunk at FS, perview, unusual job.
 - **Next session (after 16:40):** (1) the FS-keyed trunk jump above (concrete, measurable with trimspread.mjs: goal Maher
   fast sep spread < 2 deg without bench/perview loss); (2) Tuesday list: real 20 s trim through Fast tracking in the page;
   (3) unusual-set `measures.mjs` with the new slot (lab data via tests.yml steps). All 16:40 work is live; tests green for
