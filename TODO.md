@@ -184,7 +184,25 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   2/5/10 deg of the peak (err 30 -> 21.5 ms bench but 41 -> 40 unusual; a constant guess is 22/44: still useless);
   stride camera term (-0.05*cameraDir x: 0.060 -> 0.052 bench, 0.088 -> 0.087 unusual, behind_3b worse on unusual);
   hand height camera biases disagree between sets.
-- **Next session (after 10:40):** (1) DONE 11:40 (see above) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
+- **11:40 FINDING (side tilt by camera, lead for an accuracy session):** the app's side tilt (trunkLat) at arm cocked /
+  release has a camera bias that is the SAME on the benchmark and on the unusual set (righties): side_back +11.6/+10.2 deg
+  (bench, 12 of 12 pitchers) vs +8.9/+8.3 (unusual); side_open -7.1/-6.8 vs -10.9/-11.1; behind_3b -4.4/-5.8 vs -6.4/-7.5;
+  behind ~-2; front_3b -9.6/-6.5 vs -3.7/-1.1 (disagrees). Roughly bias = -9*cameraDir z - 2 (z<0 = camera on the arm side).
+  Same camera (side_back) is where arm slot reads +10.9 high: the shoulders' depth from a side camera is likely the common
+  cause (the glove shoulder is read nearer/higher). The lab-matched body (trial) already cuts tilt error 9.5 -> 4.0 deg.
+  Next: find where the shoulder line's depth goes wrong from side cameras (`_snap` stages like the extension trace), fix it
+  in the skeleton rather than correcting the angle; score with unusual.mjs (righties) + bench.mjs + perview.
+  Scratch scripts: tilt2.mjs (per-camera signed error at FS/AC/BR).
+- 11:40 FINDING (test data, don't chase as an app bug): unusual-set LEFTIES at side cameras read side tilt ~40 deg wrong
+  (1718, 2655, 3132 side_back/side_open -34 to -46), but the app is mirror-consistent (mirrored raw gives identical angles)
+  and lefties from behind are fine: `unusual_make.py` pastes a right-handed donor's side-view tracker error onto a lefty seen
+  from his OTHER side (a lefty's "side_open" camera sees his back). Fix in unusual_make.py: for a lefty, borrow the noise
+  from the donor's opposite side view mirrored (side_open <- donor side_back), or mirror the lefty into a righty first.
+  Until then, score side views of the unusual set on righties only.
+- **Next session (after 11:40):** (1) side tilt / slot from side cameras (finding above: one depth cause?); (2) fix unusual_make.py
+  lefties at side views; (3) Max pass-3 skip (needs a real clip); (4) extension card only if it beats a constant guess on
+  ordinary pitchers (today 12.4 cm vs 12.3).
+- (old) **Next session (after 10:40):** (1) DONE 11:40 (see above) extension from behind: 10:40 traced it (`_snap` stages, wrist minus shoulder along x
   at the truth's release, 12 behind views): -19 cm already at the first 3D lift ("rot"), -23/-26 through armDepth..depop,
   -16 after guard, final -16; side_open ~0 throughout. So the learned depth / first lift under-reads how far the hand
   reaches toward the plate (away from a behind camera) and nothing later fixes it. Try: at release with a behind camera,
