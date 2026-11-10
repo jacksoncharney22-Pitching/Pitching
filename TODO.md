@@ -496,6 +496,11 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   `_sepNear`/`_shPost` window after FS, or the late trunk steps). Next: run analyse with `opts.phases.footStrike` fixed at
   95 and 96 on the full clip to confirm, then find which post-lock step switches on the FS frame and make it fade in/out
   instead of an on/off at a frame (scratch sep.mjs / snap.mjs recipes: slice fixture, analyse with `_snap`, compare yaw).
+- 16:40 follow-up: foot strike set BY HAND on full Maher fast at 94/95/96/97 gives peak separation 17.1/16.3/14.6/14.5 (smooth),
+  but the AUTOMATIC run with foot strike at 95 gives 21.2 (trunk at frame 98: -16.9 auto vs -9.8 by hand). So a step that
+  runs only when foot strike is automatic (`userFS` turns off the contact-gap rule at ~line 1615; `contactFix`, `_merSnap`)
+  changes the trunk 5-7 deg after foot strike, and switches with the trim. Coach-visible too: moving foot strike by hand
+  to the SAME frame changes the separation card ~5 deg. Start there.
 - **Next session (after 16:40):** (1) the FS-keyed trunk jump above (concrete, measurable with trimspread.mjs: goal Maher
   fast sep spread < 2 deg without bench/perview loss); (2) Tuesday list: real 20 s trim through Fast tracking in the page;
   (3) unusual-set `measures.mjs` with the new slot (lab data via tests.yml steps). All 16:40 work is live; tests green for
