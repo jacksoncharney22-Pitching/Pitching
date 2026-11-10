@@ -62,7 +62,19 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   fit keeps 58% (app 64%). App alone (not the fit): arm slot keeps 80% (sidearm reads +13-14 deg high, very high slots
   -3 to -9), shoulder abduction at MER/BR only 51-55%, layback 60-63% (the lab-throw arm match is what keeps them that
   high: without it 26-39%): worth a Monday/Saturday look.
-- Next session: (1) side tilt flattening with the fit (above); (2) follow-on (c) visible trial switch; then (a), (b), (d), (e).
+- 8:15 also shipped: (c) DONE: "Lab-matched body (trial)" tick box on the trim screen above Build skeleton (e951330;
+  remembered per device in localStorage `fp-labbody`; ?bodyfit=1/0 still force it; bodylib.json only downloads when on;
+  screenshots desktop + iPhone 13, export_check passes off and on). Results line says "lab-matched body (trial)" or
+  "not used: it didn't line up with this video" (4cde360).
+- 8:15 tried, no gain (drop): side tilt with the fit: giving shoulders/hips the full VERTICAL picture share (`residTrunkV` 1)
+  keeps 77% vs 75%: the remaining tilt flattening is depth (side-on cameras), not the picture plane.
+- 8:15 tried, no gain (drop): (d) late-started slow motion, wrist speed over an exact fraction of foot strike -> release
+  (interpolated, not rounded): `slowmo.mjs --late 20` 227 -> 227 of 240, `--late 30` 229 -> 229. The window rounding isn't it.
+- Next session: (1) (a) analysis memory/GC (typed arrays in `lift`/`oePass`, samecheck-identical); (2) (b) Max profile on the
+  synthetic clip; (3) side tilt/pelvis flattening with the fit (depth: needs an idea); (4) Monday/Saturday item: the app's
+  arm readings keep only about half of a pitcher's difference in shoulder abduction (51-55%) and layback (60-63%) late,
+  arm slot 80% (sidearm reads 13-14 deg high): measure with `unusual.mjs` (app columns) and look at the lab-throw match's
+  pull toward the library average. (e) delete `wip-max-worker` only if Jackson agrees (everything is on main).
 - 7:40 session (ran 7:41-8:25, before the plan): shipped pitch-only Recent video ON by default + hand-moved-event fix, and
   the parallel re-read pool (details in the session log). Tests and deploy passed for 6d67bd9; 1153829's run was still going at wrap-up:
   check it. Big project step 1 not started.
@@ -628,6 +640,7 @@ whole body. Every session works on this before anything else, in order:
 - Any change to how the app looks.
 
 ## Done
+- 2026-11-10 (8:15): Lab-matched body (trial) tested on 14 unusual lab pitchers (new `unusual_make.py`/`unusual.mjs`): no longer flattens the front knee (8.4 -> 6.1 deg off) or separation toward the average; 2.8x faster; refused when it doesn't line up with the video (`fitguard.mjs`); tick box on the trim screen.
 - 2026-11-10: Recent keeps only the analysed pitch as a small video (default ON; 31 MB test upload -> 1.1 MB), hand-moved events stay lined up on re-opened pitches.
 - 2026-11-10 (1:40): Skeleton build and saved-pitch re-reads run in a background worker (`analysisworker.js`, identical results; build freeze 2.1 s -> 0 on Hackimer); High accuracy's tracker in the pose worker (byte-identical output); website deploy blockage (stuck deployment) found and cleared.
 - 2026-11-10: Pitch finder and Fast tracker run their pose model in a background worker (`poseworker.js`): page freezes while scanning 98 -> 3, while tracking 223 -> 2; identical readings.
