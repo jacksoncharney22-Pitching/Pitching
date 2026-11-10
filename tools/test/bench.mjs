@@ -11,6 +11,7 @@
 //   node tools/test/bench.mjs --update     save the current numbers as the new baseline
 //   node tools/test/bench.mjs --views      also one line per view
 //   node tools/test/bench.mjs 1612_1       only that pitch (no baseline comparison)
+//   BENCHDIR=<dir> node tools/test/bench.mjs   other views in the same format (e.g. tools/test/unusual_make.py), no baseline
 //   node tools/test/bench.mjs --nolib      without the lab-throw arm match (as before 2026-11-06; no baseline comparison)
 // The arm match runs as in the app, with the benchmark pitcher's own throws left out of the lab library.
 import { readFileSync, readdirSync, writeFileSync, existsSync } from "fs";
@@ -19,7 +20,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { analyse } from "../../pipeline.js";
 import { truthD, armLibFor } from "./truth.mjs";
-const here = dirname(fileURLToPath(import.meta.url)), dir = join(here, "bench"), BASE = join(here, "bench_baseline.json");
+const here = dirname(fileURLToPath(import.meta.url)), dir = process.env.BENCHDIR || join(here, "bench"), BASE = join(here, "bench_baseline.json");
 const argv = process.argv.slice(2), update = argv.includes("--update"), perView = argv.includes("--views"), noLib = argv.includes("--nolib");
 const only = argv.find(a => !a.startsWith("--")) || "";
 const load = f => JSON.parse(gunzipSync(readFileSync(join(dir, f))).toString("utf8"));
@@ -33,7 +34,7 @@ const ROT = new Set(["pelvisRot", "trunkRot", "separation", "throwER"]);
 const EVENTS = { fs: "Foot strike", mer: "Arm cocked", br: "Release" };
 
 // BODYFIT=1: the whole-body fit to lab deliveries (bodyfit.js), with the library built WITHOUT the benchmark athletes
-const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(join(dir, "bodylib_holdout.json"), "utf8")) : null;
+const BODYLIB = process.env.BODYFIT ? JSON.parse(readFileSync(process.env.BODYLIB || join(here, "bench", "bodylib_holdout.json"), "utf8")) : null;
 const views = readdirSync(dir).filter(f => f.endsWith(".raw.json.gz") && f.startsWith(only)).map(f => f.replace(".raw.json.gz", "")).sort();
 const rows = [];
 for (const v of views) {
@@ -95,7 +96,7 @@ for (const [k, name] of Object.entries(ANGLES)) console.log(`${name.padEnd(28)} 
 if (perView) { console.log(""); for (const r of rows) console.log(`${r.view.padEnd(18)} joints ${f1(r.joint)} cm  arm ${f1(r.arm)} cm  events ${f0(r.ev.fs)}/${f0(r.ev.mer)}/${f0(r.ev.br)} ms`) }
 
 // ---- baseline
-if (only || noLib) process.exit(0);
+if (only || noLib || process.env.BENCHDIR) process.exit(0);
 const round = o => JSON.parse(JSON.stringify(o, (k, v) => typeof v === "number" ? Math.round(v * 100) / 100 : v));
 if (update) { writeFileSync(BASE, JSON.stringify(round(summary), null, 1) + "\n"); console.log(`\nsaved as the baseline: ${BASE}`); process.exit(0) }
 if (!existsSync(BASE)) { console.log("\nno baseline yet: run with --update to save one"); process.exit(0) }

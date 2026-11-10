@@ -18,6 +18,8 @@
 # usage: python3 tools/bodylib_build.py <landmarks.csv> <metadata.csv> [--eval]
 #   writes bodylib.json (all pitches) and tools/test/bench/bodylib_holdout.json (benchmark athletes left out);
 #   --eval prints how well K shapes rebuild the benchmark pitches they never saw (cm, per joint).
+#   --exclude <users.txt> <out.json>: ALSO write a library without the benchmark athletes and these users (one user id
+#   per line; tools/test/unusual_make.py writes such a list), for testing on pitchers the library never saw.
 import sys, json, base64, numpy as np, pandas as pd
 from pathlib import Path
 
@@ -112,4 +114,8 @@ if __name__ == '__main__':
     K = int(__import__("os").environ.get("BODYLIB_K", 80))
     json.dump(pack(P, K), open(ROOT / 'bodylib.json', 'w'), separators=(',', ':'))
     json.dump(pack([p for p in P if p['user'] not in bench_users], K), open(ROOT / 'tools/test/bench/bodylib_holdout.json', 'w'), separators=(',', ':'))
+    if '--exclude' in sys.argv:
+        i = sys.argv.index('--exclude'); ex = {int(l) for l in open(sys.argv[i + 1]).read().split()}
+        keep = [p for p in P if p['user'] not in bench_users and p['user'] not in ex]
+        json.dump(pack(keep, K), open(sys.argv[i + 2], 'w'), separators=(',', ':')); print('wrote', sys.argv[i + 2], len(keep), 'pitches')
     print('wrote bodylib.json', (ROOT / 'bodylib.json').stat().st_size // 1024, 'KB')

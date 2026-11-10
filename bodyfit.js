@@ -127,7 +127,7 @@ export function bodyFit(raw, D, L, opts = {}) {
   if (obsA.filter(r => r.some(Boolean)).length < NS * 0.7) return null;
   const HIPW = opts.hipw ?? 4, JW = map.map(([j]) => /hip/.test(L.joints[j]) ? HIPW : 1), LAM = opts.lam ?? 0.6;
   const lib = y => sf.map((_, s) => map.map(([j]) => [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]));
-  let use = sf.map(() => 0);
+  let use = sf.map(() => 0), cam = null;
   for (let it = 0; it < 15; it++) {
     const X = lib(recon(c));
     const N = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], bu = [0, 0, 0, 0], bv = [0, 0, 0, 0];
@@ -141,6 +141,7 @@ export function bodyFit(raw, D, L, opts = {}) {
     r1 = b1.map(v => v / m1 * sc); r2 = b2.map(v => v / m2 * sc);
     const o = [p1[3], p2[3]];
     const proj = x => [r1[0] * x[0] + r1[1] * x[1] + r1[2] * x[2] + o[0], r2[0] * x[0] + r2[1] * x[1] + r2[2] * x[2] + o[1]];
+    cam = { r1, r2, o, sc, proj };
     use = sf.map((_, s) => { const e = O => map.reduce((t, __, u) => { const q = O[s][u]; if (!q) return t; const p = proj(X[s][u]); return t + q[2] * Math.min((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2, (0.08 * H) ** 2) }, 0); return e(obsB) < 0.7 * e(obsA) ? 1 : 0 });
     const Am = Array.from({ length: K }, () => new Array(K).fill(0)), b = new Array(K).fill(0), ak = new Float64Array(K), hub = 0.04 * H;
     sf.forEach((_, s) => map.forEach(([j], u) => { const q = (use[s] ? obsB : obsA)[s][u]; if (!q) return; const i = idx(s, j);
@@ -160,11 +161,37 @@ export function bodyFit(raw, D, L, opts = {}) {
   const fitted = sf.map((_, s) => { const o = {}; map.forEach(([j, m]) => { const p = [y[idx(s, j)], y[idx(s, j) + 1], y[idx(s, j) + 2]]; o[m] = [p[0] * height, p[2] * height, (lefty ? 1 : -1) * p[1] * height] }); return o });
   const t0 = Math.max(0, Math.ceil(sf[0])), t1 = Math.min(T - 1, Math.floor(sf[NS - 1]));
   if (t1 - t0 < 10) return null;
+  const sAt = t => { let s = 0; while (s < NS - 2 && sf[s + 1] <= t) s++; return [s, Math.max(0, Math.min(1, (t - sf[s]) / (sf[s + 1] - sf[s])))] };
+  // 2b. the library can't bend every knee the way an unusual pitcher does: on lab pitchers it never saw (sidearm, very
+  // short or long stride, quick leg lift, lefties: tools/test/unusual_make.py + unusual.mjs) the fit kept only 31-44% of
+  // how far a pitcher's front knee differs from the average (the app alone 80%) and read it worse than the app (8.4 vs
+  // 6.6 deg at foot strike). So what the camera sees clearly, the picture plane, is given back to the video for the knees
+  // and feet: each moves toward the tracker's own 2D point within the picture plane (opts.resid share, residual clipped
+  // at 4% of the picture, smoothed over opts.residSig s); its distance from the camera stays the fit's. Unusual pitchers:
+  // front knee 8.4/7.4/8.2 -> 6.1/5.1/5.5 deg (keeps 61-76% of his difference); benchmark 5.3/5.1/6.5 -> 5.1/4.6/4.8.
+  // Shoulders/hips given back too made trunk rotation noisier (benchmark MER 6.0 -> 6.4), so not those.
+  const RES = opts.resid ?? 1, RF = [];
+  if (RES > 0 && cam) {
+    const RP = new RegExp(opts.residParts ?? "ankle|knee"), hub = 0.04 * H, { r1, r2, sc, proj } = cam, raw0 = [];
+    for (let t = t0; t <= t1; t++) {
+      const [s, w] = sAt(t), side = use[w < 0.5 ? s : s + 1], o = {};
+      map.forEach(([j, m]) => { if (!RP.test(L.joints[j])) return;
+        const X = [0, 1, 2].map(k => y[idx(s, j) + k] * (1 - w) + y[idx(s + 1, j) + k] * w), q = img(t, side ? swap(m) : m); if (!q) return;
+        const p = proj(X); let du = q[0] - p[0], dv = q[1] - p[1]; const n = Math.hypot(du, dv); if (n > hub) { du *= hub / n; dv *= hub / n }
+        const d = [0, 1, 2].map(k => RES * (r1[k] * du + r2[k] * dv) / (sc * sc)); o[m] = [d[0] * height, d[2] * height, (lefty ? 1 : -1) * d[1] * height] });
+      raw0.push(o);
+    }
+    const sig = Math.max(0.5, (opts.residSig ?? 0.02) * fps), rad = Math.ceil(2.5 * sig);
+    for (let q = 0; q < raw0.length; q++) { const o = {};
+      for (const m of JOINTS) { let sw = 0; const acc = [0, 0, 0];
+        for (let d = -rad; d <= rad; d++) { const v = raw0[q + d]?.[m]; if (!v) continue; const wt = Math.exp(-0.5 * (d / sig) ** 2); sw += wt; for (let k = 0; k < 3; k++) acc[k] += wt * v[k] }
+        if (sw > 0) o[m] = acc.map(v => v / sw) }
+      RF.push(o) }
+  }
   const FR = [], AR = [], FT = [];
   for (let t = t0; t <= t1; t++) {
-    let s = 0; while (s < NS - 2 && sf[s + 1] <= t) s++;
-    const w = Math.max(0, Math.min(1, (t - sf[s]) / (sf[s + 1] - sf[s])));
-    const fp = {}; for (const j of JOINTS) fp[j] = [0, 1, 2].map(k => fitted[s][j][k] * (1 - w) + fitted[s + 1][j][k] * w);
+    const [s, w] = sAt(t), rf = RF[t - t0] || {};
+    const fp = {}; for (const j of JOINTS) fp[j] = [0, 1, 2].map(k => fitted[s][j][k] * (1 - w) + fitted[s + 1][j][k] * w + (rf[j] ? rf[j][k] : 0));
     const hf = hipOf(fp), ha = hipOf(A[t]);
     FR.push(...JOINTS.map(j => fp[j].map((v, k) => v - hf[k]))); AR.push(...JOINTS.map(j => A[t][j].map((v, k) => v - ha[k]))); FT.push(t);
   }
