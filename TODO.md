@@ -8,6 +8,27 @@ with the date. When a theme has fewer than 3 items left, add new ones that fit i
 Measure before and after every change. The accuracy benchmark (`tools/test/bench`, 10 real pitches with
 motion-capture truth, 5 camera angles each) is the scorecard for anything that claims to be "more accurate".
 
+## JACKSON'S GOAL (2026-11-11, from Code chat): Synergy clips that look like his lab skeleton — top priority after the rebuild step in progress
+Jackson showed his coach's lab output (200 fps markerless/marker mocap + force plates, drawn by Claude): smooth, believable,
+COM dot and path, ground-force arrows and a force graph, "peak player velo" (COM speed). He wants Synergy Sports clips
+(broadcast/college video: 30-60 fps, one camera, often centre-field/behind or high side, zoom/pan, camera cuts, score bugs)
+to look as close to that as possible. The viewer already interpolates between frames (Catmull-Rom, fixed bone lengths), so
+the shake is in the skeleton data itself, not the drawing. Plan, in order (claim each step in Today before starting):
+1. **Lab-matched body becomes the default** (rebuild step 5) once the unusual-delivery check passes: it is the single
+   biggest step toward "looks like the lab". Then extend the fit to the THROWING ARM (whole delivery fitted, arm included,
+   video wins where clear), so no part of the body moves frame by frame on its own. Measure jumps/shake with
+   `tools/test/glitch.mjs` against the lab truth (lab truth shake 0.86) and the 60-view bench.
+2. **Broadcast-video robustness** (Synergy-type clips): camera cuts inside the clip (detect, keep the pitch shot only),
+   zoom/pan during the delivery (picture scale jumps, Maher-type), centre-field camera (behind/front: depth is hardest),
+   30 fps arm blur at release (arm from the lab-throw match, not the blurred frames), score bugs/graphics over the body.
+   Build each test from the 60 lab views first (simulate 30 fps, pan, zoom, a cut), then confirm on real clips.
+3. **Lab-style display** (look change, free rein): COM path trail and a "peak body speed" reading like his coach's
+   "peak player velo" (COM speed from the skeleton; check it against the lab COM on the benchmark first and show how
+   sure it is). NO ground-force arrows or force graph from video: those need force plates; never draw estimated forces
+   as if measured.
+4. **Score it on Jackson himself**: if he gets the data file behind his coach's video (C3D/TRC/CSV), import it like
+   OpenCap (`opencap.js`) and compare a phone/Synergy clip of the same session against it.
+
 ## Today (2026-11-10, Tuesday: speed and reliability; plan written 8:15 ET)
 Most Tuesday items were finished overnight (workers for finder/tracker/analysis/Max, faster analysis, pitch-only Recent
 video, phone buttons). The rebuild is Jackson's top priority and step 4 needs no clip, so it's today's big project.
@@ -1202,6 +1223,7 @@ Blocked on Jackson (see Waiting on Jackson): the SMPL-X account and the cost OK.
 clip, score on the benchmark, and only show Ultra if it beats Max on the lab views.
 
 ## Waiting on Jackson
+- Synergy Sports clips (3-5, different camera angles incl. centre field) for the Synergy goal above; and, if his coach can export it, the lab data file behind his 200 fps skeleton video (system name too).
 - Ultra mode (GVHMR cloud): BACK ON by Jackson (2026-11-10). Needs from him: (1) a free SMPL-X account (smpl-x.is.tue.mpg.de, he must accept the licence himself) and its login saved as the Modal secret `smplx` / GitHub repo secrets (never print or ask for the values; he enters them); (2) OK on the per-clip GPU cost once measured.
 - Reference clips: Jackson to send his own pitchers' clips (any angle) so they can be added to the regression tests.
 - Clips needed for the items marked "(Needs clip…)": the Cooper Maher video, a few net / batting-cage / chain-link
