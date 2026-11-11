@@ -611,6 +611,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   clip on his iPhone. If no, engine_diag's lines say why (maybe a non-page video is still loaded: list
   `document.querySelectorAll('video')` with src at the moment of the black frame). Also a Fast clip_run with
   APP_URL=...?onevideo=1 (started 19:40, result in wrap-up line below).
+- (20:40 session working on this, 20:45 ET) Safari: create the reading video only AFTER the others are let go (from the run-300 diagnostic).
 - **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
   frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
   `hold(v)` = for every other <video> on the page (and parked ones) remember `src`+currentTime, `removeAttribute('src');
