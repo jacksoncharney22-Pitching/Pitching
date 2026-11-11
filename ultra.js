@@ -67,8 +67,19 @@ export function ultraToRaw(r) {
     const img = P.map(p => [(fx * p[0] / p[2] + cx) / W, (fy * p[1] / p[2] + cy) / H, 1]);
     return { img, world: P, spread: P.map(() => 0.01) };
   });
-  const hip = F => [(F.world[23][0] + F.world[24][0]) / 2, (F.world[23][1] + F.world[24][1]) / 2, (F.world[23][2] + F.world[24][2]) / 2];
-  const h0 = hip(frames[0]), travel = frames.map(F => { const h = hip(F); return [h[0] - h0[0], h[1] - h0[1], h[2] - h0[2]] });
-  return { fps: r.fps, videoFps: r.fps, width: W, height: H, start: r.start || 0, frames, travel, measured: true, source: "ultra",
-           cameras: [{ label: "Ultra", offset: 0, syncConfidence: 1, angle: 0 }] };
+  // ONE camera, not "measured": GVHMR's 3D is a learned guess from a single video, not several cameras. Taken as measured,
+  // the app skipped every pitching fix (lab-throw arm, depth checks, turn gains) and Jackson's first real Ultra pitches
+  // looked worse than Max (Boston College lefty: elbow at release 86° -> 41°, max layback 116° -> 136°, separation at
+  // foot strike 27° -> 31-52° this way). So: its 2D projection is the tracker reading and its 3D is the learned depth
+  // (the same slot the lifter fills for Fast/High/Max), and analyse() treats it like any other single camera.
+  const l3 = frames.map(F => {
+    const Wd = F.world, mid = (a, b) => [0, 1, 2].map(k => (a[k] + b[k]) / 2), L = Array.from({ length: 17 }, () => [0, 0, 0]);
+    for (const [mp, h] of Object.entries(H36)) L[h] = Wd[mp].slice();
+    const hip = mid(Wd[23], Wd[24]), sh = mid(Wd[11], Wd[12]); L[0] = hip; L[8] = sh; L[7] = mid(hip, sh); L[10] = Wd[0].slice();
+    return L.map(p => [p[0] - hip[0], p[1] - hip[1], p[2] - hip[2]]);
+  });
+  for (const F of frames) { const Wd = F.world, hc = [0, 1, 2].map(k => (Wd[23][k] + Wd[24][k]) / 2); F.world = Wd.map(p => [p[0] - hc[0], p[1] - hc[1], p[2] - hc[2]]) }
+  return { fps: r.fps, videoFps: r.fps, width: W, height: H, start: r.start || 0, frames, l3, source: "ultra" };
 }
+// Ultra joints (MediaPipe numbering) -> the learned-depth model's 17 joints (Human3.6M order), as in pipeline.js
+const H36 = { 0: 9, 11: 11, 12: 14, 13: 12, 14: 15, 15: 13, 16: 16, 23: 4, 24: 1, 25: 5, 26: 2, 27: 6, 28: 3 };
