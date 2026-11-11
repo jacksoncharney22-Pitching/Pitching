@@ -625,7 +625,8 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   end let go of the shared thumbnail video while the next turn waited -> the next made a copy of nothing (404) and Fast
   tracking sat at "Track" for minutes (clip_run ?onevideo=fresh); turns now remember the video's address (`v.__src`).
   Chromium unchanged: finder_check plain 43/45 in the worker, --onevideo 44/45, regress, export_check (Staumont) ok.
-  New: clip_run `PROGRESS=1` (progress list every 30 s), finder_check `FINDER_WAIT=<s>` prints where it got stuck.
+  Full Fast run with `?onevideo=fresh` (clip_run, synthetic clip): results in 180 s (19:40: 184 s), skeleton within 4.7 cm,
+  no page errors. Run 305 (6193d65) green apart from the WebKit trial step. New: clip_run `PROGRESS=1` (progress list every 30 s), finder_check `FINDER_WAIT=<s>` prints where it got stuck.
   **CI WebKit on 6193d65: the finder step HUNG 15 min** (killed by `timeout 900`, after "Graph successfully started
   running", no further output). Cause unknown (the 24493ed bug can't hang forever: every wait in vidpark has a cap).
   **Next session START HERE:** open the "safari" job of 24493ed's run (or later): finder_check now prints "FINDER DID NOT
