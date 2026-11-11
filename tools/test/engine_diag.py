@@ -105,6 +105,20 @@ async () => {
     }
     P('matrix_mean_pixel', m);
   }
+  // hypothesis (2026-11-10 CI): this WebKit decodes pictures for only ONE video element at a time. Release every earlier
+  // video (src removed + load()), then try fresh ones; also a second one while the first is still alive
+  {
+    for (const el of document.querySelectorAll('video')) { try { el.pause(); el.removeAttribute('src'); el.load(); el.remove() } catch (e) {} }
+    try { v.removeAttribute('src'); v.load() } catch (e) {}
+    const mk = async () => { const d = document.createElement('video'); d.muted = true; d.playsInline = true; d.preload = 'auto'; d.src = '/__diag_clip'; document.body.appendChild(d);
+      await new Promise((res, rej) => { d.onloadeddata = res; setTimeout(() => rej(new Error('no loadeddata')), 15000) });
+      d.currentTime = 1.5; await new Promise(res => { d.onseeked = res; setTimeout(res, 8000) }); return d };
+    const m = {};
+    try { const a = await mk(); m.first_after_release = stats(a).mean; const b = await mk(); m.second_while_first_alive = stats(b).mean; m.first_again = stats(a).mean;
+          a.removeAttribute('src'); a.load(); a.remove(); b.currentTime = 2.5; await new Promise(res => { b.onseeked = res; setTimeout(res, 8000) }); m.second_after_first_released = stats(b).mean }
+    catch (e) { m.err = e.message }
+    P('one_decoder_test', m);
+  }
   // can a worker make a WebGL context at all? (MediaPipe needs one even on the CPU setting, to read pictures)
   try {
     const src = "let r={};try{r.offscreen=typeof OffscreenCanvas;const c=new OffscreenCanvas(8,8);r.webgl2=!!c.getContext('webgl2');r.webgl=!!new OffscreenCanvas(8,8).getContext('webgl')}catch(e){r.err=String(e)}postMessage(r)";
