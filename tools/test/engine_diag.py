@@ -54,6 +54,25 @@ async () => {
     try { t.close() } catch (e) {}
     P('model_' + delegate, r);
   }
+  // the pitch finder's way: VIDEO mode, seeking through the clip, one look per seek
+  for (const delegate of ['GPU', 'CPU']) {
+    try {
+      const t = await PL.createFromOptions(fileset, { baseOptions: { modelAssetBuffer: bytes.slice(), delegate }, runningMode: 'VIDEO', numPoses: 1, minPoseDetectionConfidence: 0.3, minPosePresenceConfidence: 0.3, minTrackingConfidence: 0.3 });
+      let seen = 0, n = 0, errs = [];
+      for (let i = 0; i < 12; i++) {
+        v.currentTime = Math.min(v.duration - 0.01, (i + 0.5) * v.duration / 12);
+        await new Promise(res => { v.onseeked = res; setTimeout(res, 8000) });
+        try { const r = t.detectForVideo(v, i * 100 + 1); n++; if (r.landmarks && r.landmarks[0]) seen++ } catch (e) { errs.push(String(e.message || e).slice(0, 120)) }
+      }
+      t.close(); P('video_mode_' + delegate, { seen, of: n, errs: errs.slice(0, 2) });
+    } catch (e) { P('video_mode_' + delegate, 'FAILED: ' + String(e && e.message || e).slice(0, 200)) }
+  }
+  // can a worker make a WebGL context at all? (MediaPipe needs one even on the CPU setting, to read pictures)
+  try {
+    const src = "let r={};try{r.offscreen=typeof OffscreenCanvas;const c=new OffscreenCanvas(8,8);r.webgl2=!!c.getContext('webgl2');r.webgl=!!new OffscreenCanvas(8,8).getContext('webgl')}catch(e){r.err=String(e)}postMessage(r)";
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    P('worker_gl', await new Promise(res => { w.onmessage = e => res(e.data); setTimeout(() => res('no answer'), 5000) })); w.terminate();
+  } catch (e) { P('worker_gl', 'FAILED: ' + e.message) }
   // the worker path, as poseModels starts it
   try {
     const w = new Worker(new URL('poseworker.js', location.href), { type: 'module' });
