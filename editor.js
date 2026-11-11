@@ -1,3 +1,4 @@
+import { parkVideo } from "./vidpark.js";
 // Feole Pitching: the clip editor on the trim screen. A filmstrip timeline of the video with start and end handles,
 // frame-by-frame stepping, play-the-selection on a loop, zoom for precise cuts, and "Cut clip" to actually shorten
 // the clip (with undo). It drives the two hidden trim values the rest of the app reads (#trimStart, #trimEnd).
@@ -47,6 +48,7 @@ export function createEditor({ root, video, startInput, endInput, onChange }) {
   const playBtn = $(".ed-play"), timeEl = $(".ed-time"), loopBox = $(".ed-loop input"), msg = $(".ed-msg");
   const st = { dur: 0, clip: [0, 0], view: [0, 0], fps: 30, undo: [], markers: { pitches: [], cuts: [] }, url: null, thumbsToken: 0, drag: null };
   const thumbV = document.createElement("video"); thumbV.muted = true; thumbV.playsInline = true; thumbV.preload = "auto";
+  parkVideo(thumbV);                                   // Safari draws a video that isn't on the page as black (thumbnails)
 
   const getSel = () => [+startInput.value || 0, +endInput.value || 0];
   function setSel(a, b, from) {

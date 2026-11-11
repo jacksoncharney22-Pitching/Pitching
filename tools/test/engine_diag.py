@@ -78,6 +78,18 @@ async () => {
     const r = t.detect(d); t.close();
     P('detached_blob_video', { pixels: px, seen: !!(r.landmarks && r.landmarks[0]) });
   } catch (e) { P('detached_blob_video', 'FAILED: ' + String(e && e.message || e).slice(0, 200)) }
+  // the same, parked the app's way (vidpark.js: on the page in a 2 px nearly invisible corner box)
+  try {
+    const { parkVideo } = await import('./vidpark.js');
+    const blob = await (await fetch('/__diag_clip')).blob(), d = document.createElement('video');
+    d.muted = true; d.playsInline = true; d.preload = 'auto'; d.src = URL.createObjectURL(blob); parkVideo(d);
+    await new Promise((res, rej) => { d.onloadeddata = res; setTimeout(() => rej(new Error('no loadeddata')), 15000) });
+    const px = [];
+    for (const tt of [0.5, 1.5, 2.5, 3.5]) { d.currentTime = tt; await new Promise(res => { d.onseeked = res; setTimeout(res, 8000) }); px.push(stats(d)) }
+    const t = await PL.createFromOptions(fileset, { baseOptions: { modelAssetBuffer: bytes.slice(), delegate: 'GPU' }, runningMode: 'IMAGE', numPoses: 1 });
+    const r = t.detect(d); t.close();
+    P('parked_blob_video', { pixels: px, seen: !!(r.landmarks && r.landmarks[0]) });
+  } catch (e) { P('parked_blob_video', 'FAILED: ' + String(e && e.message || e).slice(0, 200)) }
   // can a worker make a WebGL context at all? (MediaPipe needs one even on the CPU setting, to read pictures)
   try {
     const src = "let r={};try{r.offscreen=typeof OffscreenCanvas;const c=new OffscreenCanvas(8,8);r.webgl2=!!c.getContext('webgl2');r.webgl=!!new OffscreenCanvas(8,8).getContext('webgl')}catch(e){r.err=String(e)}postMessage(r)";

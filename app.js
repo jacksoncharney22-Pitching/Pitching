@@ -100,6 +100,7 @@ import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
 import { clipKeeper } from "./keepclip.js";
+import { parkVideo } from "./vidpark.js";
 const KEEPCLIP = !/[?&]keepclip=0/.test(location.search);   // Recent keeps only the analysed pitch as a small video (?keepclip=0: the whole upload, as before)
 
 const $ = id => document.getElementById(id);
@@ -442,6 +443,7 @@ async function trackOne(q, src) { return q === "max" ? trackMax(src) : trackSimp
 async function openVideo(url) {
   const v = document.createElement("video");
   v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+  parkVideo(v);                                        // on the page, or Safari draws its frames black (vidpark.js)
   await once(v, "loadeddata", 15000);
   return v;
 }
