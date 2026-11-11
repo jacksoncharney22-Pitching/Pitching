@@ -113,6 +113,8 @@ jobs:
           python3 tools/test/storage_check.py
           python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder"
           python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder_gpufail" --gpufail
+          # Safari's one-video rule, faked in Chromium: other videos let go while the finder reads, trim player back after
+          python3 tools/test/finder_check.py tools/test/fixtures/maher_fast.json.gz "$RUNNER_TEMP/finder_onevideo" --onevideo
           python3 tools/test/anaworker_check.py tools/test/fixtures/*.json.gz
           python3 tools/test/anastall_check.py tools/test/fixtures/staumont_fast.json.gz "$RUNNER_TEMP/anastall"
           python3 tools/test/posestall_check.py "$RUNNER_TEMP/posestall"

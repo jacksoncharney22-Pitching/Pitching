@@ -100,7 +100,7 @@ import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
 import { runUltra, ultraToRaw } from "./ultra.js";
 import { clipKeeper } from "./keepclip.js";
-import { parkVideo } from "./vidpark.js";
+import { parkVideo, soloVideo, doneVideo } from "./vidpark.js";
 const KEEPCLIP = !/[?&]keepclip=0/.test(location.search);   // Recent keeps only the analysed pitch as a small video (?keepclip=0: the whole upload, as before)
 
 const $ = id => document.getElementById(id);
@@ -439,14 +439,17 @@ async function netFor(v, W, H, start, end, say) {
   if (nc.on && say) say("Filmed through a net: cleaning the net out of each frame before tracking", 0);
   return nc;
 }
-async function trackOne(q, src) { return q === "max" ? trackMax(src) : trackSimple(q, src) }
-async function openVideo(url) {
+async function trackOne(q, src) { return withVideos(opened => q === "max" ? trackMax({ ...src, opened }) : trackSimple(q, { ...src, opened })) }
+async function openVideo(url, opened) {
   const v = document.createElement("video");
   v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
   parkVideo(v);                                        // on the page, or Safari draws its frames black (vidpark.js)
+  if (opened) opened.push(v);
   await once(v, "loadeddata", 15000);
-  return v;
+  return soloVideo(v);                                 // Safari's engine: only one video gives pictures at a time (vidpark.js)
 }
+// every video a tracking run or the pitch finder opened is let go when it ends (and, in Safari, the player comes back)
+async function withVideos(fn) { const opened = []; try { return await fn(opened) } finally { opened.forEach(doneVideo) } }
 let runModels = [];                                    // the tracker's pose models for the current run
 async function trackSimple(q, src) {
   const high = q === "high", say = progress(src.prog);
@@ -455,7 +458,7 @@ async function trackSimple(q, src) {
   runModels.forEach(m => m.close());
   const [lmA, lmB = null, lmC = null] = runModels = await poseModels(q, high ? 3 : 1);   // High too: its tracker output in the worker was byte-identical to the page (2026-11-10)
   step("stModel", "done", "Ready");
-  const v = await openVideo(src.url);
+  const v = await openVideo(src.url, src.opened);
   const W = v.videoWidth, H = v.videoHeight, start = src.start, end = Math.max(start + 0.4, src.end);
   v.currentTime = start; await once(v, "seeked");
   const native = await estimateFps(v);
@@ -578,8 +581,9 @@ async function poseModels(q, n = 1, { page = false } = {}) {
     return onPage();
   }
 }
-async function findPitches(url, onProgress) {
-  const v = await openVideo(url), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
+function findPitches(url, onProgress) { return withVideos(opened => findPitchesIn(url, onProgress, opened)) }
+async function findPitchesIn(url, onProgress, opened) {
+  const v = await openVideo(url, opened), dur = v.duration || 0, W = v.videoWidth, H = v.videoHeight;
   if (!(dur > 0)) return { pitches: [], cuts: [] };
   const sf = Math.min(8, Math.max(5, 400 / dur)), n = Math.max(2, Math.floor(dur * sf));
   const [tr] = await poseModels("fast");
@@ -750,7 +754,7 @@ async function trackMax(src) {
   }
   window.__engine = rtm ? "RTMPose + MediaPipe (" + rtmBackend() + ")" : "MediaPipe";
   step("stModel", "done", rtm ? `Ready · stronger tracker on the ${rtmBackend() === "webgpu" ? "graphics chip" : "processor"}` : "Ready · the stronger tracker couldn't load, so arms may be less exact");
-  const v = await openVideo(src.url);
+  const v = await openVideo(src.url, src.opened);
   const W = v.videoWidth, H = v.videoHeight;
   const start = src.start, end = Math.max(start + 0.4, src.end);
   v.currentTime = start; await once(v, "seeked");

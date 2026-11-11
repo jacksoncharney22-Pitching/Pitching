@@ -1,5 +1,5 @@
 import { deliveryCards } from "./pipeline.js";
-import { parkVideo } from "./vidpark.js";
+import { parkVideo, soloVideo, doneVideo } from "./vidpark.js";
 // Feole Pitching: downloadable PDF. The pitcher at the four key moments (video frame with the skeleton drawn on it,
 // plus a clean side-view skeleton) and the key angles at each phase. Built in the browser with jsPDF (bundled in
 // lib/), so nothing is uploaded anywhere.
@@ -19,6 +19,10 @@ async function videoFrames(data, url, frames) {
   const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
   parkVideo(v);                                        // Safari draws a video that isn't on the page as black
   try { await Promise.race([once(v, "loadeddata"), new Promise((_, j) => setTimeout(() => j(new Error("video timeout")), 8000))]) } catch (e) { return frames.map(() => null) }
+  await soloVideo(v);                                  // Safari's engine: one video with pictures at a time (vidpark.js)
+  try { return await readFrames(v, data, frames) } finally { doneVideo(v) }
+}
+async function readFrames(v, data, frames) {
   const VFPS = data.videoFps || data.fps, T0 = data.start || 0, out = [];
   for (const f of frames) {
     v.currentTime = T0 + (Math.round(f) + 0.5) / VFPS;

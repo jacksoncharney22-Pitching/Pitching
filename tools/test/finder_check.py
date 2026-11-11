@@ -59,20 +59,25 @@ def scan(vid, flag):
         pg.goto('http://localhost:8766/index.html' + flag); pg.wait_for_timeout(1500)
         t0 = time.time(); pg.evaluate("window.__beat=[]")
         pg.set_input_files('#fileIn', vid)
-        pg.wait_for_function("window.__finderDbg", timeout=900000, polling=500)
-        r = pg.evaluate("({cpu: !!window.__poseWorkerCpu, where: __finderDbg.where, stride: __finderDbg.stride, lift: __finderDbg.lift, cand: __finderDbg.cand.length, freeze: Math.round(Math.max(0, ...__beat) - 50), slow: __beat.filter(x => x > 300).length})")
+        pg.wait_for_function("window.__finderDbg", timeout=900000, polling=500); pg.wait_for_timeout(800)
+        # with the one-video rule the trim thumbnails take their turn next: the player must come back after that
+        try: pg.wait_for_function("document.getElementById('prepVideo').getAttribute('src')", timeout=30000, polling=300)
+        except Exception: pass
+        r = pg.evaluate("({player: !!document.getElementById('prepVideo').getAttribute('src'), one: !!window.__oneVideo, cpu: !!window.__poseWorkerCpu, where: __finderDbg.where, stride: __finderDbg.stride, lift: __finderDbg.lift, cand: __finderDbg.cand.length, freeze: Math.round(Math.max(0, ...__beat) - 50), slow: __beat.filter(x => x > 300).length})")
         r['secs'] = round(time.time() - t0, 1); r['errors'] = errs[:5]
         b.close(); return r
 
 # MP4 (H.264) with MP4=1: Linux WebKit never finishes a seek in a WebM (Safari users upload MP4/MOV anyway)
 vid = os.path.join(OUT, 'finder_mannequin.mp4' if os.environ.get('MP4') else 'finder_mannequin.webm')
-FLAG = '?gpufail=1' if '--gpufail' in sys.argv else ''
+FLAG = '?gpufail=1' if '--gpufail' in sys.argv else '?onevideo=1' if '--onevideo' in sys.argv else ''   # --onevideo: fake Safari's one-video rule
 make_clip(FX, vid)
 if '--clip-only' in sys.argv: print(vid); sys.exit(0)             # just the synthetic clip (engine_diag.py uses it)
 w = scan(vid, FLAG)
 seen = sum(x is not None for x in w['stride'])
-print(f"worker: model ran on the {w['where']}{' (processor setting)' if w['cpu'] else ''}, {w['secs']} s, body seen in {seen}/{len(w['stride'])} looks, longest page freeze {w['freeze']} ms, {w['slow']} freezes over 0.3 s, errors {w['errors']}")
-ok = w['where'] == 'worker' and (w['cpu'] or not FLAG) and seen > len(w['stride']) * 0.5 and not w['errors'] and w['freeze'] < 1000
+print(f"worker: model ran on the {w['where']}{' (processor setting)' if w['cpu'] else ''}, {w['secs']} s, body seen in {seen}/{len(w['stride'])} looks, longest page freeze {w['freeze']} ms, {w['slow']} freezes over 0.3 s, errors {w['errors']}{', one-video rule found: other videos let go while reading' if w['one'] else ''}{'' if w['player'] else ', TRIM PLAYER LEFT EMPTY'}")
+# WebKit: no WebGL inside a worker, so the model runs on the page there (that's expected, not a failure)
+WK = os.environ.get('BROWSER') == 'webkit'
+ok = (w['where'] == 'worker' or WK) and (w['cpu'] or 'gpufail' not in FLAG) and (w['one'] or 'onevideo' not in FLAG) and w['player'] and seen > len(w['stride']) * 0.5 and not w['errors'] and (w['freeze'] < 1000 or WK)
 if COMPARE:
     p_ = scan(vid, '?poseworker=0')
     print(f"page:   model ran on the {p_['where']}, {p_['secs']} s, longest page freeze {p_['freeze']} ms, {p_['slow']} freezes over 0.3 s")
