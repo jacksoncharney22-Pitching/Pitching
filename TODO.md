@@ -12,7 +12,7 @@ motion-capture truth, 5 camera angles each) is the scorecard for anything that c
 Jackson showed his coach's lab output (200 fps markerless/marker mocap + force plates, drawn by Claude): smooth, believable,
 COM dot and path, ground-force arrows and a force graph, "peak player velo" (COM speed). He wants Synergy Sports clips
 (broadcast/college video: 30-60 fps, one camera, often centre-field/behind or high side, zoom/pan, camera cuts, score bugs)
-to look as close to that as possible. The viewer already interpolates between frames (Catmull-Rom, fixed bone lengths), so
+to look as close to that as possible. **Jackson: do steps 1, 2 and 4 (2026-11-11).** The viewer already interpolates between frames (Catmull-Rom, fixed bone lengths), so
 the shake is in the skeleton data itself, not the drawing. Plan, in order (claim each step in Today before starting):
 1. **Lab-matched body becomes the default** (rebuild step 5) once the unusual-delivery check passes: it is the single
    biggest step toward "looks like the lab". Then extend the fit to the THROWING ARM (whole delivery fitted, arm included,
@@ -22,7 +22,7 @@ the shake is in the skeleton data itself, not the drawing. Plan, in order (claim
    zoom/pan during the delivery (picture scale jumps, Maher-type), centre-field camera (behind/front: depth is hardest),
    30 fps arm blur at release (arm from the lab-throw match, not the blurred frames), score bugs/graphics over the body.
    Build each test from the 60 lab views first (simulate 30 fps, pan, zoom, a cut), then confirm on real clips.
-3. **Lab-style display** (look change, free rein): COM path trail and a "peak body speed" reading like his coach's
+3. (NOT NOW: Jackson chose steps 1, 2 and 4 on 2026-11-11; leave the lab-style display alone unless he asks) **Lab-style display**: COM path trail and a "peak body speed" reading like his coach's
    "peak player velo" (COM speed from the skeleton; check it against the lab COM on the benchmark first and show how
    sure it is). NO ground-force arrows or force graph from video: those need force plates; never draw estimated forces
    as if measured.
