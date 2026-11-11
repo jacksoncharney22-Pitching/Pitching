@@ -566,7 +566,10 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   never put on the page draws as all-zero pixels in WebKit after a seek (engine_diag `detached_blob_video` mean 0 vs 124 when
   on the page); the finder, Fast/High/Max tracking (`openVideo`), trim thumbnails (editor `thumbV`) and PDF frames (pdf.js)
   all used such elements -> 0/45 looks. New `vidpark.js` `parkVideo(v)`: 2 px, opacity 0.01 corner box, newest 6 kept.
-  Chromium unchanged (finder 43/45 in the worker). CI trial result: see next line.
+  Chromium unchanged (finder 43/45 in the worker). CI RESULT: parking did NOT fix it (parked blob video still 0 pixels;
+  the working case was a SERVED url on the page). So blob URL vs served URL is the suspect: engine_diag `matrix_mean_pixel`
+  (23c4ccb) splits served/blob x detached/parked/full-size; read its line in the safari job log. If only blob URLs are
+  black it may be a Linux-WebKit (GStreamer) quirk, not iPhone Safari: then don't over-fit; parkVideo is harmless either way.
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
