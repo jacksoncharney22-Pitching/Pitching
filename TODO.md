@@ -1152,6 +1152,7 @@ whole body. Every session works on this before anything else, in order:
    patches** it replaces (flip fixes, per-frame smoothing tricks, separate arm matching) so there's less to go wrong.
 
 ## Ultra (optional cloud mode, back on the list 2026-11-10)
+- Code chat 2026-11-10 20:45 ET: Jackson made the SMPL-X account and put it in the Modal secret `smplx` (SMPLX_USER/SMPLX_PW). Redeployed; first warm-up sat in Modal's queue for an L4, so Ultra now accepts L4 or A10G (`gpu=["L4","A10G"]`); second warm-up answered {"ok":true} in 41 s. Not yet proven the login itself works (the body model may have been on the volume from October): the first real clip will tell. The Ultra option now opens only on a device given the address once (`?ultra=https://jacksoncharney22--feole-ultra-ultra-web.us-east.modal.run`, remembered); everyone else still sees "coming soon". This sandbox can't reach *.modal.run (proxy 403), so clip tests go through Jackson or a GitHub workflow.
 Jackson wants Ultra. It sends the clip to a GPU on Modal running GVHMR (SMPL-X body) and returns the skeleton; everything else stays
 free and on the device. Built so far: `ultra.js` (58 lines, URL via `?ultra=` / `ULTRA_DEFAULT_URL` empty) and `ultra/app.py` (Modal app).
 Doable now, without the account (any session, Tuesday/Thursday themes fit):

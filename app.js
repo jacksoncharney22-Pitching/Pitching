@@ -98,7 +98,7 @@ import { learnDepth } from "./lifter.js";
 import { armZoom } from "./armzoom.js";
 import { NetCleaner } from "./net.js";
 import { parseTRC, trcToRaw } from "./opencap.js";
-import { runUltra, ultraToRaw } from "./ultra.js";
+import { runUltra, ultraToRaw, ultraURL } from "./ultra.js";
 import { clipKeeper } from "./keepclip.js";
 import { parkVideo, soloVideo, doneVideo } from "./vidpark.js";
 const KEEPCLIP = !/[?&]keepclip=0/.test(location.search);   // Recent keeps only the analysed pitch as a small video (?keepclip=0: the whole upload, as before)
@@ -143,6 +143,9 @@ if ($("levelSel")) $("levelSel").onchange = e => { opts.level = e.target.value; 
 const readHeight = () => { const f = $("heightFt").value; opts.heightIn = f === "" ? null : Number(f) * 12 + Number($("heightIn").value); $("heightIn").disabled = f === ""; keepPitcher() };
 if ($("veloIn")) $("veloIn").oninput = e => { const v = parseFloat(e.target.value); opts.velo = v >= 30 && v <= 110 ? v : null };
 $("heightFt").onchange = readHeight; $("heightIn").onchange = readHeight; $("heightIn").disabled = $("heightFt").value === "";
+// Ultra is a private trial: it costs money per clip on the cloud graphics card, so the option only opens on a device
+// that was given the service address once (?ultra=<address>, remembered on that device). Everyone else sees "coming soon".
+{ const o = document.querySelector('#qualSel option[value="ultra"]'); if (o && ultraURL()) { o.disabled = false; o.textContent = "Ultra (cloud 3D) · trial" } }
 const QUAL_HINT = {
   max: "Max accuracy takes a few minutes. Keep this tab open.",
   high: "High is about a third of the time of Max accuracy, a little less exact.",
