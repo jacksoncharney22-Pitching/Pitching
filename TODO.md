@@ -597,6 +597,15 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   sum1/sum2 per check; finder_check prints "one-video checks: ..."): **next session read that line in the safari job of
   the next run** and fix the check (e.g. treat "nearly black" (sum < 8*8*3*4) as black, or compare with the trim
   player's own frame; or simply always take turns in WebKit: `navigator.vendor` "Apple"/no `chrome` in UA). Then:
+  **DIAGNOSTIC RESULT (run 300, safari job): `{"others": ["prepVideo","?","vidPark"], "sum1": 0, "sum2": 0}`** — the frame
+  IS pure black (check fires) but stays black after the others are let go. In engine_diag's one_decoder_test the working
+  case was a video element CREATED AFTER the others were released. So NEXT (concrete): when sum2 is still 0, make a FRESH
+  video element (same src, parkVideo, wait loadeddata, seek) and test it; if it has pixels, the rule is "release others
+  BEFORE creating the reader". Then change the flow: `openVideo` (app.js) and pdf.js should take the turn / release the
+  others FIRST and only then create the reading video (soloTurn needs a version that takes no element: `takeTurn()` that
+  releases all loaded videos, returns end()); editor thumbV must be re-created per turn in that mode (or skip thumbnails
+  in WebKit-solo mode). Keep `?onevideo=1` fake + finder_check --onevideo passing. Fast clip_run with ?onevideo=1 on the
+  synthetic clip worked end to end in Chromium (184 s, skeleton within 4.7 cm, no page errors).
   **then (was) read the "safari" job log**: does finder_check in WebKit now say
   "one-video rule found" and body seen > 50%? If yes, drop `continue-on-error` from that step and tell Jackson to try a
   clip on his iPhone. If no, engine_diag's lines say why (maybe a non-page video is still loaded: list
