@@ -1,4 +1,4 @@
-import { parkVideo, soloTurn } from "./vidpark.js";
+import { parkVideo, soloRead } from "./vidpark.js";
 // Feole Pitching: the clip editor on the trim screen. A filmstrip timeline of the video with start and end handles,
 // frame-by-frame stepping, play-the-selection on a loop, zoom for precise cuts, and "Cut clip" to actually shorten
 // the clip (with undo). It drives the two hidden trim values the rest of the app reads (#trimStart, #trimEnd).
@@ -93,10 +93,10 @@ export function createEditor({ root, video, startInput, endInput, onChange }) {
     strip.width = W; strip.height = H; const g = strip.getContext("2d"); g.fillStyle = "#111"; g.fillRect(0, 0, W, H);
     if (!st.url || !(st.view[1] > st.view[0])) return;
     if (thumbV.src !== st.url) { thumbV.src = st.url; await new Promise(res => { thumbV.onloadeddata = res; thumbV.onerror = res; setTimeout(res, 8000) }) }
-    const end = await soloTurn(thumbV);                // Safari's engine: one video with pictures at a time (vidpark.js)
-    try { await thumbs(tok, g, W, H) } finally { end() }
+    const turn = await soloRead(thumbV);               // Safari's engine: one video with pictures at a time (vidpark.js; may be a new copy)
+    try { await thumbs(tok, g, W, H, turn.v) } finally { turn.end() }
   }
-  async function thumbs(tok, g, W, H) {
+  async function thumbs(tok, g, W, H, thumbV) {
     if (!thumbV.getAttribute("src")) { thumbV.src = st.url; await new Promise(res => { thumbV.onloadeddata = res; thumbV.onerror = res; setTimeout(res, 8000) }) }
     const ar = (thumbV.videoWidth || 16) / (thumbV.videoHeight || 9), cw = Math.max(24, Math.round(H * ar)), n = Math.ceil(W / cw);
     for (let i = 0; i < n; i++) {

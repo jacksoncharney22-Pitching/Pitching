@@ -27,7 +27,7 @@ export function parkVideo(v) {
 // visible ones back where they were). In browsers without the rule nothing is touched. `?onevideo=1` fakes the rule in
 // Chromium for the tests (a frame reads as black while any other video is loaded).
 let oneVideo;                                                // undefined = not checked yet, true/false = known
-const fake = typeof location !== "undefined" && /[?&]onevideo=1/.test(location.search);
+const fake = typeof location !== "undefined" && /[?&]onevideo=(1|fresh)/.test(location.search);
 function loadedOthers(v) { return [...document.querySelectorAll("video")].filter(e => e !== v && e.getAttribute("src")) }
 function pixelSum(v) {
   try {
@@ -72,10 +72,28 @@ async function take(v) {
   const prev = chain; let unlock; chain = new Promise(r => unlock = r);
   await prev;
   (window.__soloDbg = window.__soloDbg || []).push({ known: oneVideo, others: loadedOthers(v).map(e => e.id || e.parentNode && e.parentNode.id || "?") });   // for finder_check / CI
-  if (oneVideo === false || !loadedOthers(v).length && oneVideo !== true) { unlock(); return noop }
-  if (oneVideo === undefined && !(await needsSolo(v))) { unlock(); return noop }
+  if (oneVideo === false || !loadedOthers(v).length && oneVideo !== true) { unlock(); return { v, end: noop } }
+  if (oneVideo === undefined && !(await needsSolo(v))) { unlock(); return { v, end: noop } }
   const restore = releaseOthers(v);
-  return () => { try { v.pause(); v.removeAttribute("src"); v.load() } catch (e) {} restore(); unlock() };
+  // a video that was loaded while the others still held the picture stays black even after they let go (CI WebKit,
+  // 2026-11-10): it has to be loaded again, or made new, once it's the only one
+  let r = v;
+  if (soloMode === "reload") await reload(v);
+  else if (soloMode === "fresh") r = await fresh(v);
+  return { v: r, end: () => { for (const e of new Set([v, r])) { try { e.pause(); e.removeAttribute("src"); e.load() } catch (x) {} } restore(); unlock() } };
+}
+let soloMode = "";                                           // "" = letting the others go is enough, "reload", "fresh"
+const loaded = v => new Promise(res => { if (v.readyState >= 2) return res(); const ok = () => { v.removeEventListener("loadeddata", ok); v.removeEventListener("error", ok); res() }; v.addEventListener("loadeddata", ok); v.addEventListener("error", ok); setTimeout(ok, 15000) });
+async function reload(v) {
+  const src = v.getAttribute("src"), t = v.currentTime || 0;
+  try { v.pause(); v.removeAttribute("src"); v.load(); v.src = src } catch (e) {}
+  await loaded(v); if (t > 0) await seekTo(v, t);
+}
+async function fresh(v) {
+  const d = document.createElement("video"); d.muted = true; d.playsInline = true; d.preload = "auto"; d.src = v.getAttribute("src");
+  try { v.pause(); v.removeAttribute("src"); v.load() } catch (e) {}
+  parkVideo(d); await loaded(d);
+  return d;
 }
 // the first time only: is this video's picture black while other videos are loaded, and fine once they're let go?
 async function needsSolo(v) {
@@ -87,15 +105,28 @@ async function needsSolo(v) {
     const restore = releaseOthers(v);
     await seekTo(v, dur > 0 ? dur * 0.45 : 0);
     solo = (dbg.sum2 = pixelSum(v)) > 0;
+    if (!solo && !fake) {                                     // still black: try it loaded again, then a new video, while alone
+      await reload(v); await seekTo(v, dur > 0 ? dur * 0.4 : 0);
+      if ((dbg.sum3 = pixelSum(v)) > 0) { solo = true; soloMode = "reload" }
+      else {
+        const src = v.getAttribute("src"), d = await fresh(v); await seekTo(d, dur > 0 ? dur * 0.4 : 0);
+        if ((dbg.sum4 = pixelSum(d)) > 0) { solo = true; soloMode = "fresh" }
+        try { d.pause(); d.removeAttribute("src"); d.load(); d.remove() } catch (e) {}
+        try { v.src = src } catch (e) {} await loaded(v);
+      }
+    }
+    if (fake && /[?&]onevideo=fresh/.test(location.search)) soloMode = "fresh";
     restore();                                                // just a black frame (a fade-in, a dark clip) if not solo
-    if (solo) { oneVideo = true; window.__oneVideo = true }
+    if (solo) { oneVideo = true; window.__oneVideo = soloMode || true }
   }
   await seekTo(v, t0);
   return solo;
 }
-export async function soloTurn(v) { return oneVideo === false ? noop : take(v) }
-// a reading video for the finder/tracking/PDF: its turn ends with doneVideo(v)
-export async function soloVideo(v) { v.__end = await soloTurn(v); return v }
+// soloRead(v) -> { v: the video to read frames from (may be a new one in Safari), end(): the turn is over }
+export async function soloRead(v) { return oneVideo === false ? { v, end: noop } : take(v) }
+export async function soloTurn(v) { return (await soloRead(v)).end }
+// a reading video for the finder/tracking/PDF (use the one it returns): its turn ends with doneVideo(it)
+export async function soloVideo(v) { const t = await soloRead(v); t.v.__end = t.end; return t.v }
 // the app has finished reading frames from v: let go of it and give the other videos back
 export function doneVideo(v) {
   try { v.pause(); v.removeAttribute("src"); v.load() } catch (e) {}

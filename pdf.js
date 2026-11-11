@@ -19,8 +19,8 @@ async function videoFrames(data, url, frames) {
   const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
   parkVideo(v);                                        // Safari draws a video that isn't on the page as black
   try { await Promise.race([once(v, "loadeddata"), new Promise((_, j) => setTimeout(() => j(new Error("video timeout")), 8000))]) } catch (e) { return frames.map(() => null) }
-  await soloVideo(v);                                  // Safari's engine: one video with pictures at a time (vidpark.js)
-  try { return await readFrames(v, data, frames) } finally { doneVideo(v) }
+  const r = await soloVideo(v);                        // Safari's engine: one video with pictures at a time (vidpark.js; may be a new copy)
+  try { return await readFrames(r, data, frames) } finally { doneVideo(r); if (r !== v) doneVideo(v) }
 }
 async function readFrames(v, data, frames) {
   const VFPS = data.videoFps || data.fps, T0 = data.start || 0, out = [];

@@ -449,7 +449,9 @@ async function openVideo(url, opened) {
   parkVideo(v);                                        // on the page, or Safari draws its frames black (vidpark.js)
   if (opened) opened.push(v);
   await once(v, "loadeddata", 15000);
-  return soloVideo(v);                                 // Safari's engine: only one video gives pictures at a time (vidpark.js)
+  const r = await soloVideo(v);                        // Safari's engine: only one video gives pictures at a time (vidpark.js)
+  if (opened && r !== v) opened.push(r);               // there it may hand back a new copy, made once the others let go
+  return r;
 }
 // every video a tracking run or the pitch finder opened is let go when it ends (and, in Safari, the player comes back)
 async function withVideos(fn) { const opened = []; try { return await fn(opened) } finally { opened.forEach(doneVideo) } }
