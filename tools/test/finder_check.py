@@ -59,7 +59,12 @@ def scan(vid, flag):
         pg.goto('http://localhost:8766/index.html' + flag); pg.wait_for_timeout(1500)
         t0 = time.time(); pg.evaluate("window.__beat=[]")
         pg.set_input_files('#fileIn', vid)
-        pg.wait_for_function("window.__finderDbg", timeout=900000, polling=500); pg.wait_for_timeout(800)
+        try: pg.wait_for_function("window.__finderDbg", timeout=int(os.environ.get('FINDER_WAIT', 900)) * 1000, polling=500)
+        except Exception:                                          # stuck: say where (CI WebKit hung here 2026-11-10)
+            print('FINDER DID NOT FINISH; page says:', pg.evaluate("document.getElementById('pitchFindMsg').textContent.slice(0, 200)"),
+                  '| one-video checks:', pg.evaluate("JSON.stringify(window.__soloDbg || null).slice(0, 600)"), '| one-video:', pg.evaluate("String(window.__oneVideo)"), '| errors:', errs[:5], flush=True)
+            raise
+        pg.wait_for_timeout(800)
         # with the one-video rule the trim thumbnails take their turn next: the player must come back after that
         try: pg.wait_for_function("document.getElementById('prepVideo').getAttribute('src')", timeout=30000, polling=300)
         except Exception: pass

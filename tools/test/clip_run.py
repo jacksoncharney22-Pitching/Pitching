@@ -33,6 +33,8 @@ with sync_playwright() as pw:
     pg.click('#analyze'); t0 = time.time()
     while time.time() - t0 < 5000 and pg.evaluate("document.body.dataset.view") != 'results':
         pg.wait_for_timeout(5000)
+        if os.environ.get('PROGRESS') and int(time.time() - t0) % 30 < 5:   # PROGRESS=1: what the progress list says, every ~30 s
+            print(' ', round(time.time() - t0), 's:', pg.evaluate("document.body.dataset.view + ': ' + [...document.querySelectorAll('[data-state]')].map(e => e.id + '=' + e.dataset.state + (e.dataset.state === 'doing' ? ' ' + e.textContent.trim().replace(/\\s+/g, ' ').slice(0, 120) : '')).join(' | ')"), pg.evaluate("JSON.stringify(window.__soloDbg || null).slice(-300)"), flush=True)
     print('view', pg.evaluate("document.body.dataset.view"), round(time.time() - t0), 's', flush=True)
     open(os.path.join(OUT, f'raw_{q}.json'), 'w').write(pg.evaluate('JSON.stringify(window.__lastRaw)'))
     pg.wait_for_timeout(1500)

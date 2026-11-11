@@ -69,6 +69,7 @@ const seekTo = (v, t) => new Promise(res => { const done = () => { v.removeEvent
 let chain = Promise.resolve();
 const noop = () => {};
 async function take(v) {
+  if (v.getAttribute("src")) v.__src = v.getAttribute("src");   // an earlier turn's end may let go of it while this one waits
   const prev = chain; let unlock; chain = new Promise(r => unlock = r);
   await prev;
   (window.__soloDbg = window.__soloDbg || []).push({ known: oneVideo, others: loadedOthers(v).map(e => e.id || e.parentNode && e.parentNode.id || "?") });   // for finder_check / CI
@@ -85,12 +86,13 @@ async function take(v) {
 let soloMode = "";                                           // "" = letting the others go is enough, "reload", "fresh"
 const loaded = v => new Promise(res => { if (v.readyState >= 2) return res(); const ok = () => { v.removeEventListener("loadeddata", ok); v.removeEventListener("error", ok); res() }; v.addEventListener("loadeddata", ok); v.addEventListener("error", ok); setTimeout(ok, 15000) });
 async function reload(v) {
-  const src = v.getAttribute("src"), t = v.currentTime || 0;
+  const src = v.getAttribute("src") || v.__src, t = v.currentTime || 0; if (!src) return;
   try { v.pause(); v.removeAttribute("src"); v.load(); v.src = src } catch (e) {}
   await loaded(v); if (t > 0) await seekTo(v, t);
 }
 async function fresh(v) {
-  const d = document.createElement("video"); d.muted = true; d.playsInline = true; d.preload = "auto"; d.src = v.getAttribute("src");
+  if (!v.getAttribute("src") && !v.__src) return v;
+  const d = document.createElement("video"); d.muted = true; d.playsInline = true; d.preload = "auto"; d.src = v.getAttribute("src") || v.__src;
   try { v.pause(); v.removeAttribute("src"); v.load() } catch (e) {}
   parkVideo(d); await loaded(d);
   return d;
