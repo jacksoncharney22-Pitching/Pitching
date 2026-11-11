@@ -71,6 +71,7 @@ const noop = () => {};
 async function take(v) {
   const prev = chain; let unlock; chain = new Promise(r => unlock = r);
   await prev;
+  (window.__soloDbg = window.__soloDbg || []).push({ known: oneVideo, others: loadedOthers(v).map(e => e.id || e.parentNode && e.parentNode.id || "?") });   // for finder_check / CI
   if (oneVideo === false || !loadedOthers(v).length && oneVideo !== true) { unlock(); return noop }
   if (oneVideo === undefined && !(await needsSolo(v))) { unlock(); return noop }
   const restore = releaseOthers(v);
@@ -80,12 +81,12 @@ async function take(v) {
 async function needsSolo(v) {
   const dur = v.duration || 0, t0 = v.currentTime;
   await seekTo(v, dur > 0 ? dur * 0.5 : 0);
-  let solo = false;
-  if (pixelSum(v) !== 0) { if (!fake) oneVideo = false }
+  let solo = false; const dbg = window.__soloDbg[window.__soloDbg.length - 1], s1 = dbg.sum1 = pixelSum(v);
+  if (s1 !== 0) { if (!fake) oneVideo = false }
   else {
     const restore = releaseOthers(v);
     await seekTo(v, dur > 0 ? dur * 0.45 : 0);
-    solo = pixelSum(v) > 0;
+    solo = (dbg.sum2 = pixelSum(v)) > 0;
     restore();                                                // just a black frame (a fade-in, a dark clip) if not solo
     if (solo) { oneVideo = true; window.__oneVideo = true }
   }

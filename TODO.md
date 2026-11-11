@@ -581,7 +581,27 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   one-decoder test shows a fresh video works only after the others are released, the real fix is: give the finder/tracker
   frames from ONE element (e.g. reuse the visible player, or release the editor's thumbnail video and the player's src
   while tracking) - and decide whether to keep or revert vidpark.js.
-- (19:40 session working on the Safari one-video lock below, 19:45 ET)
+- **19:40 SHIPPED (3404567): Safari one-video rule handled** (vidpark.js `soloTurn`/`soloVideo`/`doneVideo`; app.js
+  `withVideos` around findPitches and trackOne; editor thumbnails and pdf.js frames take turns too). Checked ONCE per page,
+  only when a reading video's frame is pure black while other videos are loaded: let the others go, look again; if the
+  picture appears, every reader (finder, tracking, thumbnails, PDF) takes a turn in a queue and the trim player / results
+  video come back after (src + time; their onloadedmetadata/onerror kept aside so a reload doesn't reset the trim or
+  restart the finder). Chromium untouched (finder 43/45, export_check ok); reading videos are now let go after use
+  everywhere. `?onevideo=1` fakes the rule in Chromium: `finder_check.py --onevideo` 43-44/45 seen, player back (added to
+  the regression job). finder_check under BROWSER=webkit no longer requires the worker (WebKit workers have no WebGL).
+  Bugs found on the way (fixed before shipping): the player reload re-ran the finder in a loop; two thumbnail draws
+  overwrote each other's turn (deadlock); a first-time check running alongside the finder let go of the finder's video.
+  **CI RESULT (run 299): NOT fixed in WebKit yet** — finder_check in WebKit still "model ran on the page, body seen 0/45",
+  and the one-video rule was NOT detected (so the black-frame check never fired: either the 8x8 canvas read isn't exactly
+  0 there, it threw (-1 = "fine"), or no other video was loaded). Pushed a diagnostic (`window.__soloDbg`: others loaded,
+  sum1/sum2 per check; finder_check prints "one-video checks: ..."): **next session read that line in the safari job of
+  the next run** and fix the check (e.g. treat "nearly black" (sum < 8*8*3*4) as black, or compare with the trim
+  player's own frame; or simply always take turns in WebKit: `navigator.vendor` "Apple"/no `chrome` in UA). Then:
+  **then (was) read the "safari" job log**: does finder_check in WebKit now say
+  "one-video rule found" and body seen > 50%? If yes, drop `continue-on-error` from that step and tell Jackson to try a
+  clip on his iPhone. If no, engine_diag's lines say why (maybe a non-page video is still loaded: list
+  `document.querySelectorAll('video')` with src at the moment of the black frame). Also a Fast clip_run with
+  APP_URL=...?onevideo=1 (started 19:40, result in wrap-up line below).
 - **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
   frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
   `hold(v)` = for every other <video> on the page (and parked ones) remember `src`+currentTime, `removeAttribute('src');
