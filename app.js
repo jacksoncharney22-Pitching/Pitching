@@ -394,12 +394,21 @@ async function run() {
     if (e.message === "cancelled") { show("prep"); return }
     console.error(e);
     show("prep"); $("prepErr").hidden = false;
-    $("prepErr").textContent = friendlyError(e); errInView();
+    $("prepErr").textContent = friendlyError(e); showErrDetail(e, opts.quality); errInView();
   }
+}
+// Under the plain-words message, a small "Details for support" line with what actually broke (which analysis, the
+// error and where), so a screenshot of the message is enough to find and fix the problem.
+function showErrDetail(e, q) {
+  const raw = String(e && (e.stack || e.message || e) || "unknown").split("\n").slice(0, 3).map(l => l.trim().replace(/https?:\/\/[^ )]*\//g, "")).join(" · ");
+  const d = document.createElement("small"); d.className = "errdetail";
+  d.textContent = `Details for support: ${q || "?"} · ${raw}`.slice(0, 400);
+  $("prepErr").appendChild(document.createElement("br")); $("prepErr").appendChild(d);
 }
 // What went wrong, in words a coach can act on (the messages we throw ourselves are already written that way)
 function friendlyError(e) {
   const m = String(e && (e.message || e));
+  if (/^(The cloud 3D service|Couldn't reach the cloud|Ultra isn't)/.test(m)) return m;   // Ultra's own reasons, even if they contain "None"/"null"
   if (/WebAssembly|wasm|CompileError|instantiate/i.test(m)) return "This browser blocked the tracking engine (WebAssembly). Open the page in Chrome, Edge or Safari on a computer.";
   if (/Failed to fetch|NetworkError|Load failed|download failed|part missing|model missing|missing in download/i.test(m)) return "Part of the tracker didn't download. Check your connection and try again.";
   if (/out of memory|allocation|Array buffer|too large/i.test(m)) return "This clip is too big for this device's memory. Trim it to just the pitch, or choose Fast accuracy, and try again.";

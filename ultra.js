@@ -27,7 +27,23 @@ export function runUltra(file, { start = 0, end = 1e9, staticCam = true, onStatu
       let r = null; try { r = JSON.parse(x.responseText) } catch (e) {}
       if (x.status !== 200 || !r) return reject(new Error(`The cloud 3D service answered ${x.status}. Try again in a minute.`));
       if (!r.ok) return reject(new Error("The cloud 3D service couldn't analyse this clip: " + (r.error || "unknown reason")));
-      resolve(r) };
+      if (!r.pending) return resolve(r);
+      // The service answers at once with a job ticket and works in the background; ask every few seconds until it's
+      // done (the ticket was being taken for the result, so the app crashed reading a skeleton that wasn't there)
+      const t1 = Date.now(), url = base.replace(/\/$/, "") + "/result/" + encodeURIComponent(r.job);
+      let misses = 0;
+      const poll = async () => {
+        const s = Math.round((Date.now() - t1) / 1000);
+        if (s > 20 * 60) return reject(new Error("The cloud 3D service took too long. Try a shorter window around the pitch."));
+        let j = null;
+        try { const resp = await fetch(url, { cache: "no-store" }); j = await resp.json() } catch (e) { j = null }
+        if (!j) { if (++misses > 5) return reject(new Error("Couldn't reach the cloud 3D service. Check your connection and try again.")); return setTimeout(poll, 4000) }
+        misses = 0;
+        if (j.pending) { onStatus(`Cloud graphics card: ${j.stage || "working"} · ${s} s${s > 60 ? " (the first run of the day also loads the models)" : ""}`, Math.min(0.95, 0.15 + s / 400)); return setTimeout(poll, 3000) }
+        if (!j.ok) return reject(new Error("The cloud 3D service couldn't analyse this clip: " + (j.error || "unknown reason")));
+        resolve(j);
+      };
+      setTimeout(poll, 2000) };
     x.onerror = () => { done(); reject(new Error("Couldn't reach the cloud 3D service. Check your connection and try again.")) };
     x.ontimeout = () => { done(); reject(new Error("The cloud 3D service took too long. Try a shorter window around the pitch.")) };
     x.send(fd);
