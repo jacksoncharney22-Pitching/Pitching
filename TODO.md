@@ -26,6 +26,7 @@ the shake is in the skeleton data itself, not the drawing. Plan, in order (claim
    "peak player velo" (COM speed from the skeleton; check it against the lab COM on the benchmark first and show how
    sure it is). NO ground-force arrows or force graph from video: those need force plates; never draw estimated forces
    as if measured.
+2a. (Code chat working on this, 11:45 ET) Jackson sent 3 Synergy clips (not committed: other people's footage): #7 high 1B-side, 60 fps, hazy, camera follows after release; #21 home side through a NET, 60 fps; #10 home side through a NET, 30 fps 720p. Running Fast on each, saving tracker output as fixtures `tools/test/fixtures/synergy_{7,21,10}_fast.json.gz` + strips.
 4. **Score it on Jackson himself**: if he gets the data file behind his coach's video (C3D/TRC/CSV), import it like
    OpenCap (`opencap.js`) and compare a phone/Synergy clip of the same session against it.
 
