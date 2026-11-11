@@ -611,6 +611,12 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   clip on his iPhone. If no, engine_diag's lines say why (maybe a non-page video is still loaded: list
   `document.querySelectorAll('video')` with src at the moment of the black frame). Also a Fast clip_run with
   APP_URL=...?onevideo=1 (started 19:40, result in wrap-up line below).
+- 20:40 FINDING (Wednesday "stride direction", don't build a card): stride direction (lead foot at foot strike vs the back
+  foot's stance, angle off the plate line) on the 60 benchmark views: truth 7.1 +-5.3 deg; app r -0.11 vs truth, 5.7 deg off
+  (a constant guess is ~4.3). Measured against the hips' travel leg lift -> foot strike instead (the app has no independent
+  plate line: it's taken from the stride), app vs truth read the same way r 0.57, 5.9 off. Too small a spread for one camera
+  to read. Tried also 20:40, no gain: an extra glove-arm depth shift around foot strike (camera-toward-plate / arm-side
+  terms +-5%): glove abduction at FS 4.3 -> 4.2-4.5, nothing else moved. Glove abduction FS is small; leave it.
 - (20:40 session working on this, 20:45 ET) Safari: create the reading video only AFTER the others are let go (from the run-300 diagnostic).
 - **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
   frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
