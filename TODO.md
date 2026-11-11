@@ -558,7 +558,15 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   WebKit error in Chromium: finder_check --gpufail 45/45 seen, in the worker, freeze 0.2-0.6 s (in the regression job).
   Side finding: on software graphics (headless) the CPU setting is 3-15x faster than GPU (GPU 600-1100 ms/look vs CPU
   60-85); on real phones GPU should win, so GPU stays first.
-  18:40 (working on this, 18:55 ET): Fast tracking end to end in WebKit (clip_run.py takes BROWSER=webkit) as a CI trial.
+  18:40 follow-up: the CPU retry does NOT rescue the worker in WebKit (MediaPipe needs a WebGL context even on the CPU
+  setting, and `new OffscreenCanvas().getContext('webgl'/'webgl2')` is null inside a WebKit worker: engine_diag `worker_gl`),
+  so there the models fall back to the page as before (works, freezes per look). The retry stays: it helps any browser where
+  only the GPU path breaks in the worker.
+- **18:40 FOUND + FIXED (505fc21): in Safari's engine every frame the app read was BLACK.** A video element made in code and
+  never put on the page draws as all-zero pixels in WebKit after a seek (engine_diag `detached_blob_video` mean 0 vs 124 when
+  on the page); the finder, Fast/High/Max tracking (`openVideo`), trim thumbnails (editor `thumbV`) and PDF frames (pdf.js)
+  all used such elements -> 0/45 looks. New `vidpark.js` `parkVideo(v)`: 2 px, opacity 0.01 corner box, newest 6 kept.
+  Chromium unchanged (finder 43/45 in the worker). CI trial result: see next line.
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
