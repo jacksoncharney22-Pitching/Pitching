@@ -573,11 +573,28 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   MATRIX RESULT: ALL six cases black in CI WebKit (served/blob x detached/parked/full), while the very FIRST video of the
   page (served, on the page) drew fine (mean 124). So it isn't blob-vs-served or on/off the page: suspect "only one video
   element gets pictures at a time" in this WebKit (the app always has others alive: the visible player, editor thumbs).
-  `one_decoder_test` (7d35cda) releases every earlier video and tries again: read it in the safari log of 7d35cda's run.
+  `one_decoder_test` (7d35cda) CONFIRMED IT: first video after releasing the others 123.8, a SECOND video while the first
+  is alive 0 (black), the first again 123.8, the second once the first is released (src removed + load()) 124.6.
+  So in this WebKit only ONE video element gives pictures at a time, and the app always has 2+ alive while the finder or
+  tracker reads frames (the visible trim player, the editor's thumbnail video `thumbV`, then the reading video).
   NOTE: parkVideo (505fc21) did not fix the CI case; it's harmless in Chromium (finder, export_check ok). If the
   one-decoder test shows a fresh video works only after the others are released, the real fix is: give the finder/tracker
   frames from ONE element (e.g. reuse the visible player, or release the editor's thumbnail video and the player's src
   while tracking) - and decide whether to keep or revert vidpark.js.
+- **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
+  frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
+  `hold(v)` = for every other <video> on the page (and parked ones) remember `src`+currentTime, `removeAttribute('src');
+  load()`; `release()` restores them (src, currentTime). Call it around findPitches / trackSimple / trackMax / pdf frames /
+  editor thumbnails (thumbnails must not run while tracking). Prove it in CI first: engine_diag `one_decoder_test` shows the
+  rule; finder_check in the safari job must reach "body seen > 50%" (today 0/45), then drop its continue-on-error. Check
+  Chromium unchanged (finder_check, export_check, clip_run fast on the mannequin mp4: finder_check.py --clip-only with MP4=1).
+  Open question: does iPhone Safari have the same one-video rule? Unknown (Linux WebKit uses GStreamer); the change is safe
+  either way, but ask Jackson to try a clip on his iPhone after it ships. Also: in a WebKit WORKER there's no WebGL at all,
+  so models run on the page there (freezes per look) - nothing to do about that except smaller/faster looks.
+  vidpark.js (505fc21) by itself did not fix anything (keep it as the home for the lock, or fold it in).
+  CI job ids: list_workflow_jobs with perPage 1 and page 1..6 to find "safari" (the order changes run to run).
+- 18:40 shipped: engine_diag.py (tests), finder_check `--clip-only`, `MP4=1`, `--gpufail` (Chromium, in the regression job),
+  clip_run.py `BROWSER=webkit`; poseworker CPU retry (ed88440: harmless, helps only where just the GPU path breaks).
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
