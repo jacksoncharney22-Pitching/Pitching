@@ -26,7 +26,8 @@ image = (
 
 # one container handles everything (so the app can ask "is my pitch done?" of the same machine that's working on it);
 # the work runs in a background thread and the app checks back every few seconds
-@app.cls(image=image, gpu="L4", secrets=[modal.Secret.from_name("smplx")], volumes={CACHE: cache},
+@app.cls(image=image, gpu=["L4", "A10G"],  # A10G as a backup when Modal has no L4 free (same job, a little dearer)
+         secrets=[modal.Secret.from_name("smplx")], volumes={CACHE: cache},
          timeout=900, scaledown_window=180, max_containers=1)
 @modal.concurrent(max_inputs=16)
 class Ultra:
