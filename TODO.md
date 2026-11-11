@@ -581,6 +581,7 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   one-decoder test shows a fresh video works only after the others are released, the real fix is: give the finder/tracker
   frames from ONE element (e.g. reuse the visible player, or release the editor's thumbnail video and the player's src
   while tracking) - and decide whether to keep or revert vidpark.js.
+- (19:40 session working on the Safari one-video lock below, 19:45 ET)
 - **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
   frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
   `hold(v)` = for every other <video> on the page (and parked ones) remember `src`+currentTime, `removeAttribute('src');
