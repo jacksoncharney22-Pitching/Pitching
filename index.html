@@ -489,6 +489,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
 .vidsave:not([hidden]) { animation: vsPulse 1.2s ease 2 }
 @keyframes vsPulse { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.25) } }
 .dlmenu > div p { margin: 2px 4px 0; color: var(--muted); font-size: 11.5px }
+.supbtn { font-size: 12.5px; color: var(--muted); align-self: center }
 .errdetail { display: block; margin-top: 6px; font-family: var(--mono); font-size: 11px; opacity: .75; overflow-wrap: anywhere }
 /* Phones and tablets: a thumb needs a bigger target than a mouse. The camera views, speeds, frame step and phase
    buttons were 23-28 px tall; make every button at least 40 px on touch screens (desktop unchanged).
@@ -602,7 +603,7 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
   <section id="results" class="view" hidden>
     <div class="reshead">
       <div><span class="eyebrow">Feole Pitching analysis</span><h1 id="resName">Pitch</h1><div id="resMeta"></div></div>
-      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button></div>
+      <div class="resbtns"><details class="dlmenu" id="vidMenu"><summary id="vidSum">Download video</summary><div><button type="button" id="vidSkel"><b>Skeleton + angles</b><small>3D skeleton with every angle beside it</small></button><button type="button" id="vidOv"><b>Video + overlay</b><small>Your video with the skeleton, pelvis and spine angles</small></button><p>MP4 · plays at the speed set in the player</p></div></details><a id="vidSave" class="vidsave" hidden>⬇ Save video</a><button id="pdfBtn">Download PDF</button><button id="csvBtn" hidden>Export angles (CSV)</button><button class="primary" id="newBtn">New analysis</button><button type="button" class="linkbtn supbtn" id="supBtn">Save data for support</button></div>
     </div>
     <p class="hint" id="phaseEditNote" hidden>Phase adjustment is available for videos you analyse here.</p>
     <p class="numschanged" id="numsChanged" role="status" hidden></p>
@@ -680,26 +681,26 @@ body[data-view="results"] .wrap, body[data-view="results"] .topbar .in { max-wid
      (browsers without import maps just load them unstamped, as before) -->
 <script type="importmap">
 {"imports": {
-  "./pipeline.js": "./pipeline.js?v=1794363182",
-  "./bodyfit.js": "./bodyfit.js?v=1794363182",
-  "./fuse.js": "./fuse.js?v=1794363182",
-  "./multiview.js": "./multiview.js?v=1794363182",
-  "./rtm.js": "./rtm.js?v=1794363182",
-  "./pdf.js": "./pdf.js?v=1794363182",
-  "./compare.js": "./compare.js?v=1794363182",
-  "./editor.js": "./editor.js?v=1794363182",
-  "./lifter.js": "./lifter.js?v=1794363182",
-  "./ortboot.js": "./ortboot.js?v=1794363182",
-  "./vidpark.js": "./vidpark.js?v=1794363182",
-  "./keepclip.js": "./keepclip.js?v=1794363182",
-  "./armzoom.js": "./armzoom.js?v=1794363182",
-  "./net.js": "./net.js?v=1794363182",
-  "./opencap.js": "./opencap.js?v=1794363182",
-  "./ultra.js": "./ultra.js?v=1794363182",
-  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794363182"
+  "./pipeline.js": "./pipeline.js?v=1794363288",
+  "./bodyfit.js": "./bodyfit.js?v=1794363288",
+  "./fuse.js": "./fuse.js?v=1794363288",
+  "./multiview.js": "./multiview.js?v=1794363288",
+  "./rtm.js": "./rtm.js?v=1794363288",
+  "./pdf.js": "./pdf.js?v=1794363288",
+  "./compare.js": "./compare.js?v=1794363288",
+  "./editor.js": "./editor.js?v=1794363288",
+  "./lifter.js": "./lifter.js?v=1794363288",
+  "./ortboot.js": "./ortboot.js?v=1794363288",
+  "./vidpark.js": "./vidpark.js?v=1794363288",
+  "./keepclip.js": "./keepclip.js?v=1794363288",
+  "./armzoom.js": "./armzoom.js?v=1794363288",
+  "./net.js": "./net.js?v=1794363288",
+  "./opencap.js": "./opencap.js?v=1794363288",
+  "./ultra.js": "./ultra.js?v=1794363288",
+  "./lib/vision_bundle.mjs": "./lib/vision_bundle.mjs?v=1794363288"
 }}
 </script>
-<script src="viewer.js?v=1794363182" charset="utf-8"></script>
-<script type="module" src="app.js?v=1794363182"></script>
+<script src="viewer.js?v=1794363288" charset="utf-8"></script>
+<script type="module" src="app.js?v=1794363288"></script>
 </body>
 </html>

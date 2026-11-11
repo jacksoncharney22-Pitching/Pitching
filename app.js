@@ -928,6 +928,20 @@ $("newBtn").onclick = () => { if (viewer) { viewer.stop(); viewer = null } show(
 $("brand").onclick = e => { e.preventDefault(); $("newBtn").onclick() };
 
 
+// "Save data for support": downloads this pitch's tracker data (the skeleton per frame, no video) plus the readings, so a
+// problem seen on a real clip (e.g. an Ultra result that looks wrong) can be studied and fixed without the video.
+$("supBtn").onclick = async () => {
+  if (!lastResult) return;
+  const raw = (lastResult.meta && lastResult.meta.raw) || lastRaw || null, d = lastResult.data || {};
+  const name = (d.name || "pitch").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "pitch";
+  const out = JSON.stringify({ app: "feole-pitching", saved: new Date().toISOString(), quality: d.quality, source: d.source || null,
+    throwHand: d.throwHand, phases: d.phases, metrics: d.metrics, raw });
+  let blob = new Blob([out], { type: "application/json" }), filename = `${name}_support.json`;
+  try { if (typeof CompressionStream !== "undefined") { blob = await new Response(blob.stream().pipeThrough(new CompressionStream("gzip"))).blob(); filename += ".gz" } } catch (e) {}
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
 // CSV export: inside claude.ai through the viewer's download prompt; on a normal website as a direct download
 (async () => {
   const inClaude = !!window.claude?.use;
