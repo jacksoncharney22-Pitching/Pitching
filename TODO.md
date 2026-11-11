@@ -570,6 +570,14 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   the working case was a SERVED url on the page). So blob URL vs served URL is the suspect: engine_diag `matrix_mean_pixel`
   (23c4ccb) splits served/blob x detached/parked/full-size; read its line in the safari job log. If only blob URLs are
   black it may be a Linux-WebKit (GStreamer) quirk, not iPhone Safari: then don't over-fit; parkVideo is harmless either way.
+  MATRIX RESULT: ALL six cases black in CI WebKit (served/blob x detached/parked/full), while the very FIRST video of the
+  page (served, on the page) drew fine (mean 124). So it isn't blob-vs-served or on/off the page: suspect "only one video
+  element gets pictures at a time" in this WebKit (the app always has others alive: the visible player, editor thumbs).
+  `one_decoder_test` (7d35cda) releases every earlier video and tries again: read it in the safari log of 7d35cda's run.
+  NOTE: parkVideo (505fc21) did not fix the CI case; it's harmless in Chromium (finder, export_check ok). If the
+  one-decoder test shows a fresh video works only after the others are released, the real fix is: give the finder/tracker
+  frames from ONE element (e.g. reuse the visible player, or release the editor's thumbnail video and the player's src
+  while tracking) - and decide whether to keep or revert vidpark.js.
 - **Next session (after 17:40):** all 17:40 work is live and green (1d390e3, aa6eb69, 69cf99b, e408c99; exports job of
   e408c99 green; b2e2c41's run was going at wrap-up: check it first). Then: (1) Tuesday: a steadier
   release-time slot (the card now WARNS when release was moved by hand, b2e2c41; the definition itself is unchanged) (see the slot/release-frame finding: a coach moving release by one frame moves the slot card 12-24 deg
