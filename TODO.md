@@ -617,7 +617,23 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   plate line: it's taken from the stride), app vs truth read the same way r 0.57, 5.9 off. Too small a spread for one camera
   to read. Tried also 20:40, no gain: an extra glove-arm depth shift around foot strike (camera-toward-plate / arm-side
   terms +-5%): glove abduction at FS 4.3 -> 4.2-4.5, nothing else moved. Glove abduction FS is small; leave it.
-- (20:40 session working on this, 20:45 ET) Safari: create the reading video only AFTER the others are let go (from the run-300 diagnostic).
+- **20:40 SHIPPED (6193d65, 24493ed): Safari one-video rule, stricter form.** The first-time check now tries, in order: let
+  the others go (sum2), load the SAME video again (sum3, mode "reload"), make a NEW video while alone (sum4, mode "fresh");
+  every later reader (finder, tracking, thumbnails, PDF) does whichever worked (`soloRead(v)` -> {v, end}: the reader may be a
+  new copy; openVideo/pdf.js/editor use the returned one). `?onevideo=fresh` fakes the strictest form in Chromium:
+  finder_check `--onevideo-fresh` 43-44/45 seen (in the regression job). Bug found on the way (24493ed): a thumbnail turn's
+  end let go of the shared thumbnail video while the next turn waited -> the next made a copy of nothing (404) and Fast
+  tracking sat at "Track" for minutes (clip_run ?onevideo=fresh); turns now remember the video's address (`v.__src`).
+  Chromium unchanged: finder_check plain 43/45 in the worker, --onevideo 44/45, regress, export_check (Staumont) ok.
+  New: clip_run `PROGRESS=1` (progress list every 30 s), finder_check `FINDER_WAIT=<s>` prints where it got stuck.
+  **CI WebKit on 6193d65: the finder step HUNG 15 min** (killed by `timeout 900`, after "Graph successfully started
+  running", no further output). Cause unknown (the 24493ed bug can't hang forever: every wait in vidpark has a cap).
+  **Next session START HERE:** open the "safari" job of 24493ed's run (or later): finder_check now prints "FINDER DID NOT
+  FINISH; page says ... one-video checks [sum1/sum2/sum3/sum4] ..." after 600 s, or a result line. If sum3/sum4 > 0 the
+  picture comes back that way: then find what waits forever (likely a `seeked` the WebKit MP4 never fires on a reloaded/new
+  video: app.js `once(v,"seeked")` in findPitchesIn has an 8 s cap per look -> 45 looks x 8 s x passes could be the 15 min:
+  check how many looks were made, `__finderDbg`). If all sums are 0, WebKit gives no pictures to any reader here; record
+  that and stop spending sessions on Linux WebKit (ask Jackson to try his iPhone instead).
 - **Next session (after 18:40) — START HERE (Safari, concrete):** make the pitch finder and Fast/High/Max tracking read
   frames while every OTHER video element is released, then give the others back. Plan: a small `videoLock` in vidpark.js:
   `hold(v)` = for every other <video> on the page (and parked ones) remember `src`+currentTime, `removeAttribute('src');
