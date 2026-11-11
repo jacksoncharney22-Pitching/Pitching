@@ -629,7 +629,17 @@ very short/long stride, slide-step or big trunk tilt gets flattened toward "aver
   no page errors. Run 305 (6193d65) green apart from the WebKit trial step. New: clip_run `PROGRESS=1` (progress list every 30 s), finder_check `FINDER_WAIT=<s>` prints where it got stuck.
   **CI WebKit on 6193d65: the finder step HUNG 15 min** (killed by `timeout 900`, after "Graph successfully started
   running", no further output). Cause unknown (the 24493ed bug can't hang forever: every wait in vidpark has a cap).
-  **Next session START HERE:** open the "safari" job of 24493ed's run (or later): finder_check now prints "FINDER DID NOT
+  **CI RESULT on 24493ed (run 308, safari job, 47 s, no hang): one-video checks sum1 0, sum2 0, sum3 0, sum4 0** — in this
+  WebKit even a reloaded or brand-NEW video made after the others were let go stays black (the 15-min hang on 6193d65 was
+  most likely the 404 copy-of-nothing bug, fixed in 24493ed). engine_diag's one_decoder_test still shows a fresh video
+  WORKS (123.8) there, but it also REMOVES the other elements from the page and makes the new one full-size. So pushed
+  (to-do commit after this line) engine_diag `release_variants`: new parked/full video with the others let go but kept on
+  the page vs removed (Chromium: all 128.8). **Next session START HERE: read `release_variants:` in the safari job log.**
+  If only "others_removed" works: releaseOthers must take the trim player etc. OFF the page (remember parent + next
+  sibling, put back in restore) and parked copies must be removed, not just emptied. If only "full" works: make the
+  reader full-size but invisible (e.g. position:fixed, opacity 0.01, the page's own size) instead of 2 px. If none works
+  outside one_decoder_test, compare its exact steps. (Old plan below kept for reference.)
+  Old: open the "safari" job of 24493ed's run (or later): finder_check now prints "FINDER DID NOT
   FINISH; page says ... one-video checks [sum1/sum2/sum3/sum4] ..." after 600 s, or a result line. If sum3/sum4 > 0 the
   picture comes back that way: then find what waits forever (likely a `seeked` the WebKit MP4 never fires on a reloaded/new
   video: app.js `once(v,"seeked")` in findPitchesIn has an 8 s cap per look -> 45 looks x 8 s x passes could be the 15 min:

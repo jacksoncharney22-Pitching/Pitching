@@ -119,6 +119,25 @@ async () => {
     catch (e) { m.err = e.message }
     P('one_decoder_test', m);
   }
+  // 2026-11-10 CI: in the app even a NEW video made after the others were let go (src removed + load(), but still on the
+  // page) was black, while one_decoder_test (others also REMOVED from the page) worked. Which part matters?
+  {
+    const vids = () => [...document.querySelectorAll('video')];
+    const letGo = (rm) => { for (const el of vids()) { try { el.pause(); el.removeAttribute('src'); el.load(); if (rm) el.remove() } catch (e) {} } };
+    const mk = async (how) => { const d = document.createElement('video'); d.muted = true; d.playsInline = true; d.preload = 'auto'; d.src = '/__diag_clip';
+      if (how === 'parked') parkVideo(d); else document.body.appendChild(d);
+      await new Promise((res, rej) => { d.onloadeddata = res; setTimeout(() => rej(new Error('no loadeddata')), 15000) });
+      d.currentTime = 1.5; await new Promise(res => { d.onseeked = res; setTimeout(res, 8000) }); return d };
+    const { parkVideo } = await import('./vidpark.js'), m = {};
+    try {
+      const keepA = await mk('full'), keepB = await mk('parked');            // two "others" like the trim player and a thumbnail video
+      letGo(false); m.new_parked_others_kept_on_page = stats(await mk('parked')).mean;
+      letGo(false); m.new_full_others_kept_on_page = stats(await mk('full')).mean;
+      letGo(true); m.new_parked_others_removed = stats(await mk('parked')).mean;
+      letGo(true); m.new_full_others_removed = stats(await mk('full')).mean;
+    } catch (e) { m.err = e.message }
+    P('release_variants', m);
+  }
   // can a worker make a WebGL context at all? (MediaPipe needs one even on the CPU setting, to read pictures)
   try {
     const src = "let r={};try{r.offscreen=typeof OffscreenCanvas;const c=new OffscreenCanvas(8,8);r.webgl2=!!c.getContext('webgl2');r.webgl=!!new OffscreenCanvas(8,8).getContext('webgl')}catch(e){r.err=String(e)}postMessage(r)";
